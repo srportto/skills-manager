@@ -1,0 +1,97 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+*.ini
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+replay_pid*
+
+ELP.md
+target/
+.mvn
+.kilo
+.env
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ### -> Comentei abaixo para não ignorar os arquivos de configuração do VS Code, como launch.json e tasks.json, que são importantes para o desenvolvimento.
+##.vscode/
+
+### draw.io ###
+*.drawio.bkp
+*.drawio.dtmp
+
+### floci-ui (clone externo, gerenciado fora deste repo) ###
+###docs/floci-aws-local/floci-ui/
+
+### Terraform ### -> o state guarda valores sensiveis (ex.: db_password) em texto puro mesmo para variaveis marcadas sensitive
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+*.tfvars
+
+### Python (apps/expurgo-particao) ###
+__pycache__/
+
+# Artefatos de `pip install -e .` (apps/expurgo-particao)
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+.pytest_cache/
+
+### graphify (grafo de conhecimento local, opcional) ###
+graphify-out/*
+!graphify-out/README.md
