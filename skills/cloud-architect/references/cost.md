@@ -103,22 +103,31 @@ MixedInstancesPolicy:
 ```
 
 **Spot Interruption Handling**
-```python
-# Check for spot termination notice (AWS)
-import requests
+```java
+// Aviso de interrupção spot (AWS) via IMDSv2: token de sessão + endpoint spot/instance-action.
+// 404 = nenhuma ação agendada; 200 = interrupção em ~2 minutos → iniciar encerramento gracioso.
+static final URI IMDS = URI.create("http://169.254.169.254/latest/");
+static final HttpClient CLIENTE = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
 
-def check_spot_termination():
-    try:
-        response = requests.get(
-            "http://169.254.169.254/latest/meta-data/spot/termination-time",
-            timeout=2
-        )
-        if response.status_code == 200:
-            # 2-minute warning - gracefully shutdown
-            graceful_shutdown()
-    except requests.exceptions.RequestException:
-        pass  # Not being terminated
+static boolean interrupcaoAgendada() throws IOException, InterruptedException {
+    var pedidoToken = HttpRequest.newBuilder(IMDS.resolve("api/token"))
+            .header("X-aws-ec2-metadata-token-ttl-seconds", "60")
+            .timeout(Duration.ofSeconds(2))
+            .PUT(HttpRequest.BodyPublishers.noBody()).build();
+    String token = CLIENTE.send(pedidoToken, HttpResponse.BodyHandlers.ofString()).body();
+
+    var consulta = HttpRequest.newBuilder(IMDS.resolve("meta-data/spot/instance-action"))
+            .header("X-aws-ec2-metadata-token", token)
+            .timeout(Duration.ofSeconds(2)).GET().build();
+    return CLIENTE.send(consulta, HttpResponse.BodyHandlers.discarding()).statusCode() == 200;
+}
+
+// Agendado a cada 5 s; ao detectar, a aplicação para de aceitar trabalho, drena com prazo < 2 min e
+// não confirma mensagens não concluídas (ver EncerramentoControlado em examples/java).
 ```
+
+Em Kubernetes, prefira o **AWS Node Termination Handler** (ou equivalente do provedor), que drena o nó e
+dispara o `preStop`/SIGTERM dos pods; a aplicação só precisa de encerramento gracioso correto.
 
 **GCP Preemptible/Spot VMs**
 ```hcl
@@ -314,17 +323,19 @@ CacheBehaviors:
 ### Lambda Optimization
 
 **Memory/CPU Tuning**
-```python
-# Use AWS Lambda Power Tuning
-# Finds optimal memory for cost vs performance
+Use o [AWS Lambda Power Tuning](https://github.com/alexcasalboni/aws-lambda-power-tuning) para medir custo ×
+duração por configuração de memória. Exemplo **ilustrativo** de resultado (os números dependem da função e da
+região — meça a sua):
 
-# Results example:
-# 128MB:  $0.000021 per invocation, 3200ms duration
-# 256MB:  $0.000025 per invocation, 1600ms duration
-# 512MB:  $0.000031 per invocation, 800ms duration
-# 1024MB: $0.000042 per invocation, 450ms duration
-# Optimal: 512MB (best cost-performance balance)
-```
+| Memória | Custo por invocação | Duração |
+|---|---|---|
+| 128 MB | $0.000021 | 3200 ms |
+| 256 MB | $0.000025 | 1600 ms |
+| 512 MB | $0.000031 | 800 ms |
+| 1024 MB | $0.000042 | 450 ms |
+
+Neste exemplo 512 MB equilibra custo e latência. Em Java, considere também **SnapStart** e o tempo de
+inicialização (cold start) na escolha.
 
 **Cost Reduction Strategies**
 1. Right-size memory allocation

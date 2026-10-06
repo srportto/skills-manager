@@ -1,112 +1,30 @@
-# Non-Functional Requirements Checklist
+# Checklist de requisitos não funcionais
 
-## NFR Categories
+NFR não é lista de tecnologias. Escreva cada requisito como **critério observável**: cenário, carga,
+fronteira medida, resultado esperado e como medir. Hipótese sem medição fica rotulada, com dono.
 
-### Scalability
+| Área | Perguntas | Evidência |
+|---|---|---|
+| Performance | Taxa média/pico **e duração**, distribuição de latência por operação, payload típico e máximo? | Perfil de carga; p50/p95/p99 sob carga representativa |
+| Capacidade | CPU/memória, concorrência (Lei de Little), pool somado das réplicas, fila por itens/bytes/idade? | Orçamento por instância e agregado; teste de saturação |
+| Sobrecarga | Quem reduz a produção? Quando rejeitar (429/503), pausar, persistir ou degradar? | Teste com carga acima da capacidade: limites respeitados, rejeição visível |
+| Disponibilidade | SLI (numerador/denominador), SLO, janela, exclusões; por tempo ou por requisição? | Orçamento de erro e alerta por burn rate |
+| Latência/deadline | Deadline ponta a ponta e por salto; quem é dono do retry? | Orçamento de tempo documentado; teste de dependência lenta |
+| Confiabilidade | Efeito desconhecido, duplicidade, ordem, retenção, DLQ, RTO/RPO? | Teste de duplicata, replay, restore e reconciliação |
+| Segurança | Identidade, autorização, tenant, TLS/mTLS, segredos, limites por identidade, abuso de recursos? | Modelo de ameaça; teste de fronteira e de abuso |
+| Dados | Consistência por operação, staleness tolerado, atraso de réplica, migração, privacidade? | Contrato de dados; teste transacional e de migração |
+| Operação | On-call, runbook, probes, drenagem, rollout/rollback, observabilidade? | Exercício de incidente e recuperação |
+| Custo | Orçamento mensal, custo por operação, custo do pico e do retry? | Estimativa com premissas explícitas |
+| Manutenção | Equipe, entrega, testes, contratos, compatibilidade e reversibilidade? | Decisão arquitetural (ADR) e plano de migração |
 
-| Question | Common Targets |
-|----------|----------------|
-| Expected concurrent users? | 100 / 1K / 10K / 100K |
-| Requests per second? | 10 / 100 / 1000 / 10000 |
-| Data volume? | GB / TB / PB |
-| Growth rate? | 10% / 50% / 100% per year |
-| Peak vs average load? | 2x / 5x / 10x |
+## Como escrever
 
-### Performance
+| Ruim | Bom |
+|---|---|
+| "O sistema deve ser rápido" | "`POST /pedidos`: p99 < 300 ms com 400 req/s sustentados por 15 min, medido no LB" |
+| "Alta disponibilidade" | "99,9% de criações bem-sucedidas em 30 dias; 429/503 do serviço contam como falha" |
+| "Usar Kafka para escalar" | "Absorver pico de 15 min a 400/s com lag < 5 min e drenagem < 30 min após o pico" |
+| "Resiliente a falhas do provedor" | "Provedor lento (> 2 s) não ocupa mais de 10 conexões; pedidos ficam `PENDENTE` e são reconciliados" |
 
-| Question | Common Targets |
-|----------|----------------|
-| API response time? | < 100ms / 200ms / 500ms p95 |
-| Page load time? | < 1s / 2s / 3s |
-| Database query time? | < 10ms / 50ms / 100ms |
-| Batch processing throughput? | 1K / 10K / 100K records/hour |
-
-### Availability
-
-| Target | Downtime/Year | Use Case |
-|--------|---------------|----------|
-| 99% | 3.65 days | Internal tools |
-| 99.9% | 8.76 hours | Business apps |
-| 99.95% | 4.38 hours | E-commerce |
-| 99.99% | 52.6 minutes | Financial systems |
-| 99.999% | 5.26 minutes | Life-critical |
-
-### Security
-
-| Question | Considerations |
-|----------|----------------|
-| Authentication required? | JWT, OAuth, SAML, MFA |
-| Authorization model? | RBAC, ABAC, ACL |
-| Data sensitivity? | Public, internal, confidential, PII |
-| Compliance requirements? | GDPR, HIPAA, PCI DSS, SOC 2 |
-| Encryption needs? | At rest, in transit, end-to-end |
-
-### Reliability
-
-| Question | Considerations |
-|----------|----------------|
-| Acceptable data loss? | RPO: 0 / 1hr / 24hr |
-| Recovery time target? | RTO: 1hr / 4hr / 24hr |
-| Backup frequency? | Real-time / hourly / daily |
-| Disaster recovery? | Single region / multi-region |
-
-### Maintainability
-
-| Question | Considerations |
-|----------|----------------|
-| Deployment frequency? | Daily / weekly / monthly |
-| Deployment strategy? | Blue-green, canary, rolling |
-| Monitoring requirements? | Logs, metrics, traces, alerts |
-| On-call requirements? | 24/7, business hours |
-
-### Cost
-
-| Question | Considerations |
-|----------|----------------|
-| Infrastructure budget? | $/month, $/user, $/request |
-| Operational budget? | FTE for maintenance |
-| Cost optimization? | Reserved instances, spot instances |
-| Cost alerts? | Thresholds for notification |
-
-## Template
-
-```markdown
-## Non-Functional Requirements
-
-### Performance
-- API response time: < 200ms p95
-- Page load time: < 2s
-- Database query time: < 50ms
-
-### Scalability
-- Concurrent users: 10,000
-- Requests per second: 1,000
-- Data volume: 1TB
-
-### Availability
-- Target: 99.9% (8.76 hours/year downtime)
-- RPO: 1 hour
-- RTO: 4 hours
-
-### Security
-- Authentication: JWT with refresh tokens
-- Authorization: Role-based (admin, user, guest)
-- Compliance: GDPR, SOC 2
-
-### Observability
-- Logging: Structured JSON to ELK
-- Metrics: Prometheus + Grafana
-- Tracing: OpenTelemetry
-- Alerts: PagerDuty integration
-```
-
-## Quick Reference
-
-| Category | Key Metric |
-|----------|------------|
-| Performance | Response time (p95) |
-| Scalability | Concurrent users, RPS |
-| Availability | Uptime percentage |
-| Reliability | RPO, RTO |
-| Security | Compliance requirements |
-| Cost | $/month budget |
+Cálculos de capacidade e SLO: [capacidade e SLOs](capacidade-slos.md). Refinamento de histórias com esses
+critérios: `refinamento-de-historias`.

@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: padrao-de-logs-java, arquitetura-limpa-java, devops-cicd, java-architecture
 ---
----
 
 # Monitoramento de Aplicações Java
 
@@ -69,9 +68,10 @@ public class PedidoService {
     private final Timer processamentoTimer;
 
     public PedidoService(MeterRegistry registry) {
-        this.pedidosCriados = Counter.builder("pedidos_criados_total")
+        // Nomes Micrometer usam ponto; o registry Prometheus converte para pedidos_criados_total.
+        this.pedidosCriados = Counter.builder("pedidos.criados")
                 .description("Total de pedidos criados com sucesso").register(registry);
-        this.processamentoTimer = Timer.builder("pedido_processamento")
+        this.processamentoTimer = Timer.builder("pedido.processamento")
                 .description("Latência do processamento de pedido")
                 .publishPercentileHistogram().register(registry);
     }
@@ -94,9 +94,6 @@ management:
     web:
       exposure:
         include: health, info, prometheus, metrics
-  endpoint:
-    prometheus:
-      enabled: true
   metrics:
     distribution:
       percentiles-histogram:
@@ -118,6 +115,23 @@ Prometheus scrape config (exemplo mínimo): `job_name`, `metrics_path: /actuator
 **Erro comum:** usar **Gauge** para algo que deveria ser **Counter**. Contadores são a base de
 todas as agregações por `rate()` no PromQL — usar Gauge para "total de eventos" quebra o `rate()`.
 
+## Cardinalidade e saturação
+
+- **Labels só com conjuntos fechados** (operação, resultado, dependência, status class). `traceId`, id de
+  pedido/usuário, path com id ou mensagem de erro **nunca** viram label: cada valor novo cria uma série
+  temporal nova e derruba o Prometheus. Para chegar de uma métrica a um exemplo concreto use **exemplars**
+  (o Micrometer anexa o `traceId` ao bucket do histograma quando há tracing ativo), logs e traces.
+- **Requisição lógica × tentativa:** conte a requisição do usuário uma vez (resultado final) e as tentativas à
+  dependência em outra métrica; retries não podem esconder nem inflar a taxa de erro.
+- **Rejeição é resultado, não ausência:** 429/503 por saturação entram no denominador do SLI.
+- **Saturação** (o "S" de USE) é o sinal que antecede a queda: fila em itens/bytes/**idade**, tarefas ativas
+  vs. limite, espera por conexão do pool, lag de consumo, breaker aberto, uso do fallback, tamanho da DLQ.
+
+Exemplo executável com essas regras (testes provam cardinalidade fechada, rejeição no denominador e
+separação lógica × tentativa):
+[MetricasProtecao](../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/MetricasProtecao.java).
+SLO, burn rate, alertas e runbook: [SLO e saturação](references/slo-saturacao-java.md).
+
 # Tracing distribuído com OpenTelemetry
 
 Tracing distribuído segue uma requisição **fim a fim** entre microsserviços, mostrando onde o tempo
@@ -135,14 +149,18 @@ Dependências Maven: `io.micrometer:micrometer-tracing-bridge-otel` +
 management:
   tracing:
     sampling:
-      probability: 1.0   # em dev/staging: 100% dos traces
+      probability: 0.1   # decisão de volume/custo/diagnóstico — ver abaixo
   otlp:
     tracing:
       endpoint: http://otel-collector:4318/v1/traces
 ```
 
-Em produção, **abaixe a sampling probability** (0.1 = 10%) para não estourar o storage; o resto
-fica nos logs via correlation ID (`traceId` propagado no header, ver `arquitetura-limpa-java`).
+**Sampling é decisão, não número universal.** Considere volume de requisições, custo de armazenamento e o que
+precisa ser diagnosticado: serviço de baixo volume pode manter 100%; alto volume costuma usar 1–10% de
+*head sampling* na aplicação. **Tail sampling** no OpenTelemetry Collector (guardar 100% dos traces com erro ou
+lentos e uma amostra dos demais) preserva justamente os casos que importam. O `traceId` continua em todos os
+logs, mesmo de requisições não amostradas. Confira o nome das propriedades na versão do Boot em uso. Atributos
+de alta cardinalidade (id do pedido) são bem-vindos em **spans** e logs — não em labels de métricas.
 
 ## Spans customizados em código
 
@@ -216,32 +234,50 @@ groups:
 
 # Health & readiness probes
 
-Separar liveness (o processo está vivo?) de readiness (pode receber tráfego?):
+Semântica única do catálogo (usada por `devops-cicd`, `arquitetura-limpa-java` e `criar-aplicacao-java`):
 
-```java
-// Liveness — simples, sem dependências
-@Bean
-public HealthIndicator liveness() { return () -> Health.up().build(); }
+| Probe | Pergunta | Inclui | Nunca inclui | Falha causa |
+|---|---|---|---|---|
+| startup | A aplicação terminou de subir? | estado de inicialização | — | Espera, sem reiniciar cedo demais |
+| liveness | O processo está são? | `livenessState` | Banco, broker, cache, APIs externas | **Reinício** do container |
+| readiness | Esta réplica pode atender agora? | `readinessState` + dependências **necessárias** para atender | Dependências opcionais/degradáveis; métricas de carga | Saída do balanceador (sem reinício) |
 
-// Readiness — verifica dependências críticas (DB, broker)
-@Bean
-public HealthIndicator databaseReadiness(DataSource ds) {
-    return () -> {
-        try (Connection c = ds.getConnection()) {
-            return c.isValid(1) ? Health.up().build() : Health.down().build();
-        } catch (SQLException e) { return Health.down(e).build(); }
-    };
-}
+Liveness com dependência externa transforma uma queda do banco em **reinício de todos os pods** — falha em
+cascata que não conserta nada. Readiness baseada em carga (CPU, fila cheia) tira réplicas saturadas e
+concentra o tráfego nas restantes; saturação vai para alerta e load shedding, não para readiness.
+
+```yaml
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true            # automático em Kubernetes; explícito para rodar igual fora dele
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db        # só o que é necessário para atender
+        operacional:
+          include: backlog                  # saturação: alerta/dashboard, fora das probes
+  server:
+    port: 8081                              # porta de management separada do tráfego (opcional)
 ```
 
-Spring Boot expõe automaticamente `/actuator/health/liveness` e `/actuator/health/readiness` quando
-os beans estão presentes. Veja a config do Kubernetes em `arquitetura-limpa-java`.
+Spring Boot publica `/actuator/health/liveness` e `/actuator/health/readiness`; no shutdown gracioso, a
+readiness passa a `REFUSING_TRAFFIC` automaticamente. Exemplo testado (banco fora → liveness 200, readiness
+503; backlog cheio → grupo operacional 503 sem derrubar readiness):
+[SaudeAplicacao](../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/SaudeAplicacao.java) e
+[SaudeAplicacaoTest](../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/SaudeAplicacaoTest.java).
+Endpoints legados de disponibilidade (ex.: `/disponibilidade` do esqueleto `criar-aplicacao-java`) podem
+continuar como smoke test, mas as probes do Kubernetes usam os grupos acima.
 
 # Constraints
 
 ## MUST DO
 - Use logs estruturados (JSON) — texto livre é parseável, mas estruturado é **filtrável**.
-- Inclua `traceId` em logs, métricas e traces para correlação.
+- Inclua `traceId` em logs e traces; em métricas, só via exemplars (nunca como label).
+- Defina SLI/SLO por operação e alerte por consumo do orçamento de erro (burn rate), com runbook.
+- Meça saturação (fila/idade, tarefas ativas, espera de pool, lag) e rejeições.
 - Configure alertas em caminhos críticos (latência, taxa de erro, saturação).
 - Monitore **métricas de negócio**, não só técnicas (`pedidos_criados_total` > `jvm_memory_used`).
 - Use o tipo de métrica correto (counter/gauge/histogram/timer).
@@ -253,8 +289,10 @@ os beans estão presentes. Veja a config do Kubernetes em `arquitetura-limpa-jav
 - Alertar em todo erro (alert fatigue) — defina threshold + `for` duration para evitar flapping.
 - Usar Gauge onde Counter é o correto (quebra `rate()` no PromQL).
 - Pular correlation ID em sistemas distribuídos.
-- Definir sampling em 100% em produção (estoura storage e custo) — use 1-10% e rely em logs
-  estruturados para o resto.
+- Escolher taxa de sampling sem considerar volume, custo e necessidade de diagnóstico (prefira tail
+  sampling para manter erros e lentidão).
+- Usar id, path dinâmico, `traceId` ou mensagem de erro como label de métrica.
+- Acoplar liveness a dependências externas ou readiness a métricas de carga.
 - Misturar dashboards RED e USE sem critério — defina por serviço qual faz sentido.
 
 ## Quem aplica o quê

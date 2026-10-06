@@ -1,0 +1,38 @@
+# Configuração do CheckoutApplication (exemplo de laboratório). Cada número tem motivo e unidade.
+spring:
+  application:
+    name: checkout
+  threads:
+    virtual:
+      enabled: true                 # espera de I/O barata; os limites reais são admissão e pool
+  datasource:
+    url: jdbc:h2:mem:checkout;DB_CLOSE_DELAY=-1
+    hikari:
+      maximum-pool-size: 10         # ≤ orçamento do banco ÷ réplicas máximas
+      connection-timeout: 2000      # ms; espera limitada pelo pool
+  lifecycle:
+    timeout-per-shutdown-phase: 20s # < terminationGracePeriodSeconds - preStop
+server:
+  shutdown: graceful
+  tomcat:
+    max-swallow-size: 64KB
+checkout:
+  capacidade: 16                    # requisições simultâneas por instância (admissão)
+  pagamento:
+    latencia: 0ms                   # só para ensaio de carga
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+        operacional:
+          include: backlog

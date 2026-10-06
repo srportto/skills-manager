@@ -1,0 +1,5 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>br.com.srportto.exemplos</groupId><artifactId>exemplos-java</artifactId><version>1.0.0</version></parent><artifactId>carga</artifactId><dependencies>
+<dependency><groupId>br.com.srportto.exemplos</groupId><artifactId>fundamentos</artifactId><version>${project.version}</version></dependency>
+<dependency><groupId>br.com.srportto.exemplos</groupId><artifactId>integracao</artifactId><version>${project.version}</version></dependency>
+</dependencies></project>
+

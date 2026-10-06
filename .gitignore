@@ -28,6 +28,7 @@ ELP.md
 target/
 .mvn
 .kilo
+.docs
 .env
 !**/src/main/**/target/
 !**/src/test/**/target/

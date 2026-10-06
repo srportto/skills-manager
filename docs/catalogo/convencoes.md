@@ -1,0 +1,44 @@
+# Convenções do catálogo
+
+## Fonte e instalação
+
+Neste repositório, `skills/<nome>/SKILL.md` e `agents/<nome>.md` são as fontes. Em uma instalação, o executor pode copiá-las para `.claude/skills`, `.codex/skills` ou outra raiz. Resolva referências usando a raiz em que a skill foi encontrada, nunca um caminho absoluto de uma máquina. Links relativos entre skills continuam relativos ao catálogo.
+
+`skills/README.md` é o índice. O frontmatter identifica cada item; a lista `skills` de um agent deve referenciar identificadores existentes. `metadata.related-skills` pode usar lista YAML ou texto separado por vírgulas. Templates, URLs e exemplos de caminhos não são dependências locais reais.
+
+## Contrato de skill
+
+Seções esperadas (nomes podem variar; o conteúdo, não): **quando usar / quando não usar**, **entradas**,
+**decisão**, **passo a passo**, **saída**, **critérios de validação**, **limites** e **referências sob
+demanda**, fechando com **quem aplica o quê**.
+
+Declare quando usar e quando não usar; leia somente as referências pertinentes. Receba escopo, requisitos conhecidos e evidências. Entregue decisão, artefatos, verificação e limitações. Defina quem aplica o conteúdo. Não copie regras completas de outras skills: a fonte de resiliência é `resiliencia-controle-fluxo-java`; a de evidências de teste é `testes-sistemas-java`.
+
+Pergunte apenas pelo que muda a decisão e ainda não foi informado. Use defaults declarados quando adequados; explicite hipóteses revisáveis. Referências a aplicações de outros monorepos são contexto histórico, não arquivos obrigatórios deste catálogo.
+
+## Contrato de agent
+
+Seções esperadas: **escopo**, **skills relevantes** (carregadas conforme o assunto, não todas),
+**entradas**, **entregas**, **evidências**, **fronteiras** e **encaminhamentos**. Um default declarado
+(ex.: variante padrão) é usado sem perguntar quando o pedido não o contradiz; o agent só pergunta o que
+altera a decisão e ainda não foi informado.
+
+O agent recebe tarefa, fronteira, requisitos e evidências. Retorna decisões justificadas, arquivos afetados, validações executadas com resultado e pendências. Não mistura construção, revisão e operação sem autorização. Modelos, ferramentas, memória e permissões do frontmatter são metadados do executor de origem; quem instala deve mapear capacidades suportadas, sem presumir equivalência de modelos.
+
+Compilação não comprova comportamento. Relate separadamente testes unitários, integração, carga e verificações não executadas. `-DskipTests` nunca é evidência suficiente para aprovar resiliência ou regra de negócio.
+
+## Java e formatos
+
+Exemplos novos/revisados da trilha de engenharia usam Java 25, sem preview, com comentários em português. Spring Boot 4 é usado quando o exemplo requer aplicação. Exemplos executáveis vivem em `examples/java`; a skill aponta para a fonte testada. YAML/XML/HCL/SQL/PromQL/Mermaid são formatos de configuração, consulta e documentação, não alternativas de implementação da aplicação.
+
+Graphify, OpenSpec e `python-pro` são ferramentas auxiliares preservadas, fora da trilha Java. Não apagar nem reescrever seus scripts por causa da preferência de linguagem da aplicação. Não introduzir Python no fluxo do `java-construtor`.
+
+## Decisão de proteção
+
+Registre operação/dependência, taxa média/pico, tamanho de item, concorrência, fila por itens/bytes, espera/deadline, erro elegível, política de retry, efeito idempotente, destino de rejeição, escopo local/global e recuperação. Cada número deve ter unidade e justificativa. Documente métrica, teste e limite de validade da solução.
+
+Use políticas proporcionais ao problema. CRUD de baixo tráfego não exige broker, WebFlux ou circuit breaker sem dependência que justifique. Heurísticas de estilo não são bugs automáticos. Segurança exige risco concreto; cenários de produção seguem a autorização do usuário e o blast radius acordado.
+
+## Manutenção
+
+Ao mudar uma API de exemplo, compile e teste os consumidores. Ao mudar uma skill, avalie roteamento e decisões com casos realistas. Ao mudar versão de JDK/framework, consulte documentação da versão e execute os módulos afetados. Preserve autoria e ferramentas importadas. O inventário é gerado a partir dos arquivos, não de contagens fixas.

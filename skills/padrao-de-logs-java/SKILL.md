@@ -13,7 +13,6 @@ metadata:
   output-format: document
   related-skills: monitoramento-java, seguranca-aplicacao-java, revisao-de-codigo-java
 ---
----
 
 # Padrão de Logs Java
 
@@ -158,10 +157,16 @@ MDC (`Mapped Diagnostic Context`, do SLF4J) é um contexto por thread: tudo que 
 linhas de log emitidas naquela thread, sem repetir o valor em cada chamada de `log.info`. Combinado
 com `logging.structured.format.console: logstash` (seção 2), não exige configuração extra.
 
-O filtro abaixo popula um `traceId` no MDC na borda (driving adapter, `infrastructure/web`),
-reaproveita um `traceId` recebido
-de outro serviço via header quando existe, e sempre limpa o MDC no `finally` — sem isso, como o
-servlet container reaproveita threads de um pool, o `traceId` vazaria para a próxima requisição:
+**Padrão preferido: Micrometer Tracing (OpenTelemetry).** Com `micrometer-tracing-bridge-otel` no classpath,
+o Spring Boot propaga o header **W3C Trace Context** (`traceparent`) entre serviços — HTTP e, com observação
+habilitada nos listeners, Kafka/SQS — e coloca `traceId`/`spanId` no MDC sozinho; o JSON estruturado já os
+inclui. Não crie um segundo identificador concorrente. Ver `monitoramento-java` (tracing).
+
+**Sem tracing** (app mínima), o filtro abaixo popula um `traceId` no MDC na borda (driving adapter,
+`infrastructure/web`), reaproveita um id recebido via header quando **válido** e sempre limpa o MDC no
+`finally` — sem isso, como o servlet container reaproveita threads de um pool, o `traceId` vazaria para a
+próxima requisição. Header vindo do cliente é entrada não confiável: valide formato e tamanho antes de
+colocá-lo em log (evita log injection e ids gigantes):
 
 ```java
 package br.com.srportto.appbase.shared.filters;
@@ -184,7 +189,9 @@ public class TraceIdFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         String recebido = ((HttpServletRequest) request).getHeader(CABECALHO_TRACE_ID);
-        String traceId = (recebido != null && !recebido.isBlank()) ? recebido : UUID.randomUUID().toString();
+        // Aceita só um formato conhecido e curto; qualquer outra coisa gera um id novo.
+        String traceId = (recebido != null && recebido.matches("[A-Za-z0-9-]{8,64}"))
+                ? recebido : UUID.randomUUID().toString();
         MDC.put(CHAVE_MDC, traceId);
         try {
             chain.doFilter(request, response);
@@ -198,6 +205,11 @@ public class TraceIdFilter implements Filter {
 
 `@Component` é suficiente — o Spring Boot registra automaticamente qualquer bean `Filter` na cadeia
 de filtros da aplicação, sem precisar de `FilterRegistrationBean`.
+
+**Logs não são métricas:** `traceId`, ids de pedido e usuário são ótimos campos de log (alta cardinalidade é
+normal em logs); como **label de métrica**, derrubam o Prometheus — ver `monitoramento-java` (cardinalidade).
+Em rejeições por sobrecarga, logue de forma **amostrada ou agregada** (um log por segundo com a contagem), não
+uma linha por requisição rejeitada: sob pico, o log vira mais uma fonte de saturação.
 
 **Entrypoints sem servlet (SQS/Kafka):** listeners como `PedidoSqsListener` não passam por essa
 cadeia de filtro HTTP. O mesmo padrão se aplica manualmente no início do método do listener —

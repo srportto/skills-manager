@@ -1,229 +1,155 @@
-# Chaos Experiment Design
+# Desenho de experimentos de chaos (Java)
 
-## Experiment Template
+Um experimento é um **teste de hipótese** sobre o comportamento sob falha: estado estável medido, falha
+injetada com escopo controlado, observação, critério de abort, remoção da falha e verificação da recuperação.
+Sem baseline e sem abort, é só quebrar coisas.
+
+## Template
 
 ```yaml
-name: "Database Connection Pool Exhaustion"
-hypothesis: "When the database connection pool is exhausted, the application will gracefully degrade and return 503 errors without cascading failures"
-
-steady_state:
-  metrics:
-    - name: "Error Rate"
-      threshold: "< 0.1%"
-      source: "prometheus"
-      query: "rate(http_requests_total{status=~'5..'}[5m])"
-    - name: "Latency P99"
-      threshold: "< 500ms"
-      source: "datadog"
-    - name: "Active Connections"
-      threshold: "> 10"
-      query: "pg_stat_activity_count"
-
-blast_radius:
-  environment: "staging"
-  traffic_percentage: 10
-  duration_seconds: 300
-  max_error_rate: "5%"
-  auto_rollback: true
-
-injection:
-  type: "resource_exhaustion"
-  target: "database_connections"
-  method: "connection_leak"
-  parameters:
-    leak_rate: 5  # connections per second
-    max_leaked: 50
-
-safety:
-  rollback_triggers:
-    - "error_rate > 5%"
-    - "manual_kill_switch"
-    - "duration_exceeded"
-  rollback_time_limit_seconds: 30
-  alerts:
-    - slack: "#chaos-engineering"
-    - pagerduty: "chaos-team"
-
-success_criteria:
-  - "Circuit breakers activate within 10s"
-  - "503 errors returned (not 500)"
-  - "No cascading failures to other services"
-  - "System recovers within 60s of rollback"
+nome: "Coordenador de quotas lento"
+hipotese: >
+  Se o Valkey de quotas ficar 500 ms mais lento que o normal, cada decisão de admissão continua saindo em
+  < 300 ms, o serviço usa o limite local degradado (nunca ilimitado) e volta ao coordenador em < 10 s
+  após a falha ser removida.
+estado_estavel:                     # medido ANTES da injeção, na mesma janela de tempo
+  - metrica: "taxa de sucesso de criar-pedido"
+    limiar: ">= 99,9%"
+    consulta: 'sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido",resultado="sucesso"}[5m])) / sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido"}[5m]))'
+  - metrica: "p99 de criar-pedido"
+    limiar: "< 300 ms"
+raio_de_impacto:
+  ambiente: "staging"               # produção só com aprovação explícita e progressão
+  alvo: "1 réplica do checkout"
+  duracao_maxima: "5 min"
+injecao:
+  ferramenta: "Toxiproxy"
+  tipo: "latência"
+  parametros: { latencia_ms: 500, direcao: downstream }
+abort:                              # qualquer um encerra o experimento e remove a falha
+  - "taxa de sucesso < 99%"
+  - "p99 > 2 s"
+  - "kill switch manual"
+  - "duração máxima atingida"
+recuperacao:
+  - "decisões voltam ao coordenador em < 10 s"
+  - "sem pico de retries (tentativas/s < 2× baseline)"
+responsaveis: { executor: "...", observador: "...", aprovador: "..." }
 ```
 
-## Hypothesis Formulation
+## Hipótese bem formulada
 
-```python
-def create_hypothesis(component: str, failure: str, expected_behavior: str) -> dict:
-    """
-    Create well-formed chaos hypothesis.
+"**Dado** o estado estável (números), **quando** a falha X ocorre no escopo Y, **então** o comportamento Z
+acontece, **medido por** métricas M, e o sistema **recupera** em T." Hipóteses úteis para este catálogo:
 
-    Format: "Given [normal state], when [failure occurs],
-             then [expected behavior], measured by [metrics]"
-    """
-    return {
-        "given": f"System is in steady state with {component} functioning normally",
-        "when": f"{failure} occurs",
-        "then": expected_behavior,
-        "measured_by": [
-            "Error rate remains below threshold",
-            "Latency stays within SLO",
-            "No data loss or corruption",
-            "Recovery time within RTO"
-        ]
+| Falha | Comportamento esperado | Proteção exercitada |
+|---|---|---|
+| Consumidor lento (processamento 10× mais lento) | Lag cresce no broker, memória do consumidor estável, poll mantido, nada perdido | Pausa por partição, trabalho em voo limitado |
+| Dependência com latência acima do timeout | Requisições terminam no deadline, threads/conexões não acumulam, breaker abre | Deadline, bulkhead, circuit breaker |
+| Cache indisponível | Banco recebe no máximo o orçamento de recomputação; excedente rejeitado/degradado | Limite de recomputação, fallback limitado |
+| Carga sustentada acima da capacidade | Rejeição 503 rápida e medida, filas limitadas, SLO dos que entram preservado | Admissão / load shedding |
+| Banco indisponível | Liveness continua UP (sem reinício em massa), readiness DOWN, recuperação sem tempestade | Semântica de probes, backoff com jitter |
+| Retorno após falha | Replay/retries em taxa limitada; latência não explode de novo | Replay controlado, orçamento de retry |
+
+## Controle de falha em Java (Testcontainers + Toxiproxy)
+
+Para experimentos locais/CI, a falha é injetada por código, com remoção garantida em `finally`:
+
+```java
+// Valkey atrás do Toxiproxy na mesma rede Docker; a aplicação fala com a porta do proxy.
+var controle = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
+Proxy proxy = controle.createProxy("valkey", "0.0.0.0:8666", "valkey:6379");
+
+var baseline = rodada(limite, 20);                         // estado estável medido
+try {
+    proxy.toxics().latency("valkey-lento", ToxicDirection.DOWNSTREAM, 500);   // injeção
+    var durante = rodada(limite, 20);                      // rodada() aborta se uma decisão passar de 2 s
+    // ... asserções da hipótese
+} finally {
+    proxy.toxics().get("valkey-lento").remove();           // rollback da falha, sempre
+}
+// ... verificação da recuperação com prazo
+```
+
+Experimento completo e executável (hipótese, baseline, injeção, abort, rollback e recuperação):
+[ExperimentoCoordenadorLentoExternoIT](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ExperimentoCoordenadorLentoExternoIT.java)
+(perfil `integracao`). O mesmo experimento **falha** se o fallback do limitador for trocado por *fail-open* —
+é isso que o torna uma prova, não uma demonstração.
+
+Outras falhas do Toxiproxy úteis: `timeout` (conexão pendurada), `resetPeer` (conexão derrubada),
+`bandwidth` (rede lenta), `slicer` (pacotes fragmentados). Para dependência HTTP, um servidor Java local que
+atrasa ou falha sob comando (`com.sun.net.httpserver.HttpServer`) é suficiente — ver
+[ChamadaComDeadlineTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/ChamadaComDeadlineTest.java).
+
+## Controle do raio de impacto
+
+```java
+// Regras de segurança aplicadas antes de iniciar — qualquer violação impede o experimento.
+enum Ambiente { DEV, STAGING, PRODUCAO }
+
+record RaioDeImpacto(Ambiente ambiente, double percentualTrafego, Duration duracaoMaxima,
+                     boolean rollbackAutomatico, String aprovador) {
+    RaioDeImpacto {
+        if (percentualTrafego <= 0 || percentualTrafego > 100) throw new IllegalArgumentException("Percentual inválido");
+        if (duracaoMaxima.compareTo(Duration.ofMinutes(10)) > 0 && aprovador == null) {
+            throw new IllegalArgumentException("Mais de 10 min exige aprovação explícita");
+        }
+        if (ambiente == Ambiente.PRODUCAO && (aprovador == null || !rollbackAutomatico)) {
+            throw new IllegalArgumentException("Produção exige aprovador e rollback automático");
+        }
+        if (ambiente == Ambiente.PRODUCAO && percentualTrafego > 10) {
+            throw new IllegalArgumentException("Produção acima de 10% do tráfego só após rodadas menores bem-sucedidas");
+        }
     }
+}
 
-# Example
-hypothesis = create_hypothesis(
-    component="payment service",
-    failure="50% packet loss to payment gateway",
-    expected_behavior="Requests timeout gracefully, retry queue activates, "
-                     "users see clear error messages"
-)
+// Progressão: dev (100%) → staging (100%) → produção canário (1%) → ampliação gradual.
 ```
 
-## Blast Radius Control
+## Guarda de abort
 
-```python
-from dataclasses import dataclass
-from enum import Enum
-
-class BlastRadiusLevel(Enum):
-    MINIMAL = "single_instance_dev"
-    LOW = "single_instance_staging"
-    MEDIUM = "percentage_staging"
-    HIGH = "percentage_production"
-    CRITICAL = "full_production"
-
-@dataclass
-class BlastRadiusConfig:
-    level: BlastRadiusLevel
-    environment: str
-    target_percentage: float  # 0-100
-    canary_users: list[str]
-    feature_flag: str
-    auto_rollback: bool
-    max_duration_seconds: int
-
-    def validate(self):
-        """Enforce safety rules."""
-        if self.level == BlastRadiusLevel.CRITICAL:
-            raise ValueError("CRITICAL blast radius requires explicit approval")
-
-        if self.environment == "production" and self.target_percentage > 10:
-            if not self.feature_flag or not self.auto_rollback:
-                raise ValueError("Production >10% requires feature flag AND auto-rollback")
-
-        if self.max_duration_seconds > 600:
-            raise ValueError("Max duration cannot exceed 10 minutes without approval")
-
-# Progressive blast radius expansion
-def progressive_rollout() -> list[BlastRadiusConfig]:
-    return [
-        BlastRadiusConfig(
-            level=BlastRadiusLevel.MINIMAL,
-            environment="dev",
-            target_percentage=100,
-            canary_users=[],
-            feature_flag="chaos_dev",
-            auto_rollback=True,
-            max_duration_seconds=300
-        ),
-        BlastRadiusConfig(
-            level=BlastRadiusLevel.LOW,
-            environment="staging",
-            target_percentage=100,
-            canary_users=[],
-            feature_flag="chaos_staging",
-            auto_rollback=True,
-            max_duration_seconds=600
-        ),
-        BlastRadiusConfig(
-            level=BlastRadiusLevel.MEDIUM,
-            environment="production",
-            target_percentage=1,
-            canary_users=["internal_team"],
-            feature_flag="chaos_prod_canary",
-            auto_rollback=True,
-            max_duration_seconds=300
-        )
-    ]
+```java
+// Executa a injeção enquanto um monitor verifica os gatilhos; o primeiro gatilho encerra e remove a falha.
+static Resultado executarComGuarda(Runnable injetar, Runnable remover, Supplier<Optional<String>> gatilhoDeAbort,
+                                   Duration duracaoMaxima, Duration intervalo) throws InterruptedException {
+    long fim = System.nanoTime() + duracaoMaxima.toNanos();
+    injetar.run();
+    try {
+        while (System.nanoTime() < fim) {
+            Optional<String> motivo = gatilhoDeAbort.get();     // consulta métricas reais (SLI, p99, kill switch)
+            if (motivo.isPresent()) return Resultado.abortado(motivo.get());
+            Thread.sleep(intervalo);
+        }
+        return Resultado.concluido();
+    } finally {
+        remover.run();                                         // rollback mesmo em exceção/interrupção
+    }
+}
 ```
 
-## Safety Mechanisms
+O gatilho de abort lê as **mesmas métricas do SLO** (`monitoramento-java`), não uma métrica criada só para o
+experimento. Antes de iniciar: confirme o estado estável; se o sistema já está fora do normal, **não comece**.
 
-```python
-import asyncio
-from typing import Callable
+## Relatório
 
-class ChaosExperimentSafety:
-    def __init__(self, config: dict):
-        self.config = config
-        self.kill_switch_active = False
-        self.metrics = {}
+| Campo | Conteúdo |
+|---|---|
+| Hipótese | Texto original |
+| Estado estável | Valores medidos (com janela e consulta) |
+| Injeção | Ferramenta, parâmetros, horário início/fim, escopo |
+| Observado | Métricas durante a falha, comparadas aos limiares |
+| Abort | Disparou? Qual gatilho, em quanto tempo |
+| Recuperação | Tempo até o estado estável; pico de retries/replay |
+| Resultado | Hipótese confirmada / refutada |
+| Ações | Correções com dono e prazo; próximo experimento |
 
-    async def run_with_safety(self, chaos_fn: Callable):
-        """Execute chaos with automatic safety checks."""
-        # Pre-flight checks
-        if not await self.verify_steady_state():
-            raise Exception("System not in steady state - aborting")
+## Referência rápida
 
-        # Set up rollback trigger
-        rollback_task = asyncio.create_task(self.monitor_for_rollback())
-        chaos_task = asyncio.create_task(chaos_fn())
-
-        try:
-            # Wait for either chaos completion or rollback trigger
-            done, pending = await asyncio.wait(
-                [chaos_task, rollback_task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-
-            if rollback_task in done:
-                # Rollback triggered - cancel chaos
-                chaos_task.cancel()
-                await self.rollback()
-
-        finally:
-            await self.ensure_system_recovery()
-
-    async def verify_steady_state(self) -> bool:
-        """Check all steady state metrics are within threshold."""
-        for metric in self.config['steady_state']['metrics']:
-            value = await self.query_metric(metric['query'])
-            if not self.within_threshold(value, metric['threshold']):
-                return False
-        return True
-
-    async def monitor_for_rollback(self):
-        """Continuously monitor for rollback triggers."""
-        start_time = asyncio.get_event_loop().time()
-
-        while True:
-            # Check duration limit
-            if asyncio.get_event_loop().time() - start_time > \
-               self.config['blast_radius']['duration_seconds']:
-                return "duration_exceeded"
-
-            # Check manual kill switch
-            if self.kill_switch_active:
-                return "manual_kill_switch"
-
-            # Check error rate
-            error_rate = await self.query_metric("error_rate")
-            if error_rate > float(self.config['blast_radius']['max_error_rate'].strip('%')):
-                return "error_rate_exceeded"
-
-            await asyncio.sleep(5)  # Check every 5 seconds
-```
-
-## Quick Reference
-
-| Phase | Key Actions | Time Limit |
-|-------|-------------|------------|
-| Design | Hypothesis, metrics, blast radius | 1 hour |
-| Review | Team review, safety check | 30 min |
-| Prepare | Setup monitoring, rollback | 1 hour |
-| Execute | Run experiment, monitor | 5-10 min |
-| Rollback | Restore steady state | < 30 sec |
-| Learn | Document findings, plan fixes | 2 hours |
+| Fase | Ações-chave | Duração típica |
+|---|---|---|
+| Desenho | Hipótese, métricas, raio de impacto, abort | 1 h |
+| Revisão | Revisão com o time, aprovação | 30 min |
+| Preparação | Dashboards, kill switch, rollback testado | 1 h |
+| Execução | Injeção monitorada | 5–10 min |
+| Rollback | Remover falha, confirmar estado estável | < 30 s para remover a falha |
+| Aprendizado | Relatório e ações | 2 h |

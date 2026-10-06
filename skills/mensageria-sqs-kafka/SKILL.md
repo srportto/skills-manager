@@ -1,67 +1,75 @@
 ---
-
 name: mensageria-sqs-kafka
-description: "Referência de mensageria em apps Java/Spring Boot hexagonais — SQS (visibility timeout, DLQ com `RedrivePolicy`, idempotência) e Kafka (ordenação por chave, consumer group, retry/DLT, interceptor central de erro). Use em dúvida de DLQ, idempotência, retry de listener ou classificação central de erro. Uso: agents `java-revisor`/`java-construtor` ou `/mensageria-sqs-kafka`; não carregar proativamente."
+description: "Referência de mensageria em apps Java/Spring Boot hexagonais — SQS (visibility timeout e renovação, DLQ com `RedrivePolicy`, mensagens em voo limitadas) e Kafka (ordenação por chave, consumer group, pause/resume, commit do concluído, retry/DLT, rebalance), idempotência transacional, outbox/inbox, replay controlado e ponto central de decisão de erro. Use em dúvida de ack/offset, DLQ, idempotência, retry de listener, backlog ou replay. Uso: agents `java-revisor`/`java-construtor` ou `/mensageria-sqs-kafka`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.1.0"
+  version: "2.0.0"
   domain: messaging
-  triggers: DLQ, SQS, Kafka, idempotência, visibility timeout, consumer group, retry, listener, DLT, redrive
+  triggers: DLQ, SQS, Kafka, idempotência, visibility timeout, consumer group, retry, listener, DLT, redrive, outbox, offset, ack, replay, backlog, pause, rebalance
   role: specialist
   scope: messaging
   output-format: code
-  related-skills: arquitetura-limpa-java, criar-aplicacao-java, persistencia-jpa, monitoramento-java
----
+  related-skills: arquitetura-limpa-java, criar-aplicacao-java, persistencia-jpa, monitoramento-java, resiliencia-controle-fluxo-java, testes-sistemas-java
 ---
 
 # Mensageria SQS e Kafka
 
 ## Visão geral
 
-Referência de bolso para mensageria em aplicações Java/Spring Boot hexagonais deste projeto: SQS,
-Kafka, idempotência, DLQ/DLT e a escolha entre os dois modelos.
+Garantias concretas de consumo e publicação em aplicações Java/Spring Boot hexagonais: **quando confirmar**,
+**como limitar o trabalho em voo**, **como não duplicar efeitos** e **como recuperar** sem perder mensagens.
+Mecanismos gerais de proteção (deadline, retry, breaker) estão em `resiliencia-controle-fluxo-java`; esta skill é
+dona de ack, offset, DLQ/DLT, outbox e replay.
 
-**Quando NÃO usar:** para gerar uma aplicação nova que já nasce consumindo fila/publicando em Kafka,
-use `criar-aplicacao-java`. Para dúvida de camada, use `arquitetura-limpa-java`. Para o que logar em
-um listener/consumer, use `padrao-de-logs-java`.
+**Quando NÃO usar:** gerar aplicação nova → `criar-aplicacao-java`; dúvida de camada → `arquitetura-limpa-java`;
+o que logar → `padrao-de-logs-java`; métricas de lag/backlog → `monitoramento-java`.
+
+## Garantias em uma tabela
+
+| Pergunta | SQS (standard) | Kafka |
+|---|---|---|
+| Entrega | At-least-once; duplicatas possíveis | At-least-once com commit após o processamento |
+| O que é "ack" | `DeleteMessage` com o receipt handle da entrega | Commit do offset **seguinte** ao último processado da partição |
+| Ordem | Nenhuma na standard; FIFO ordena por `MessageGroupId` | Por partição (chave define a partição) |
+| Trabalho em voo | Mensagens recebidas e não apagadas (invisíveis) | Registros já entregues pelo `poll` e ainda não commitados |
+| Falha repetida | `RedrivePolicy` move para DLQ após `maxReceiveCount` | Política da aplicação (ex.: N tentativas → DLT) |
+| Replay | Só da DLQ (redrive) ou reenvio manual | Reset de offset / novo grupo, dentro da retenção |
+
+**Exactly-once tem fronteira.** Produtor idempotente e transações Kafka evitam duplicatas *dentro do Kafka*
+(read-process-write entre tópicos). Elas **não** tornam exatamente-uma-vez um efeito externo (banco, HTTP,
+e-mail). Para efeitos externos: idempotência persistida + outbox/inbox.
 
 ## 1. Onde a mensageria vive na arquitetura
 
-Listener SQS e consumer Kafka são **driving adapters** — vivem em `infrastructure/messaging/`, no
-mesmo nível de um `@RestController`: recebem a mensagem e chamam uma `port/in`, sem regra de negócio
-própria. Produtor Kafka é **driven adapter**: implementa uma `port/out` declarada no `domain` e
-também reside em `infrastructure/messaging/`. O domínio nunca conhece o broker (nenhuma classe em
-`domain/` importa `io.awspring.cloud.*`, `org.springframework.kafka.*` ou `com.fasterxml.jackson.*`).
+Listener SQS e consumer Kafka são **driving adapters** em `infrastructure/messaging/`: recebem a mensagem,
+chamam uma `port/in` e devolvem a decisão de ack ao ponto central. Produtor é **driven adapter** que implementa
+uma `port/out`. O domínio nunca conhece o broker.
 
-```
-infrastructure/messaging/            application/usecase/
-  PedidoSqsListener      ────▶         ProcessarPedidoService (valida, garante idempotencia)
-  PedidoKafkaConsumer                      │        implements domain/port/in
-                                            ▼
-                                          domain/ (regra de negocio pura)
-
-  EventoController        ────▶         PublicarEventoService ──▶ domain/port/out/EventoPublisher
-  (infrastructure/web/)                                                    ▲
-                                          KafkaEventoPublisher ────────────┘ (driven adapter)
-                                        (adaptador de SAIDA, encapsula o KafkaTemplate)
+```mermaid
+flowchart LR
+    L[PedidoSqsListener / PedidoKafkaConsumer<br/>infrastructure/messaging] --> D[Decisão central<br/>confirmar / reentregar / quarentena]
+    D --> U[ProcessarPedidoService<br/>application, idempotente]
+    U --> P[(Banco: efeito + idempotência + outbox)]
+    R[Relay da outbox] --> P
+    R --> K[(Kafka / SNS)]
 ```
 
 ## 2. Regra de ouro: toda fila SQS nasce com sua DLQ
 
-**Nenhuma fila SQS deve ser criada — em Terraform, CLI ou qualquer IaC — sem uma DLQ e um
-`RedrivePolicy` associados, nem em ambiente local.** Sem DLQ, uma mensagem "venenosa" (que sempre
-lança exceção) fica em loop infinito de reentrega até o visibility timeout expirar de novo,
-consumindo throughput sem nunca progredir e sem deixar rastro para investigação.
+**Nenhuma fila SQS é criada — em Terraform, CLI ou qualquer IaC, nem localmente — sem DLQ e `RedrivePolicy`.**
+Sem DLQ, uma mensagem venenosa reentrega para sempre, consome throughput e não deixa rastro.
 
 ```hcl
-# Terraform - fila principal + DLQ SEMPRE juntas, nunca uma sem a outra
+# Terraform - fila principal + DLQ SEMPRE juntas
 resource "aws_sqs_queue" "fila_dlq" {
-  name = "fila-pedidos-dlq"
+  name                      = "fila-pedidos-dlq"
+  message_retention_seconds = 1209600 # 14 dias: tempo para investigar e fazer redrive
 }
 
 resource "aws_sqs_queue" "fila" {
-  name = "fila-pedidos"
+  name                       = "fila-pedidos"
+  visibility_timeout_seconds = 60 # > tempo máximo de processamento, ou renove durante o processamento
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.fila_dlq.arn
     maxReceiveCount     = 3
@@ -69,181 +77,203 @@ resource "aws_sqs_queue" "fila" {
 }
 ```
 
-Via AWS CLI (LocalStack/Floci), a mesma regra em 3 passos: criar a DLQ, obter seu ARN, e só então
-criar/atualizar a fila principal com `RedrivePolicy` apontando para ela:
+Via AWS CLI (LocalStack), a mesma regra: criar a DLQ, obter o ARN e só então criar a fila com `RedrivePolicy`:
 
 ```bash
 aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name fila-pedidos-dlq
 ARN_DLQ=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-attributes \
   --queue-url http://localhost:4566/000000000000/fila-pedidos-dlq \
   --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes \
-  --queue-url http://localhost:4566/000000000000/fila-pedidos \
+aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name fila-pedidos \
   --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$ARN_DLQ\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\"}"
 ```
 
-`maxReceiveCount=3` é o default recomendado — 3 tentativas de entrega antes de mover para a DLQ.
-**Toda auditoria de código de mensageria (agent `java-revisor` no modo `auditoria`, seção 8) deve reprovar uma fila
-SQS nova ou alterada em IaC que não tenha DLQ associada.**
+`maxReceiveCount=3` é um default razoável, não universal: conte que **cada recebimento é uma tentativa** (inclusive
+os que expiraram por visibility timeout). A retenção da DLQ deve ser **maior** que a da fila principal, senão a
+mensagem pode expirar antes da investigação. O `java-revisor` (modo `auditoria`) reprova fila nova sem DLQ.
 
-### Visibility timeout
+### Visibility timeout e renovação
 
-Intervalo em que uma mensagem entregue fica invisível para os demais consumidores. Dimensione sempre
-**maior que o tempo máximo de processamento** esperado — se o processamento puder demorar mais que o
-visibility timeout, a mesma mensagem é entregue de novo a outro consumidor **enquanto a primeira
-entrega ainda está em andamento**, gerando processamento concorrente duplicado.
+Intervalo em que a mensagem entregue fica invisível. Se o processamento passar do timeout, a mensagem reaparece
+e **outro consumidor processa a mesma mensagem em paralelo**. Duas opções: timeout acima do tempo máximo de
+processamento (incluindo retries internos e deadline), ou **renovar** com `ChangeMessageVisibility` enquanto
+processa (ex.: a cada metade do timeout), parando ao terminar. Visibilidade máxima por mensagem: 12 horas.
 
-Com `@SqsListener`: retorno normal deleta a mensagem automaticamente; exceção deixa a mensagem voltar
-a ficar visível (até a DLQ, se configurada). Em listener manual (cliente SDK puro, sem
-`@SqsListener`), o ack (`DeleteMessage`) é responsabilidade explícita do código — ver seção 3.
+### Mensagens em voo limitadas
 
-### Idempotência — SQS entrega ao-menos-uma-vez
+Peça ao SQS só o que cabe: `MaxNumberOfMessages = min(10, capacidade livre)`. Mensagens recebidas e não
+processadas ficam invisíveis consumindo o timeout — buscar mais do que se processa gera reentregas e duplicatas.
+O backlog deve ficar **no broker**, não em fila em memória. Com `@SqsListener` (Spring Cloud AWS), limite via
+`maxConcurrentMessages`/`maxMessagesPerPoll` do container.
 
-SQS garante **at-least-once**: a mesma mensagem pode chegar mais de uma vez. O processamento precisa
-ser idempotente.
+## 3. Ponto central de decisão de erro
 
-| Aspecto | Em memória (`Set` concorrente) | Persistente (constraint única no banco) |
+Assim como o `@ControllerAdvice` classifica exceções HTTP num só lugar, **toda falha de consumo passa por um ponto
+único** que decide entre **confirmar**, **reentregar** ou **quarentenar**:
+
+| Situação | Decisão | Por quê |
 |---|---|---|
-| Sobrevive a reinício | Não | Sim |
-| Múltiplas instâncias | Não — cada uma tem seu `Set` | Sim — todas consultam o mesmo banco |
-| Race condition | Não protegido | Protegido pela constraint (a 2ª gravação falha/é ignorada) |
-| Quando usar | PoC, app de instância única | Produção real, múltiplas instâncias |
+| Efeito concluído (ou já aplicado antes — idempotência) | Confirmar | Trabalho feito |
+| Falha transitória (timeout, dependência fora, lock) | Reentregar | Nova tentativa pode funcionar; tentativas limitadas |
+| Falha permanente (schema inválido, regra violada) | Copiar para quarentena (DLQ/DLT) **e então** confirmar | Não adianta repetir; o dado de negócio não pode sumir |
+| Quarentena indisponível | **Não confirmar** (reentregar) | Confirmar sem cópia durável é perda silenciosa |
+| Efeito com resultado desconhecido (timeout após enviar) | Reentregar + idempotência/reconciliação | Repetir às cegas pode duplicar o efeito |
+| Falha desconhecida | Tratar como transitória | Repetir é mais seguro que descartar |
 
-## 3. Interceptor central de erro de consumo (equivalente ao `ApiExceptionHandler`)
+Implementação de referência, testada:
+[ConsumoControlado](../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/ConsumoControlado.java).
 
-Assim como o lado REST tem um único `@ControllerAdvice`/`ApiExceptionHandler` classificando toda
-exceção HTTP num só lugar, **todo erro ocorrido no escopo de consumo de uma mensageria (SQS ou
-Kafka) deve passar por um ponto único de classificação** — nunca por `catch` espalhados dentro do
-próprio listener/consumer, um por cenário descoberto ao longo do tempo.
-
-A forma concreta desse ponto único **muda conforme o framework de consumo**, mas o princípio é o
-mesmo: uma classe/config dedicada decide, para cada exceção, se a mensagem é descartada
-(retryable=false) ou devolvida para nova tentativa (retryable=true), com log ERROR do identificador
-da mensagem — nunca do body (ver `padrao-de-logs-java`).
-
-**Listener manual (SDK puro, sem `@SqsListener`)** — uma classe dedicada, injetada no listener, que
-recebe a exceção e devolve a decisão de ack:
+**Listener manual (SDK)** — o listener só delega:
 
 ```java
-// infrastructure/messaging/PedidoErrorInterceptor.java — ponto unico de classificacao, listener so delega
-@Component
-public class PedidoErrorInterceptor {
-
-    private static final Logger log = LoggerFactory.getLogger(PedidoErrorInterceptor.class);
-
-    /** @return true se deve dar ack (descarte consciente); false se deve voltar a fila. */
-    public boolean tratar(Message message, Exception e) {
-        if (e instanceof PedidoInvalidoException) {
-            log.error("Mensagem não-retryable descartada: messageId={}", message.messageId(), e);
-            return true;
-        }
-        log.error("Falha ao processar messageId={}. Retorna a fila.", message.messageId(), e);
-        return false;
-    }
+// infrastructure/messaging — o listener não decide nada sozinho
+var resultado = decisao.consumir(mensagem);           // ConsumoControlado<Message>
+if (resultado.decisao() == ConsumoControlado.Decisao.CONFIRMAR) {
+    sqs.deleteMessage(r -> r.queueUrl(fila).receiptHandle(mensagem.receiptHandle()));
 }
-
-// no listener: processarEDarAck() so chama o use case e delega a excecao ao interceptor
-try {
-    useCase.processar(message.body());
-    ack(queueUrl, message);
-} catch (Exception e) {
-    if (errorInterceptor.tratar(message, e)) {
-        ack(queueUrl, message);
-    }
-}
+// REENTREGAR: não apaga; a mensagem reaparece após o timeout/backoff e a RedrivePolicy limita as tentativas.
 ```
 
-**`@KafkaListener` (spring-kafka)** — o framework já oferece o ponto único pronto: um
-`DefaultErrorHandler` central com `DeadLetterPublishingRecoverer`, configurado uma vez em
-`infrastructure/config/`, nunca com `try/catch` dentro do método do listener:
+**`@KafkaListener` (spring-kafka)** — o ponto central é um `DefaultErrorHandler` configurado uma vez:
 
 ```java
 @Bean
 DefaultErrorHandler errorHandler(KafkaTemplate<String, String> kafkaTemplate) {
     var recuperador = new DeadLetterPublishingRecoverer(kafkaTemplate);
-    return new DefaultErrorHandler(recuperador, new FixedBackOff(1000L, 3));
+    // 1 tentativa inicial + 3 retentativas, com backoff exponencial (1 s, 2 s, 4 s, teto 10 s).
+    var backoff = new ExponentialBackOffWithMaxRetries(3);
+    backoff.setInitialInterval(1_000L);
+    backoff.setMultiplier(2.0);
+    backoff.setMaxInterval(10_000L);
+    var handler = new DefaultErrorHandler(recuperador, backoff);
+    // Exceção permanente vai direto para o DLT, sem gastar retentativas.
+    handler.addNotRetryableExceptions(PedidoInvalidoException.class);
+    return handler;
 }
 ```
 
-Com `@SqsListener` gerenciado pelo Spring (não cliente SDK puro), o equivalente é um
-`SqsMessageListenerErrorHandler` central, pelo mesmo motivo.
+Notas: `FixedBackOff(1000L, 3)` significa **3 retentativas** (4 execuções no total). O retry do
+`DefaultErrorHandler` acontece **bloqueando a partição** (seek para o registro que falhou): retries longos atrasam
+toda a partição e contam para `max.poll.interval.ms`. Se a publicação no DLT falhar, o handler não commita o
+offset — o registro é reprocessado (configure `DeadLetterPublishingRecoverer` para **falhar** quando o envio falhar,
+nunca para ignorar). Com `@SqsListener` gerenciado, o equivalente é um `ErrorHandler`/`AcknowledgementResultCallback`
+central.
 
-**O que reprova em revisão:** classificação de exceção duplicada em mais de um lugar do código;
-`try/catch` genérico dentro do método do listener que decide ack/retry inline em vez de delegar;
-qualquer novo tipo de exceção de mensageria tratado ad-hoc fora do ponto central existente.
+**Reprova em revisão:** classificação duplicada; `try/catch` no listener decidindo ack inline; descarte genérico
+(`return true` / ack) de mensagem com dado de negócio sem quarentena durável; ack antes do efeito.
 
 ## 4. Kafka produtor
 
-- **Chave de partição define ordem** — mensagens com a mesma chave vão para a mesma partição, ordem
-  garantida dentro dela. Use um id de negócio estável (ex.: id do pedido):
-  ```java
-  kafkaTemplate.send(topicoPedidos, pedido.id(), mensagemJson);
-  ```
-- **`acks=all`** para durabilidade — aguarda confirmação de todas as réplicas antes de considerar
-  publicado (em vez de `acks=0`/`1`, que arriscam perda na falha do líder).
-- **Dependência correta**: `spring-boot-starter-kafka` (autoconfigura `KafkaTemplate`). **Não** use
-  `spring-kafka` isolado — sem o starter, falta o bean e o contexto quebra com
-  `NoSuchBeanDefinitionException`. O contexto sobe **sem** broker no ar; o producer reconecta em
-  background.
+- **Chave define partição e ordem**: mesma chave → mesma partição → ordem garantida entre elas. Use id de negócio
+  estável (id do pedido/agregado). Chave muito concentrada vira **hot partition**.
+- **`acks=all`** aguarda as réplicas **em sincronia (ISR)**, não "todas as réplicas". A durabilidade real depende de
+  `min.insync.replicas` no tópico/broker: com `replication.factor=3` e `min.insync.replicas=2`, a escrita só é
+  confirmada com ao menos 2 cópias; com `min.insync.replicas=1`, `acks=all` ainda pode perder dado se o líder cair.
+- **Produtor idempotente** (`enable.idempotence=true`, default nos clientes atuais com `acks=all`) evita duplicatas
+  causadas pelos **retries internos do próprio produtor**; não evita duplicatas de reenvio pela aplicação.
+- **Retries do produtor** são automáticos até `delivery.timeout.ms`; não acrescente retry de aplicação em cima sem
+  orçamento — e, se acrescentar, o consumidor precisa deduplicar.
+- **Dependência:** `spring-boot-starter-kafka` (autoconfigura `KafkaTemplate`); sem o starter falta o bean.
 
 ```yaml
 spring:
   kafka:
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 120000
 ```
+
+Publicar **depois** do commit do banco perde o evento se o processo cair entre os dois; publicar **antes** cria
+evento de algo que pode sofrer rollback. Use **outbox** (seção 6).
 
 ## 5. Kafka consumidor
 
-- **Consumer group**: consumidores do mesmo `group-id` dividem as partições entre si — 1 partição =
-  no máximo 1 consumidor ativo do grupo por vez. Escala horizontal = mais partições + mais instâncias.
-- **`auto-offset-reset`**: `earliest` lê desde o início (não perde mensagens antigas); `latest` só lê
-  a partir da conexão do consumer.
-- **Retry + DLT**: ver `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` na seção 3 — 3
-  tentativas com 1s de backoff, depois publica em `<topico>.DLT` automaticamente. Com
-  `@KafkaListener`: retorno normal avança o offset; exceção mantém o offset e reentrega conforme a
-  política de retry, até esgotar e ir para o DLT.
+- **Consumer group:** cada partição tem no máximo um consumidor ativo do grupo; paralelismo máximo = número de
+  partições. Mais instâncias que partições ficam ociosas.
+- **`auto.offset.reset`** só vale quando **não há offset commitado válido** para o grupo (grupo novo ou offset
+  expirado/fora da retenção): `earliest` lê desde o início disponível, `latest` só o que chegar. Não é "configuração
+  de leitura" do dia a dia.
+- **Commit do concluído:** commite o offset `último processado + 1` **depois** do efeito durável. Com
+  `@KafkaListener` e processamento síncrono, o `AckMode` padrão (`BATCH`) commita após o retorno do listener —
+  correto. Se você entregar o registro a outra thread e retornar, o commit automático confirma trabalho **não
+  feito**: use ack manual.
+- **Manter o poll vivo:** o tempo entre `poll()` não pode passar de `max.poll.interval.ms` (default 5 min), senão o
+  membro sai do grupo e as partições são reatribuídas (com reprocessamento). Processamento lento: reduza
+  `max.poll.records`, ou processe de forma assíncrona **pausando** as partições ocupadas (`pause`/`resume`) e
+  continuando a chamar `poll()`. **Nunca "pare o poll" até o trabalho acabar.**
+- **`KafkaConsumer` não é thread-safe:** só a thread do laço chama `poll`, `commit`, `pause`; workers devolvem
+  resultados por fila.
+- **Ordem e paralelismo:** paralelizar **dentro** de uma partição quebra a ordem por chave. Paralelize entre
+  partições, ou por chave com cuidado explícito.
+- **Rebalance:** em `onPartitionsRevoked`, espere (limitado) o trabalho em andamento e commite o concluído; o resto
+  será reprocessado pelo novo dono — por isso o efeito precisa ser idempotente.
 
-## 6. Decisão SQS × Kafka
+Detalhes, números e o exemplo completo:
+[controle de consumo](references/controle-consumo-java.md).
 
-| Aspecto | SQS (fila ponto-a-ponto) | Kafka (log de eventos) |
-|---|---|---|
-| Consumo | Destrutivo — mensagem some após ack; 1 consumidor lógico por mensagem | Não destrutivo — permanece pelo tempo de retenção; múltiplos consumer groups leem o mesmo evento |
-| Replay | Não (salvo reprocessamento manual antes da exclusão) | Sim — novo consumer group ou reset de offset |
-| Ordenação | Só com FIFO queue (não é o padrão) | Garantida por partição, via chave |
-| Quando usar | Trabalho a executar exatamente uma vez por um processador | Histórico de eventos que múltiplos consumidores independentes precisam ler, auditoria, replay |
+## 6. Idempotência, outbox e replay
 
-## 7. Erros comuns
+- **Idempotência persistida**: chave + escopo (tenant) + hash/campos do payload + resultado, gravados **na mesma
+  transação** do efeito quando estão no mesmo banco; a restrição única arbitra corridas entre instâncias. Mesma chave
+  com payload diferente = conflito, nunca sobrescrita.
+- **Outbox**: o evento é gravado na mesma transação do efeito; um relay publica em ordem (sequência), marca como
+  publicado e aceita duplicatas (at-least-once). **Inbox/deduplicação** no consumidor fecha o ciclo.
+- **Replay** de DLQ/outbox em **taxa limitada** e com o destino saudável; a quarentena tem retenção, dono e acesso
+  controlado.
+
+Detalhes e provas: [idempotência, outbox e replay](references/idempotencia-outbox-replay-java.md).
+
+## 7. Decisão SQS × Kafka × RabbitMQ
+
+| Aspecto | SQS | Kafka | RabbitMQ |
+|---|---|---|---|
+| Modelo | Fila gerenciada, consumo destrutivo | Log retido, consumo por offset | Broker com exchanges/filas, consumo destrutivo |
+| Múltiplos consumidores independentes | Via SNS fan-out | Nativo (um grupo por consumidor) | Via exchange fan-out |
+| Ordem | FIFO por grupo | Por partição | Por fila (com 1 consumidor ou single-active) |
+| Replay | DLQ redrive | Nativo dentro da retenção | Não nativo (streams à parte) |
+| Controle de fluxo do consumidor | Quantas mensagens pedir | `max.poll.records`, pause/resume | `prefetch` (QoS) |
+| Operação | Gerenciado (AWS) | Cluster/serviço gerenciado; partições e retenção a dimensionar | Cluster a operar |
+| Quando usar | Trabalho a executar por um processador | Histórico/eventos para vários consumidores, replay | Roteamento flexível, RPC assíncrono, filas de trabalho |
+
+## 8. Erros comuns
 
 | Erro | Consequência | Correção |
 |---|---|---|
-| Fila SQS sem DLQ | Mensagem venenosa reentrega para sempre, sem rastro para investigação | Seção 2 — DLQ + `RedrivePolicy` obrigatórios em toda fila |
-| Erro de consumo tratado inline, sem ponto central | Classificação duplicada/inconsistente entre mensagens; novo cenário de falha vira mais um `catch` solto | Seção 3 — interceptor/`DefaultErrorHandler` central, único |
-| Processar sem idempotência | Reentrega at-least-once duplica o efeito (grava/cobra duas vezes) | Seção 2 — `Set` em memória (didático) ou constraint única (produção) |
-| Commit manual de offset sem necessidade | Complexidade extra sem ganho — o commit automático do `@KafkaListener` já cobre o caso comum | Use o commit automático padrão |
-| Visibility timeout menor que o tempo de processamento | Mesma mensagem entregue de novo a outro consumidor **durante** o processamento em andamento | Dimensione acima do tempo máximo esperado |
-| Logar payload inteiro com dados sensíveis | PII vaza para o log estruturado | Ver `padrao-de-logs-java` — nunca o body, só ids |
+| Fila SQS sem DLQ | Mensagem venenosa reentrega para sempre | Seção 2 |
+| Ack/commit antes do efeito durável | Perda em queda | Confirmar só após efeito ou quarentena durável |
+| Descarte genérico de mensagem "inválida" | Dado de negócio some sem rastro | Quarentena durável e então confirmar |
+| Receber mais mensagens do que processa | Reentregas por visibility timeout, duplicatas | Limitar em voo; deixar backlog no broker |
+| Parar o `poll()` durante processamento longo | Rebalance, reprocessamento em cascata | `pause`/`resume` + poll contínuo; `max.poll.records` menor |
+| Commit automático com processamento assíncrono | Offset confirmado de trabalho não feito | Ack manual após conclusão |
+| Idempotência em memória em produção | Duplica após reinício ou em várias instâncias | Restrição única no banco, na transação do efeito |
+| `acks=all` com `min.insync.replicas=1` | Perda se o líder cair | `min.insync.replicas ≥ 2` com RF 3 |
+| Retry sem limite por partição | Partição travada por uma mensagem | Tentativas limitadas → DLT |
+| Logar payload | PII no log | Logar ids (`padrao-de-logs-java`) |
 
-## 8. Validação
+## 9. Validação
 
-- **Aplicação de mensageria nova**: gere via `criar-aplicacao-java`, que invoca `java-revisor` (modo `auditoria`)
-  como validação obrigatória (achados críticos bloqueiam a entrega).
-- **Mudança pontual em código de mensageria existente**: revise com `java-revisor`, aplicando
-  `revisao-de-codigo-java` (que referencia `padrao-de-logs-java` para logs).
-- **`java-revisor` (modo `auditoria`) valida explicitamente**, quando o código tocar mensageria: (1) toda fila SQS
-  nova/alterada em IaC tem DLQ + `RedrivePolicy`; (2) existe um ponto único de classificação de erro
-  de consumo (interceptor dedicado ou `DefaultErrorHandler`/`SqsMessageListenerErrorHandler`), não
-  `catch` espalhados no listener.
+- `java-revisor` (modo `auditoria`) verifica: DLQ + `RedrivePolicy` em toda fila; ponto central de decisão; ack só
+  após efeito/quarentena; trabalho em voo limitado; idempotência persistida; poll mantido.
+- **Provas executáveis** (`testes-sistemas-java`): duplicatas concorrentes e reinício sem efeito duplicado; falha
+  de envio para DLQ/DLT sem confirmação; trabalho em voo nunca acima do limite; replay em taxa limitada. Referências:
+  [ConsumidorKafkaLimitadoExternoIT](../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ConsumidorKafkaLimitadoExternoIT.java)
+  e [ConsumidorSqsLimitadoExternoIT](../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ConsumidorSqsLimitadoExternoIT.java)
+  (perfil `integracao`, Docker obrigatório).
 
 ## Skills e agents relacionados
 
 | Situação | Use |
 |---|---|
-| Criar aplicação nova que já nasce consumindo fila/publicando em Kafka | skill `criar-aplicacao-java` |
-| Dúvida sobre em qual camada uma classe de mensageria deve viver | skill `arquitetura-limpa-java` |
-| O que logar em um listener/consumer, e o que nunca logar | skill `padrao-de-logs-java` |
-| Checklist completo de revisão de código (mensageria é um item entre vários) | skill `revisao-de-codigo-java` |
-| Validação de aplicação nova gerada, DLQ e interceptor de erro | agent `java-revisor` (modo `auditoria`) |
-| Revisão de diff pontual em código de mensageria existente | agent `java-revisor` |
+| Criar aplicação que nasce consumindo fila/publicando em Kafka | skill `criar-aplicacao-java` |
+| Camada de uma classe de mensageria | skill `arquitetura-limpa-java` |
+| Deadline, retry, breaker, limites gerais | skill `resiliencia-controle-fluxo-java` |
+| Transação e restrição única com JPA | skill `persistencia-jpa` |
+| Lag, idade do backlog, alertas | skill `monitoramento-java` |
+| O que logar no consumer | skill `padrao-de-logs-java` |
+| Revisão de código de mensageria | agent `java-revisor` |
+
+Fontes: [KafkaConsumer (javadoc 4.x)](https://kafka.apache.org/42/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html),
+[SQS visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html),
+[SQS dead-letter queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html).

@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: banco-de-dados-performance, arquitetura-limpa-java, qualidade-codigo-java
 ---
----
 
 # Persistência JPA
 
@@ -195,10 +194,31 @@ public class ProcessadorLoteService {
   quem o expõe para fora é o adapter que implementa a `port/out` (`PedidoRepository` do `domain`).
   O use case injeta a porta, nunca o `JpaRepository`. Camadas descritas em detalhe na skill
   `arquitetura-limpa-java`.
-- **Idempotência persistente via unique constraint**: `PedidoEntity` (overlay `sqs-para-banco`) marca
-  `@Column(name = "id_pedido", unique = true)` e `PedidoRepository` expõe
-  `existsByIdPedido(String idPedido)` — checagem de duplicidade delegada ao banco, sem lógica extra na
-  application.
+- **Idempotência persistente via unique constraint, na transação do efeito**: a restrição única (criada
+  pela migration, não só por `@Column(unique = true)`) é quem arbitra duplicatas. `existsByIdPedido(...)`
+  seguido de `save(...)` é **check-then-act**: duas instâncias passam pela checagem ao mesmo tempo e uma
+  delas falha (ou duplica, se não houver restrição). Grave o registro de idempotência e o efeito na mesma
+  transação e trate a violação:
+
+  ```java
+  // application — o caso de uso abre a transação; a restrição única decide quem venceu.
+  @Transactional
+  public PedidoId criar(CriarPedido comando) {
+      try {
+          idempotencia.saveAndFlush(new IdempotenciaEntity(comando.tenant(), comando.chave(), comando.hashPayload()));
+          var pedido = pedidos.save(PedidoEntity.de(comando));
+          outbox.save(OutboxEntity.pedidoCriado(pedido));
+          return pedido.id();
+      } catch (DataIntegrityViolationException duplicata) {
+          // A transação atual está marcada para rollback: leia o resultado anterior em transação nova
+          // (outro bean/método REQUIRES_NEW) e compare o hash do payload — diferente é conflito (422/409).
+          throw new RequisicaoRepetida(comando.tenant(), comando.chave());
+      }
+  }
+  ```
+
+  Padrão completo, outbox e provas executáveis: `mensageria-sqs-kafka`
+  ([idempotência, outbox e replay](../mensageria-sqs-kafka/references/idempotencia-outbox-replay-java.md)).
 - **DTO record nas bordas via MapStruct**: a entidade JPA nunca atravessa `infrastructure/web/`;
   `ProdutoMapper`
   (`@Mapper(componentModel = "spring")`) converte `Produto` para os records `CriarProdutoRequest`/
@@ -240,21 +260,78 @@ public class Produto {
 ```
 
 O Hibernate incrementa `versao` a cada `UPDATE` e compara o valor lido com o valor atual no banco; se
-divergirem, lança `OptimisticLockingFailureException`. Trate essa exceção na application e traduza para
-`BusinessException` (422, já mapeada pelo `ApiExceptionHandler` do projeto) — nenhum tratamento
-adicional é necessário no controller:
+divergirem, lança `OptimisticLockingFailureException`. **Atenção ao momento:** a verificação acontece no
+*flush*, que normalmente ocorre no commit — **depois** do `return` do método `@Transactional`. Um `try/catch`
+em volta de `save(...)` dentro da transação não pega o conflito. Duas opções corretas:
 
 ```java
-// application/usecase/ProdutoService.java
+// Opção 1 — forçar o flush dentro do try (o conflito aparece aqui)
 @Transactional
 public Produto atualizar(Produto produto) {
     try {
-        return repository.save(produto);
-    } catch (OptimisticLockingFailureException e) {
-        throw new BusinessException("Produto foi alterado por outro processo, tente novamente");
+        return repository.saveAndFlush(produto);
+    } catch (OptimisticLockingFailureException conflito) {
+        throw new ConflitoDeConcorrencia("Produto foi alterado por outro processo", conflito);
     }
 }
+
+// Opção 2 — traduzir fora da transação, no handler central de erros (infrastructure/web)
+@ExceptionHandler(OptimisticLockingFailureException.class)
+ProblemDetail conflito(OptimisticLockingFailureException erro) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Recurso alterado por outra requisição; releia e tente de novo.");
+}
 ```
+
+Conflito de concorrência é **409** (ver `api-rest-design`); o cliente relê e decide. Repetir automaticamente
+só é seguro se a operação for recalculada a partir do estado novo (releitura + reaplicação), com tentativas
+limitadas.
+
+## Locking pessimista, isolamento e timeouts
+
+Use lock pessimista quando o conflito é frequente e repetir é caro (ex.: reservar a última unidade de estoque):
+
+```java
+// infrastructure/persistence — SELECT ... FOR UPDATE com espera limitada (sem timeout, espera indefinida)
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "2000"))
+@Query("select e from EstoqueEntity e where e.sku = :sku")
+Optional<EstoqueEntity> travarPorSku(@Param("sku") String sku);
+```
+
+- O suporte ao hint de timeout varia por banco/dialeto (o PostgreSQL não tem `FOR UPDATE WAIT n`; lá, garanta o
+  limite com `lock_timeout` por papel ou `SET LOCAL lock_timeout` na transação). Confira o SQL gerado e teste
+  a espera com duas transações concorrentes.
+- Trave sempre na **mesma ordem** (ex.: por id crescente) para evitar deadlock; o banco aborta uma das
+  transações em deadlock — trate como conflito transitório com retry limitado.
+- Transação curta: nada de chamada HTTP, fila ou espera de backoff com lock/conexão seguros.
+- Atualização condicional atômica dispensa lock explícito em muitos casos:
+  `update estoque set quantidade = quantidade - :qtd where sku = :sku and quantidade >= :qtd` (linhas afetadas
+  = 0 → sem estoque).
+- `@Transactional(timeout = 5)` (segundos) e `statement_timeout`/`setQueryTimeout` limitam a duração; o
+  nível de isolamento padrão (READ COMMITTED no PostgreSQL, REPEATABLE READ no MySQL/InnoDB) muda quais
+  anomalias são possíveis — documente quando depender de um nível específico.
+
+## Migrations: expand/contract e rollback
+
+Mudança de schema com aplicação rodando em várias versões ao mesmo tempo (rolling deploy):
+
+1. **Expand** — adicionar coluna/tabela **compatível** (nullable ou com default), sem remover nada.
+2. **Migrar** — aplicação nova escreve nos dois formatos; backfill em lotes pequenos, com pausa e medição de lag.
+3. **Contract** — remover o formato antigo só depois que nenhuma versão antiga roda (e após janela de rollback).
+
+Rollback de aplicação precisa funcionar com o schema já expandido; rollback de schema destrutivo (drop) não
+existe na prática — por isso o drop vem por último. Índices em tabelas grandes seguem
+`banco-de-dados-performance` (`CONCURRENTLY` no PostgreSQL, Online DDL no MySQL; migration não transacional).
+
+## Leitura em réplica com atraso
+
+Réplicas de leitura têm atraso (segundos, às vezes minutos sob carga). Consequências:
+
+- **Read-your-writes** quebra: o usuário cria o pedido (primário) e a listagem (réplica) não mostra. Leia do
+  primário logo após escrever (por sessão/tempo), ou devolva o recurso criado na própria resposta.
+- Decisão de negócio (saldo, estoque, idempotência) **sempre** no primário.
+- Roteamento: `AbstractRoutingDataSource` com `@Transactional(readOnly = true)` → réplica é comum; meça o lag
+  (`pg_stat_replication`, `Seconds_Behind_Source`) e tire a réplica do roteamento quando passar do tolerado.
 
 ## Erros comuns
 

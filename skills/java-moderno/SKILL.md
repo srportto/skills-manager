@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: qualidade-codigo-java, padroes-de-projeto-java, arquitetura-limpa-java
 ---
----
 
 # Java Moderno
 
@@ -208,10 +207,39 @@ espera o I/O, sem esgotar um pool fixo de threads do SO.
 **Quando NÃO ajudam / atenção:**
 - **CPU-bound:** processamento pesado (cálculo, criptografia, serialização grande) não ganha nada —
   o gargalo é a CPU, não a espera por I/O; o número de núcleos continua sendo o limite real.
-- **`synchronized` com I/O dentro (pinning):** bloquear dentro de um bloco `synchronized` pode
-  "prender" (pin) a carrier thread do SO, impedindo outras virtual threads de usá-la — anula o ganho
-  de escala. A partir do JDK 24 (JEP 491) a maioria dos casos deixou de causar pinning, mas vale medir
-  sob carga, especialmente com código nativo (JNI) ou bibliotecas antigas que seguram locks em I/O.
+- **Pinning no Java 25:** desde o JDK 24 ([JEP 491](https://openjdk.org/jeps/491)) bloquear dentro de
+  `synchronized` ou em `Object.wait()` **não** prende mais a carrier thread — a recomendação antiga de
+  trocar todo `synchronized` por `ReentrantLock` para evitar pinning não vale para Java 25. Pinning ainda
+  ocorre em código nativo/FFM (JNI, upcalls) e em casos raros de inicialização de classe; detecte com o
+  evento JFR `jdk.VirtualThreadPinned` em vez de presumir.
+- **Virtual threads não aumentam capacidade de recursos:** 10 conexões no banco continuam 10 conexões.
+  Milhares de virtual threads esperando o pool só deslocam a fila para dentro da JVM. Limite a admissão
+  (`Semaphore`/bulkhead por recurso), dê timeout à aquisição de conexão e rejeite o excedente — ver
+  `resiliencia-controle-fluxo-java`.
+- **Não faça pool de virtual threads:** crie uma por tarefa (`Executors.newVirtualThreadPerTaskExecutor()`);
+  para limitar concorrência use semáforo, não um pool de tamanho fixo.
+- **`ThreadLocal` com muitas threads:** caches por thread (ex.: buffers grandes) multiplicam memória quando
+  há centenas de milhares de virtual threads; prefira objetos com escopo explícito.
+
+```java
+// Limite real de concorrência com virtual threads: o semáforo, não o executor.
+var conexoesDisponiveis = new Semaphore(10);
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (var pedido : pedidos) {
+        executor.submit(() -> {
+            // Espera limitada: excedente falha de forma visível em vez de enfileirar sem fim.
+            if (!conexoesDisponiveis.tryAcquire(200, TimeUnit.MILLISECONDS)) {
+                throw new RejectedExecutionException("Banco saturado");
+            }
+            try {
+                return repositorio.salvar(pedido);
+            } finally {
+                conexoesDisponiveis.release();
+            }
+        });
+    }
+}
+```
 
 ## 7. `var`
 
