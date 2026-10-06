@@ -581,8 +581,8 @@ Critérios globais de conclusão da execução futura:
 ## 13. Estado da execução (2026-10-06)
 
 **Executado:** T01–T13 sem commit (branch `main` com alterações preexistentes do usuário; commit fica a critério do
-usuário). Registro detalhado, decisões ("rulings") e resultados no ledger local
-`.superpowers/sdd/2026-10-06-evolucao-skills-agents-java/progress.md` (ignorado pelo Git).
+usuário). Decisões e resultados versionados em [decisões de execução](2026-10-06-evolucao-skills-agents-java-decisoes.md);
+o ledger bruto fica local em `.superpowers/` (ignorado pelo Git).
 
 **Verificado por execução:** `mvn -f validation/java/pom.xml verify` (14 testes);
 `mvn -f examples/java/pom.xml verify` (79 testes); `-Pintegracao` (+7 `ExternoIT` com Kafka, PostgreSQL,
