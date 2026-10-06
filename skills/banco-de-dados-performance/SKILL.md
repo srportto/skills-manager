@@ -13,7 +13,6 @@ metadata:
   output-format: document
   related-skills: persistencia-jpa, arquitetura-limpa-java, design-system-architecture
 ---
----
 
 # Banco de Dados — Performance e Tuning
 
@@ -170,8 +169,15 @@ WHERE  relname = 'orders';
 ```
 
 > **`CREATE INDEX CONCURRENTLY` (PostgreSQL):** não bloqueia escrita na tabela durante a criação
-> (ao custo de levar mais tempo). Use em produção; `CREATE INDEX` simples trava a tabela e causa
-> downtime.
+> (ao custo de levar mais tempo e fazer duas varreduras). Cuidados: não roda dentro de transação (migrations
+> Flyway/Liquibase precisam marcá-la como não transacional); se falhar, deixa um índice **INVALID** que precisa
+> ser removido (`DROP INDEX CONCURRENTLY`) e recriado; **não funciona na tabela-pai particionada** (crie em cada
+> partição com `CONCURRENTLY` e depois no pai com `ON ONLY` + `ATTACH PARTITION`).
+
+> **MySQL é diferente:** não tem `CONCURRENTLY`, índice parcial (`WHERE`) nem `INCLUDE`. Use Online DDL
+> (`ALTER TABLE ... ADD INDEX ..., ALGORITHM=INPLACE, LOCK=NONE`) ou ferramentas como `gh-ost`/`pt-online-schema-change`
+> em tabelas grandes; o índice "covering" no InnoDB é o índice secundário com as colunas consultadas (a PK já
+> vem embutida em todo índice secundário).
 
 ---
 
@@ -207,33 +213,73 @@ FROM pg_stat_replication;
 
 ## PostgreSQL — parâmetros chave
 
-| Parâmetro | Default | Target de tuning | Razão |
-|-----------|---------|------------------|-------|
-| `shared_buffers` | 128MB | 25% da RAM | Aumentar para workloads read-heavy |
-| `work_mem` | 4MB | 64-256MB | Aumentar para sorts/hashes complexos |
-| `maintenance_work_mem` | 64MB | 256-512MB | Aumentar para VACUUM/ANALYZE |
-| `effective_cache_size` | 4MB | 75% da RAM | Hint para o planner da RAM disponível |
-| `random_page_cost` | 4.0 | 1.1 (SSD) | Menor para storage rápido |
+Os valores abaixo são **pontos de partida comuns em servidor dedicado**, não regras: serviço gerenciado (RDS,
+Cloud SQL) já ajusta vários deles, e a carga real decide. Mude um parâmetro por vez, com baseline e medição.
+
+| Parâmetro | Default | Ponto de partida | Cuidado |
+|-----------|---------|------------------|---------|
+| `shared_buffers` | 128MB | ~25% da RAM | Acima de ~40% raramente ajuda (o SO também faz cache) |
+| `work_mem` | 4MB | Calcular: RAM disponível ÷ (conexões ativas × operações de sort/hash por query) | É **por operação, por conexão**: 256MB × 100 conexões × 2 sorts = 50 GB → OOM. Prefira elevar por sessão/consulta (`SET LOCAL work_mem`) |
+| `maintenance_work_mem` | 64MB | 256MB–1GB | Multiplicado por workers de autovacuum (`autovacuum_work_mem`) |
+| `effective_cache_size` | 4GB | ~50–75% da RAM | Só uma dica ao planner; não aloca memória |
+| `random_page_cost` | 4.0 | ~1.1 em SSD/NVMe | Mudar altera planos: compare antes/depois |
+| `statement_timeout` | 0 (sem limite) | Por papel/aplicação (ex.: 5 s para OLTP) | Sem limite, query descontrolada segura conexão indefinidamente |
+| `idle_in_transaction_session_timeout` | 0 | ex.: 30 s | Transação esquecida aberta segura locks e impede vacuum |
+| `lock_timeout` | 0 | ex.: 2–5 s em migrations | DDL esperando lock bloqueia todas as queries atrás dela |
 
 ## MySQL — parâmetros chave
 
-| Parâmetro | Default | Target de tuning | Razão |
-|-----------|---------|------------------|-------|
-| `innodb_buffer_pool_size` | 128M | 70-80% da RAM | Aumentar para read-heavy |
-| `innodb_log_file_size` | 48M | 256-512M | Reduzir escritas no log |
-| `max_connections` | 151 | Monitorar & tunar | Evitar exaustão de conexões |
-| `slow_query_log` | OFF | ON | Habilitar para análise |
+| Parâmetro | Default | Ponto de partida | Cuidado |
+|-----------|---------|------------------|---------|
+| `innodb_buffer_pool_size` | 128M | ~50–75% da RAM em servidor dedicado | Deixe memória para conexões e SO |
+| `innodb_redo_log_capacity` (8.0.30+; substitui `innodb_log_file_size`) | 100M | Suficiente para ~1 h de escrita no pico | Muito pequeno força checkpoints frequentes |
+| `max_connections` | 151 | Soma dos pools de todas as réplicas + reserva | Cada conexão consome memória por thread |
+| `innodb_lock_wait_timeout` | 50 s | ex.: 5–10 s em OLTP | Espera de lock longa segura a conexão |
+| `max_execution_time` | 0 | ex.: 5000 ms | Só vale para `SELECT` |
+| `slow_query_log` + `long_query_time` | OFF / 10 s | ON / 0,5–1 s | Base para análise de slow query |
 
 ---
 
 # Padrões de uso na aplicação
 
-## Connection pooling (obrigatório em produção)
+## Orçamento de conexões (obrigatório em produção)
 
-- **PostgreSQL:** pgBouncer em modo transaction (mais leve) ou session; **MySQL:** ProxySQL ou
-  HikariCP do lado da aplicação.
-- Tamanho do pool: `nucleos * 2` é o ponto de partida; meça e ajuste. **Nunca** abra conexão por
-  operação em loop sem pool — esgota o banco.
+O pool é dimensionado pelo **banco**, não pela aplicação: o banco tem um número de conexões ativas que consegue
+servir bem (a heurística do HikariCP parte de `núcleos do servidor de banco × 2 + discos`), e esse número é
+**dividido** entre todas as réplicas, jobs e ferramentas.
+
+```
+Σ (réplicas máximas × pool por réplica) + jobs + admin + replicação ≤ orçamento seguro do banco
+ex.: autoscaling até 10 réplicas × 15 = 150; jobs 10; admin 5 → 165 ≤ 180 aceitos  ✔
+     se o HPA puder ir a 20 réplicas → 315  ✘ (teto do HPA ou pool menor, ou proxy de conexões)
+```
+
+```yaml
+# Spring Boot / HikariCP — cada número tem motivo e unidade
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 15        # orçamento do banco ÷ réplicas máximas
+      minimum-idle: 15             # pool fixo evita picos de abertura de conexão
+      connection-timeout: 2000     # ms esperando conexão do pool: falha visível em vez de fila infinita
+      max-lifetime: 1500000        # ms; menor que timeouts de rede/proxy/banco
+      leak-detection-threshold: 20000  # ms; alerta de conexão não devolvida
+```
+
+- **Espera pelo pool é uma fila**: limite-a (`connection-timeout`) e trate o timeout como saturação (503), não
+  como erro aleatório. Virtual threads não criam conexões: milhares delas só aumentam a fila.
+- **Timeout de consulta e de transação** (`statement_timeout`/`setQueryTimeout`, `@Transactional(timeout = ...)`)
+  menores que o deadline da requisição; não segure conexão durante chamada HTTP externa nem durante backoff.
+- **Isolamento de cargas (bulkhead):** relatórios e jobs em pool separado (ou réplica de leitura), com tamanho
+  próprio, para não esgotar o pool do fluxo transacional.
+- **Proxy de conexões:** pgBouncer (modo transaction) ou RDS Proxy multiplexa muitas conexões de cliente em
+  poucas do servidor — útil com muitas réplicas/serverless. Em modo transaction, recursos de sessão
+  (`SET` de sessão, advisory locks de sessão, `LISTEN`) não funcionam; prepared statements exigem pgBouncer
+  ≥ 1.21 com `max_prepared_statements`. MySQL: ProxySQL.
+- **Nunca** abra conexão por operação sem pool.
+
+Métricas: conexões ativas/ociosas/pendentes (`hikaricp_connections_*`), tempo de aquisição (p99), timeouts de
+aquisição, duração de transação. Pendentes > 0 de forma sustentada = pool ou banco saturado.
 
 ## Prepared statements e `SELECT *`
 
@@ -259,7 +305,9 @@ SELECT id, status, total_amount FROM orders WHERE customer_id = 42;  -- BOM: exp
 - Teste em não-produção; reverta se write performance ou replication lag piorar.
 - Documente toda decisão de otimização com métricas antes/depois.
 - Rode `ANALYZE` após mudanças em massa para atualizar estatísticas.
-- Use connection pooling (pgBouncer, pgPool) em produção.
+- Use connection pooling e some o pool de **todas** as réplicas contra o orçamento do banco.
+- Defina timeouts de aquisição de conexão, consulta e transação ociosa.
+- Separe orientações de PostgreSQL e MySQL; não aplique sintaxe/recurso de um ao outro.
 - Use prepared statements para prevenir SQL injection.
 
 ## MUST NOT DO

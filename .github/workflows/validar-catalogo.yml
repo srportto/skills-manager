@@ -1,0 +1,102 @@
+# Valida o catálogo de skills/agents e os exemplos Java executáveis.
+# Falha crítica bloqueia o lote; perfis não executados aparecem como pulados (pendentes), nunca como verdes.
+name: validar-catalogo
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      carga:
+        description: "Executar o ensaio de carga (perfil carga)"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 6 * * 1" # segunda-feira 06:00 UTC: integração + carga em ambiente controlado
+
+permissions:
+  contents: read
+
+jobs:
+  catalogo:
+    name: Estrutura, links, inventário e linguagem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: maven
+      - run: mvn -B -f validation/java/pom.xml verify
+
+  exemplos:
+    name: Exemplos determinísticos (fundamentos, reativo, integracao local, carga sem ensaio)
+    runs-on: ubuntu-latest
+    needs: catalogo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: maven
+      - run: mvn -B -f examples/java/pom.xml verify
+
+  mudancas:
+    name: Detectar mudanças em broker, persistência ou cache
+    runs-on: ubuntu-latest
+    outputs:
+      integracao: ${{ steps.filtro.outputs.integracao }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filtro
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "integracao=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base" HEAD | grep -E '^(examples/java/(integracao|carga)/|examples/java/pom.xml|skills/(mensageria-sqs-kafka|persistencia-jpa|spring-data-redis|banco-de-dados-performance)/)'; then
+            echo "integracao=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "integracao=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  integracao:
+    name: Integração com serviços reais (Testcontainers)
+    runs-on: ubuntu-latest
+    needs: [exemplos, mudancas]
+    # Obrigatório quando a mudança toca broker, persistência ou cache; o runner ubuntu tem Docker.
+    if: needs.mudancas.outputs.integracao == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: maven
+      - run: mvn -B -f examples/java/pom.xml -Pintegracao verify
+
+  carga:
+    name: Ensaio de carga controlado
+    runs-on: ubuntu-latest
+    needs: exemplos
+    # Só em execução agendada ou manual: resultado depende da máquina e não é comparação absoluta.
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.carga)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: maven
+      - run: nproc && free -m
+      - run: mvn -B -f examples/java/pom.xml -Pcarga verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorio-carga
+          path: examples/java/carga/target/carga-relatorio.txt

@@ -13,7 +13,6 @@ metadata:
   output-format: document
   related-skills: java-architecture, design-system-architecture, criar-aplicacao-java, revisao-de-codigo-java
 ---
----
 
 # Arquitetura Limpa Java (Hexagonal clássica + DDD)
 
@@ -210,6 +209,9 @@ public class CriarPedidoService {
 - Agent usa `spring-boot-starter-aop` — renomeado para `spring-boot-starter-aspectj` no Boot 4.
 
 ## Equivalência com a estrutura legada do monorepo
+
+> **Contexto externo:** esta seção descreve o monorepo de origem do catálogo (`apps/`, `openspec/changes/`)
+> e é mantida como exemplo de migração de layout. Esses caminhos não existem neste repositório.
 
 A migração das cinco aplicações de `apps/` do layout anterior
 (`entrypoint`/`application`/`domain`/`shared`) para o de referência é trabalho em andamento,
@@ -412,20 +414,24 @@ de partir para hexagonal:
    > Toda comunicação externa atravessa uma porta: o contrato do outro serviço entra como `port/out`,
    > e o ACL é justamente o adapter que traduz o modelo alheio para o seu `domain/model`.
 
-4. **Resiliência mínima por chamada síncrona entre serviços**: timeout explícito (nunca o default
-   infinito do cliente HTTP), retry com budget (2-3 tentativas, backoff exponencial), circuit breaker,
-   correlation ID (`X-Trace-Id`) propagado, `Idempotency-Key` em POST sujeito a reentrega (ver
-   `mensageria-sqs-kafka`). Tracing distribuído: ver `monitoramento-java`.
+4. **Resiliência mínima por chamada síncrona entre serviços** (fonte: `resiliencia-controle-fluxo-java`):
+   deadline da requisição propagado e timeout explícito no cliente (nunca o default infinito); retry só
+   para falha transitória de operação idempotente, com backoff exponencial + jitter, dentro do deadline e
+   com **uma** camada dona; bulkhead/limite de concorrência por dependência (circuit breaker não limita
+   concorrência); circuit breaker quando o volume dá amostra; `Idempotency-Key` em POST sujeito a
+   reentrega. Essas proteções moram no **adapter** de saída (`infrastructure`), não no domínio. Contexto de
+   rastreamento propagado via W3C Trace Context: ver `monitoramento-java`.
 
-5. **Health & readiness probe** — `/health/live` (200 se o processo está rodando; falha reinicia o
-   pod) é distinto de `/health/ready` (200 só quando pode servir tráfego; falha zera réplicas, **não**
-   reinicia):
+5. **Health & readiness probe** — use os grupos do Actuator: `/actuator/health/liveness` (só o estado do
+   processo; falha **reinicia** o pod — nunca inclua banco/broker) e `/actuator/health/readiness` (estado +
+   dependências necessárias para atender; falha tira a réplica do balanceador, **não** reinicia). Semântica,
+   configuração dos grupos e exemplo testado: `monitoramento-java` (seção probes); manifests: `devops-cicd`.
    ```yaml
    livenessProbe:
-     httpGet: { path: /health/live, port: 8080 }
+     httpGet: { path: /actuator/health/liveness, port: 8080 }
      periodSeconds: 15
    readinessProbe:
-     httpGet: { path: /health/ready, port: 8080 }
+     httpGet: { path: /actuator/health/readiness, port: 8080 }
      periodSeconds: 10
    ```
 

@@ -87,26 +87,31 @@ resource "azurerm_virtual_machine" "main" {
 }
 ```
 
-**Pulumi (Code-First)**
-```typescript
-// Abstract cloud resources with TypeScript
-interface ComputeConfig {
-  size: "small" | "medium" | "large";
-  region: string;
+**Pulumi (Code-First, SDK Java)**
+```java
+// Abstrai o tamanho da máquina; cada provedor traduz para o seu catálogo.
+enum Tamanho { PEQUENO, MEDIO, GRANDE }
+
+record ConfigCompute(Tamanho tamanho, String regiao) {}
+
+static final Map<Tamanho, String> TIPOS_AWS = Map.of(
+        Tamanho.PEQUENO, "t3.small", Tamanho.MEDIO, "m6i.large", Tamanho.GRANDE, "m6i.2xlarge");
+static final Map<Tamanho, String> TIPOS_GCP = Map.of(
+        Tamanho.PEQUENO, "e2-small", Tamanho.MEDIO, "n2-standard-2", Tamanho.GRANDE, "n2-standard-8");
+
+static void criarAws(ConfigCompute config) {
+    new com.pulumi.aws.ec2.Instance("web", com.pulumi.aws.ec2.InstanceArgs.builder()
+            .instanceType(TIPOS_AWS.get(config.tamanho()))
+            // ami, subnet, tags...
+            .build());
 }
 
-function createCompute(config: ComputeConfig, provider: "aws" | "gcp") {
-  if (provider === "aws") {
-    return new aws.ec2.Instance("web", {
-      instanceType: sizeMap.aws[config.size],
-      // ...
-    });
-  } else {
-    return new gcp.compute.Instance("web", {
-      machineType: sizeMap.gcp[config.size],
-      // ...
-    });
-  }
+static void criarGcp(ConfigCompute config) {
+    new com.pulumi.gcp.compute.Instance("web", com.pulumi.gcp.compute.InstanceArgs.builder()
+            .machineType(TIPOS_GCP.get(config.tamanho()))
+            .zone(config.regiao() + "-a")
+            // bootDisk, networkInterfaces...
+            .build());
 }
 ```
 
@@ -149,37 +154,32 @@ spec:
 ### Application Abstraction
 
 **Database Abstraction**
-```python
-# Use standard protocols (SQL, Redis, S3 API)
-from sqlalchemy import create_engine
-
-# Same code works with:
-# - AWS RDS PostgreSQL
-# - Azure Database for PostgreSQL
-# - GCP Cloud SQL PostgreSQL
-# - Self-managed PostgreSQL
-
-DATABASE_URL = os.environ["DATABASE_URL"]
-engine = create_engine(DATABASE_URL)
+```java
+// Protocolo padrão (JDBC/PostgreSQL): o mesmo código funciona com RDS, Azure Database for PostgreSQL,
+// Cloud SQL ou PostgreSQL próprio. Só a URL e as credenciais mudam (configuração, não código).
+var config = new HikariConfig();
+config.setJdbcUrl(System.getenv("DATABASE_URL"));
+config.setUsername(System.getenv("DATABASE_USER"));
+config.setPassword(System.getenv("DATABASE_PASSWORD"));
+config.setMaximumPoolSize(20);          // dentro do orçamento somado das réplicas
+config.setConnectionTimeout(2_000);     // espera limitada pelo pool (ms)
+DataSource banco = new HikariDataSource(config);
 ```
 
 **Object Storage Abstraction**
-```python
-import boto3
-from botocore.config import Config
-
-# S3-compatible API works with:
-# - AWS S3
-# - GCP Cloud Storage (interoperability mode)
-# - MinIO
-# - Cloudflare R2
-
-s3_client = boto3.client(
-    's3',
-    endpoint_url=os.environ.get("S3_ENDPOINT"),  # Override for non-AWS
-    aws_access_key_id=os.environ["ACCESS_KEY"],
-    aws_secret_access_key=os.environ["SECRET_KEY"],
-)
+```java
+// API compatível com S3 (AWS S3, GCS em modo interoperável, MinIO, Cloudflare R2): só o endpoint muda.
+var construtor = S3Client.builder()
+        .region(Region.of(System.getenv().getOrDefault("S3_REGION", "us-east-1")))
+        .credentialsProvider(StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(System.getenv("ACCESS_KEY"), System.getenv("SECRET_KEY"))))
+        .overrideConfiguration(c -> c.apiCallTimeout(Duration.ofSeconds(10)));
+String endpoint = System.getenv("S3_ENDPOINT");
+if (endpoint != null) {
+    // Provedores não AWS normalmente exigem path-style.
+    construtor.endpointOverride(URI.create(endpoint)).forcePathStyle(true);
+}
+S3Client s3 = construtor.build();
 ```
 
 ## Data Synchronization
@@ -259,33 +259,46 @@ S3 Bucket -> S3 Event -> Lambda -> GCS Upload
 - OIDC for authentication
 
 **2. Abstract Proprietary Services**
-```typescript
-// Wrap cloud-specific services
-interface QueueService {
-  send(message: string): Promise<void>;
-  receive(): Promise<string>;
+```java
+// Porta do domínio: o caso de uso não conhece o provedor (adapter de saída por nuvem).
+public interface PublicadorMensagens {
+    void publicar(String mensagem);
 }
 
-class SQSQueue implements QueueService {
-  async send(message: string) {
-    await this.sqsClient.sendMessage({ QueueUrl: this.url, MessageBody: message });
-  }
+final class PublicadorSqs implements PublicadorMensagens {
+    private final SqsClient sqs;
+    private final String filaUrl;
+    PublicadorSqs(SqsClient sqs, String filaUrl) { this.sqs = sqs; this.filaUrl = filaUrl; }
+
+    @Override public void publicar(String mensagem) {
+        sqs.sendMessage(r -> r.queueUrl(filaUrl).messageBody(mensagem));
+    }
 }
 
-class PubSubQueue implements QueueService {
-  async send(message: string) {
-    await this.pubsubClient.topic(this.topic).publish(Buffer.from(message));
-  }
+final class PublicadorPubSub implements PublicadorMensagens {
+    private final Publisher publisher; // com.google.cloud.pubsub.v1.Publisher, um por tópico
+    PublicadorPubSub(Publisher publisher) { this.publisher = publisher; }
+
+    @Override public void publicar(String mensagem) {
+        try {
+            // Espera a confirmação com prazo: publicação sem confirmação não é publicação.
+            publisher.publish(PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(mensagem)).build())
+                    .get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException erro) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Publicação interrompida", erro);
+        } catch (ExecutionException | TimeoutException erro) {
+            throw new IllegalStateException("Falha ao publicar no Pub/Sub", erro);
+        }
+    }
 }
 
-// Factory pattern for cloud selection
-function createQueue(provider: string): QueueService {
-  switch (provider) {
-    case "aws": return new SQSQueue();
-    case "gcp": return new PubSubQueue();
-  }
-}
+// A escolha do provedor é configuração de montagem (ex.: @ConditionalOnProperty), não switch no domínio.
 ```
+
+A abstração esconde o SDK, **não** as diferenças semânticas: SQS e Pub/Sub diferem em ordem, deduplicação,
+retenção e limites. Documente quais garantias a porta promete (normalmente at-least-once sem ordem) e teste
+cada adapter contra o serviço real ou emulador.
 
 **3. Maintain Exit Capability**
 - Regular data export testing

@@ -1,151 +1,130 @@
 ---
-
 name: design-system-architecture
-description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — monolito vs microsserviços, ADRs, interação entre componentes, trade-offs de tecnologia, escalabilidade e resiliência. Distinta de `arquitetura-limpa-java` (camadas internas) e `java-architecture` (stack Spring). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
+description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — requisitos e capacidade (SLO, Lei de Little, orçamento de conexões/deadline), monolito modular vs microsserviços, consistência (CAP/PACELC, replicação, sharding), tráfego (DNS, LB, CDN), protocolos, ADRs e matriz de falhas. Distinta de `arquitetura-limpa-java` (camadas internas) e `java-architecture` (stack Spring). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.1.0"
+  version: "2.0.0"
   domain: system-architecture
-  triggers: system design, architecture, ADR, microservices, scalability, technical design, infrastructure, distributed systems, monolith decomposition
+  triggers: system design, architecture, ADR, capacidade, SLO, microservices, scalability, CAP, consistência, sharding, load balancer, CDN, distributed systems, monolith decomposition
   role: architect
   scope: system-design
   output-format: document
-  related-skills: arquitetura-limpa-java, java-architecture, api-rest-design, devops-cicd, cloud-architect, revisao-de-codigo-java
----
+  related-skills: arquitetura-limpa-java, java-architecture, api-rest-design, resiliencia-controle-fluxo-java, mensageria-sqs-kafka, cloud-architect, gerar-diagramas
 ---
 
 # Design de Arquitetura de Sistemas
 
-Referência para desenhar ou revisar a arquitetura de **sistemas distribuídos** em alto nível:
-escolha entre monolito e microsserviços, modelagem de componentes, ADRs (Architecture
-Decision Records), trade-offs de tecnologia, e plano de escalabilidade/resiliência.
+Referência para desenhar ou revisar a arquitetura de **sistemas distribuídos** em alto nível, partindo de
+requisitos e capacidade mensuráveis até decisões registradas (ADR), proteções e evidências.
 
 **Quando NÃO usar:**
 
-- Para decidir **em qual camada** um código vai dentro de uma aplicação Java hexagonal
-  (`domain`/`application`/`infrastructure`, com `port/in` e `port/out`), use
-  `arquitetura-limpa-java`.
-- Para a stack Spring Boot 4 + Java 25 (camadas clássicas, módulos Spring), use
-  `java-architecture`.
-- Para contrato de API REST (OpenAPI 3.1, RFC 9457), use `api-rest-design`.
-- Para topologia de nuvem (VPC, IAM, FinOps, DR), use `cloud-architect`.
-- Para um design pattern GoF (Strategy, Factory, etc.), use `padroes-de-projeto-java`.
+- Camada de um código dentro da aplicação hexagonal → `arquitetura-limpa-java`.
+- Stack Spring Boot 4 e camadas clássicas → `java-architecture`.
+- Contrato HTTP (OpenAPI, RFC 9457, 429/503) → `api-rest-design`.
+- Topologia cloud concreta (VPC, IAM, DR, FinOps) → `cloud-architect`.
+- Implementação de backpressure, retry, breaker, bulkhead → `resiliencia-controle-fluxo-java` (esta skill
+  decide **onde** e **com qual limite**; aquela explica **como**).
+- Ack/offset/DLQ concretos → `mensageria-sqs-kafka`.
+- Pattern GoF → `padroes-de-projeto-java`.
 
-## Quando aplicar
+## Entradas
 
-- Desenhar arquitetura de sistema novo ou nova fronteira de microsserviço.
-- Revisar arquitetura existente antes de mudança grande (revisão estrutural, não de código).
-- Escrever ADR para decisão de tecnologia, topologia ou trade-off relevante.
-- Avaliar decomposição de monolito em microsserviços (DDD tático + bounded contexts).
-- Planejar escalabilidade horizontal, particionamento de dados, SLOs.
+Objetivo de negócio, operações e seus efeitos, carga conhecida (média, pico e duração), dados e retenção,
+restrições (equipe, prazo, custo, compliance) e o que já foi decidido. Use o que foi informado; pergunte só o
+que muda a decisão. O que faltar vira **hipótese rotulada** com forma de validação.
 
 ## Workflow
 
-1. **Levantar requisitos** — funcionais, não-funcionais (latência, throughput,
-   disponibilidade), restrições (time, orçamento, compliance). Validar cobertura
-   completa antes de seguir.
-2. **Identificar padrões** — mapear requisitos a padrões arquiteturais (ver
-   `references/architecture-patterns.md`).
-3. **Desenhar** — topologia de componentes, fluxos críticos, fronteiras de
-   bounded context. Produzir diagrama Mermaid.
-4. **Documentar decisões** — ADR para cada decisão relevante (ver exemplo abaixo).
-5. **Revisar com stakeholders** — se reprovado, voltar ao passo 3 com feedback
-   registrado.
+1. **Requisitos** — RF por operação e RNF observáveis ([checklist NFR](references/nfr-checklist.md)).
+   SLI com numerador/denominador, SLO com janela.
+2. **Capacidade** — taxa/pico/duração, item, armazenamento, banda, memória de fila, concorrência
+   (Lei de Little), conexões somadas das réplicas, orçamento de deadline e amplificação por fan-out/retry
+   ([capacidade e SLOs](references/capacidade-slos.md)).
+3. **Arquitetura** — comece pela alternativa mais simples que atende (monólito modular); acrescente
+   componente só com requisito que o justifique ([padrões](references/architecture-patterns.md)).
+4. **Dados e consistência** — decisão **por operação**: consistência exigida, replicação, particionamento,
+   efeitos distribuídos ([consistência](references/consistencia-distribuida.md),
+   [seleção de banco](references/database-selection.md)).
+5. **Tráfego e comunicação** — DNS/LB/gateway/CDN, dono do retry em cada salto, protocolo por necessidade
+   ([rede e tráfego](references/rede-trafego.md), [protocolos](references/protocolos-comunicacao.md)).
+6. **Falhas e proteções** — matriz de falhas com limite (unidade, escopo, motivo), rejeição/degradação,
+   idempotência e recuperação, seguindo o contrato de proteção de `docs/catalogo/convencoes.md`.
+7. **Decisões** — ADR para cada decisão relevante ([template](references/adr-template.md)).
+8. **Evidência** — liste o teste/medição que transforma cada hipótese crítica em evidência e quem executa.
+
+O documento end-to-end está em [roteiro de system design](references/system-design.md); diagramas seguem
+`gerar-diagramas` (Mermaid).
 
 ## Guia de referências
 
 | Tópico | Referência | Quando carregar |
 |---|---|---|
-| Padrões arquiteturais | `references/architecture-patterns.md` | Escolha entre monolito e microsserviços |
-| Template de ADR | `references/adr-template.md` | Documentar decisão |
-| System design completo | `references/system-design.md` | Template end-to-end |
-| Seleção de banco | `references/database-selection.md` | Escolher tecnologia de persistência |
-| Checklist NFR | `references/nfr-checklist.md` | Levantar requisitos não-funcionais |
+| Requisitos não funcionais | [nfr-checklist.md](references/nfr-checklist.md) | Levantar e escrever RNF verificáveis |
+| Capacidade, SLI/SLO, orçamentos | [capacidade-slos.md](references/capacidade-slos.md) | Estimar carga, conexões, deadline, disponibilidade |
+| Padrões arquiteturais | [architecture-patterns.md](references/architecture-patterns.md) | Monólito modular, microsserviços, serverless, estado, redundância |
+| Consistência distribuída | [consistencia-distribuida.md](references/consistencia-distribuida.md) | CAP/PACELC, replicação, quorum, sharding, outbox/saga |
+| Seleção de persistência | [database-selection.md](references/database-selection.md) | Escolher modelo de dados por operação |
+| Rede e tráfego | [rede-trafego.md](references/rede-trafego.md) | DNS, L4/L7, balanceamento, gateway, CDN/edge |
+| Protocolos e mensageria | [protocolos-comunicacao.md](references/protocolos-comunicacao.md) | REST/gRPC/GraphQL/WebSocket, RabbitMQ/SQS/Kafka |
+| Template de ADR | [adr-template.md](references/adr-template.md) | Documentar decisão |
+| Documento completo | [system-design.md](references/system-design.md) | Desenho end-to-end |
+| Estudos de caso | [estudos-de-caso-java.md](references/estudos-de-caso-java.md) | Encurtador, chat, feed, checkout (executável com ensaio de carga) |
+| Entrevista | [entrevista-system-design.md](references/entrevista-system-design.md) | Roteiro de 45 min, rubrica e armadilhas |
 
-## Constraints
+## Restrições
 
-### MUST DO
+**Fazer:**
 
-- Documentar toda decisão relevante via ADR.
-- Considerar explicitamente requisitos não-funcionais (NFR).
-- Avaliar trade-offs, não só benefícios.
-- Planejar para modos de falha (circuit breaker, retries, DLQ).
-- Considerar complexidade operacional (on-call, runbooks, observabilidade).
-- Revisar com stakeholders antes de finalizar.
+- Registrar números com unidade, fonte e escopo; separar média, pico (com duração) e percentis.
+- Avaliar a alternativa mais simples e escrever a perda aceita de cada decisão.
+- Definir, para cada fluxo crítico, quem reduz a produção sob sobrecarga e para onde vai o excedente.
+- Somar recursos compartilhados entre réplicas (conexões, quotas de provedor) e considerar autoscaling.
+- Declarar consistência por operação e o comportamento sob partição/atraso de réplica.
+- Planejar operação: observabilidade, runbook, rollout/rollback e custo.
 
-### MUST NOT DO
+**Não fazer:**
 
-- Over-engineer para escala hipotética (YAGNI).
-- Escolher tecnologia sem avaliar alternativas.
-- Ignorar custo operacional.
-- Desenhar sem entender requisitos.
-- Pular considerações de segurança (threat model mínimo).
+- Over-engineering para escala hipotética (microsserviço por entidade, reatividade por moda).
+- Fila sem limite, retry sem orçamento, fallback que inventa sucesso de negócio.
+- Tratar CAP como menu de "dois de três" ou "NoSQL" como sinônimo de "sem transações".
+- Copiar números de laboratório como SLO de produção.
+- Pular modelo de ameaça mínimo.
 
-## Templates de saída
+## Saída
 
-Toda entrega deve conter:
+1. Requisitos e SLIs/SLOs por operação.
+2. Tabela de capacidade e orçamentos (conexões, deadline, fila).
+3. Diagrama Mermaid de alto nível.
+4. ADRs com alternativas, perda aceita, custo e gatilhos de revisão.
+5. Matriz de falhas: falha, impacto, proteção/limite, degradação, recuperação, métrica, teste.
+6. Hipóteses pendentes e provas necessárias, com responsável.
 
-1. Resumo de requisitos (funcionais + não-funcionais).
-2. Diagrama de arquitetura de alto nível (Mermaid).
-3. Decisões-chave com trade-offs (formato ADR).
-4. Recomendações de tecnologia com justificativa.
-5. Riscos e mitigações.
-
-### Diagrama de arquitetura (Mermaid)
+### Exemplo de diagrama
 
 ```mermaid
 graph TD
-    Client["Cliente (Web/Mobile)"] --> Gateway["API Gateway"]
-    Gateway --> AuthSvc["Auth Service"]
-    Gateway --> OrderSvc["Order Service"]
-    OrderSvc --> DB[("Orders DB (PostgreSQL)")]
-    OrderSvc --> Queue["Message Queue (SNS/SQS)"]
-    Queue --> NotifySvc["Notification Service"]
+    Client["Cliente (Web/Mobile)"] --> Gateway["Gateway (TLS, quota por cliente)"]
+    Gateway --> Checkout["Checkout (Java 25 / Spring Boot 4)"]
+    Checkout --> DB[("PostgreSQL: pedidos + outbox")]
+    Relay["Relay da outbox"] --> DB
+    Relay --> Kafka[("Kafka")]
+    Kafka --> Notificacao["Notificação"]
 ```
 
-### Exemplo de ADR
-
-````markdown
-# ADR-001: Usar PostgreSQL para armazenar Pedidos
-
-## Status
-Aceito
-
-## Contexto
-O Order Service exige transações ACID e consultas relacionais complexas
-(união de pedidos, itens, clientes, histórico).
-
-## Decisão
-Usar PostgreSQL como datastore primário do Order Service.
-
-## Alternativas consideradas
-
-- **MongoDB** — schema flexível, mas sem ACID forte entre documentos.
-- **DynamoDB** — escalabilidade excelente, mas padrões de consulta complexos
-  exigem denormalização agressiva.
-
-## Consequências
-
-- **Positivo:** consistência forte, tooling maduro, consultas complexas nativas.
-- **Negativo:** limite de escala vertical; sharding horizontal adiciona
-  complexidade operacional.
-
-## Trade-offs
-Consistência e flexibilidade de consulta priorizadas sobre escalabilidade
-horizontal de escrita ilimitada.
-````
+Exemplo completo de ADR (incluindo alternativas e perda aceita) em [adr-template.md](references/adr-template.md).
 
 ## Quem aplica o quê
 
 | Cenário | Agent / Modo | Skills complementares |
 |---|---|---|
-| Desenhar arquitetura nova | `arquiteto-sistemas` (sessão dedicada) | `arquitetura-limpa-java`, `cloud-architect` |
-| Revisar arquitetura existente | `arquiteto-sistemas` (modo `auditoria`) | `revisao-de-codigo-java` |
+| Desenhar arquitetura nova | `arquiteto-sistemas` | `resiliencia-controle-fluxo-java`, `cloud-architect` |
+| Revisar arquitetura existente | `arquiteto-sistemas` (modo revisão) | `revisao-de-codigo-java` |
 | Escrever ADR pontual | sessão principal + `/design-system-architecture` | `arquitetura-limpa-java` |
 | Decompor monolito | `arquiteto-sistemas` + `especialista-banco-dados` | `mensageria-sqs-kafka`, `monitoramento-java` |
+| Implementar o desenho | `java-construtor` | `resiliencia-controle-fluxo-java`, `testes-sistemas-java` |
 | Validar design antes de implementação | `java-revisor` (modo `auditoria`) | esta skill como referência de critérios |
 
 [Documentação base](https://jeffallan.github.io/claude-skills/skills/api-architecture/architecture-designer/)
-_(renomeada neste catálogo para `design-system-architecture` para evitar sobreposição semântica
-com `arquitetura-limpa-java` e `java-architecture`)_
+_(renomeada neste catálogo para `design-system-architecture`; conteúdo reescrito para Java e capacidade)_

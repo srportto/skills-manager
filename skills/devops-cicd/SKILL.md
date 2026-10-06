@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: monitoramento-java, cloud-architect, seguranca-aplicacao-java, java-architecture
 ---
----
 
 # DevOps & CI/CD (Java/Maven, Docker, Kubernetes)
 
@@ -120,6 +119,8 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline
 COPY src ./src
+# Os testes rodam no job de CI ANTES do build da imagem (gate obrigatório); aqui só se empacota o que já
+# passou. Imagem construída com -DskipTests não é evidência de qualidade nem de resiliência.
 RUN mvn clean package -DskipTests
 
 # Stage 2: runtime — -jre-alpine é mais enxuta e já traz wget via busybox (variante -jre
@@ -131,7 +132,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar /app/app.jar
 USER app
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:8080/disponibilidade || exit 1
+  CMD wget -qO- http://localhost:8080/actuator/health/liveness || exit 1
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
@@ -148,15 +149,17 @@ target/
 
 - **Multi-stage sempre** — nunca incluir Maven/JDK na imagem de runtime.
 - **Usuário não-root** na imagem final.
-- **HEALTHCHECK** apontando para o endpoint de disponibilidade (`/disponibilidade` na base deste
-  catálogo, ajuste conforme a aplicação) — confirme que `wget`/`curl` existe na imagem final.
+- **HEALTHCHECK** apontando para a liveness do Actuator (`/actuator/health/liveness`) — nunca para algo que
+  dependa de banco ou serviço externo; confirme que `wget`/`curl` existe na imagem final. (Em Kubernetes o
+  HEALTHCHECK do Docker é ignorado; valem as probes.)
 
 ## Validação
 
 ```bash
 docker build -t minha-app:test .
 docker run --rm -p 8080:8080 minha-app:test
-curl http://localhost:8080/disponibilidade   # smoke test
+curl http://localhost:8080/actuator/health/readiness   # pronto para tráfego?
+curl http://localhost:8080/disponibilidade             # smoke test funcional do esqueleto (legado)
 ```
 
 ---
@@ -189,18 +192,29 @@ spec:
           envFrom:
             - configMapRef:
                 name: minha-app-config
-          readinessProbe:
+          startupProbe:                 # protege a subida lenta da JVM sem afrouxar a liveness
             httpGet:
-              path: /disponibilidade
+              path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 24        # até 120 s para subir
+          readinessProbe:               # readinessState + dependências necessárias (ex.: db)
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
             periodSeconds: 10
-          livenessProbe:
+            failureThreshold: 3
+          livenessProbe:                # só o estado do processo; nunca banco/broker/cache
             httpGet:
-              path: /disponibilidade
+              path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 20
             periodSeconds: 15
+            failureThreshold: 3
+          lifecycle:
+            preStop:                    # dá tempo do endpoint sair do balanceador antes do SIGTERM
+                                        # (ação sleep: Kubernetes 1.30+; antes, exec com "sleep 5")
+              sleep:
+                seconds: 5
           resources:
             requests:
               memory: "512Mi"
@@ -268,9 +282,15 @@ spec:
 
 ## Graceful shutdown
 
-- `terminationGracePeriodSeconds` no Deployment **maior** que o tempo de shutdown da aplicação.
-- Spring Boot: habilitar `server.shutdown: graceful` + `spring.lifecycle.timeout-per-shutdown-phase`
-  compatível (ex.: 25s para `terminationGracePeriodSeconds: 30`).
+- Sequência: o pod entra em *Terminating* → `preStop` (alguns segundos para o endpoint sair do Service/LB) →
+  SIGTERM → Spring marca readiness como `REFUSING_TRAFFIC`, para de aceitar requisições e espera as em andamento
+  → consumidores param de buscar mensagens e **não confirmam** trabalho não concluído.
+- Orçamento: `preStop` + `timeout-per-shutdown-phase` < `terminationGracePeriodSeconds` (ex.: 5 s + 20 s < 30 s).
+  O deregistration delay do load balancer externo também precisa caber.
+- Spring Boot: `server.shutdown: graceful` (padrão nas versões recentes; deixe explícito) +
+  `spring.lifecycle.timeout-per-shutdown-phase`.
+- Rolling update com `maxUnavailable: 0` + readiness correta evita perder capacidade durante o deploy; um
+  `PodDisruptionBudget` protege contra drenagem de nós derrubando réplicas demais.
 
 ```yaml
 # application.yaml
@@ -284,9 +304,12 @@ spring:
 ## Probes — por que sempre configurar
 
 - `readinessProbe` — diz ao Service se a réplica pode receber tráfego; sem ele, tráfego vai para
-  réplicas ainda subindo ou com dependência indisponível.
-- `livenessProbe` — diz ao kubelet se o container travou; reinicia se falhar. Sem ele, um deadlock
-  fica lá para sempre. Sempre configure os dois separadamente (ver `monitoramento-java`).
+  réplicas ainda subindo ou com dependência necessária indisponível.
+- `livenessProbe` — diz ao kubelet se o processo travou; reinicia se falhar. **Nunca** inclua banco,
+  broker ou API externa: uma queda da dependência reiniciaria todos os pods ao mesmo tempo.
+- `startupProbe` — cobre a subida da JVM sem precisar de `initialDelaySeconds` grande na liveness.
+- Semântica única dos grupos de health: `monitoramento-java` (seção probes). `/disponibilidade` do esqueleto
+  continua como smoke test funcional, não como probe.
 
 ## Validação
 

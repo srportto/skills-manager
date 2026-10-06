@@ -1,5 +1,4 @@
 ---
-
 name: padroes-de-projeto-java
 description: "Catálogo de referência rápida dos 21 padrões GoF (criacionais, estruturais, comportamentais) com exemplos antes/depois — e os critérios de quando **não** aplicar um padrão. Use ao decidir qual padrão resolve um problema concreto, refatorar código rígido/acoplado ou quando pedirem um padrão específico. Uso: agents `java-revisor`/`refatorador-java` ou `/padroes-de-projeto-java`; não carregar proativamente."
 license: MIT
@@ -11,8 +10,7 @@ metadata:
   role: reference
   scope: code-design
   output-format: code
-  related-skills: qualidade-codigo-java, java-moderno, arquitetura-limpa-java, refatorador-java
----
+  related-skills: qualidade-codigo-java, java-moderno, arquitetura-limpa-java, refactoring-remove-parameter
 ---
 
 # Padrões de Projeto Java (GoF)
@@ -20,8 +18,9 @@ metadata:
 ## Visão geral
 
 Catálogo de referência rápida dos 21 padrões de projeto GoF (criacionais, estruturais e
-comportamentais), com exemplos reais **ANTES/DEPOIS** extraídos dos projetos de referência em
-`docs/patterns-arquitetura-java/`. Use para decidir **qual** pattern resolve um problema concreto e
+comportamentais), com exemplos **ANTES/DEPOIS** resumidos em `references/` (originalmente extraídos de
+`docs/patterns-arquitetura-java/` do monorepo de origem — contexto externo, ausente deste repositório).
+Use para decidir **qual** pattern resolve um problema concreto e
 para saber quando **não** aplicar nenhum pattern.
 
 ## Tabela problema → pattern
@@ -48,11 +47,7 @@ para saber quando **não** aplicar nenhum pattern.
 | Comportamento que muda por estado interno | State | Comportamental |
 | Algoritmos intercambiáveis | Strategy | Comportamental |
 | Esqueleto de algoritmo com passos variáveis | Template Method | Comportamental |
-| Comunicação centralizada entre componentes | Mediator | Estrutural* |
-
-\* Mediator é **comportamental** no catálogo clássico do GoF; aqui o código de referência mora no
-projeto `estructural-patterns-ref`, por isso está em
-[references/estruturais.md](references/estruturais.md) (com nota explicando a divergência).
+| Comunicação centralizada entre componentes | Mediator | Comportamental |
 
 ## Quando NÃO aplicar pattern
 
@@ -120,9 +115,9 @@ implementações já são beans do Spring e a seleção pode virar um predicado 
 
 - **Criacionais** (Builder, Factory Method, Abstract Factory, Singleton, Prototype) —
   [references/criacionais.md](references/criacionais.md)
-- **Estruturais** (Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy, Mediator) —
+- **Estruturais** (Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy) —
   [references/estruturais.md](references/estruturais.md)
-- **Comportamentais** (Chain of Responsibility, Command, Iterator, Memento, Observer, State,
+- **Comportamentais** (Chain of Responsibility, Command, Iterator, Mediator, Memento, Observer, State,
   Strategy, Template Method) — [references/comportamentais.md](references/comportamentais.md)
 
 Cada entrada traz: problema (2-3 linhas), exemplo ANTES/DEPOIS resumido, e quando usar/evitar.

@@ -92,8 +92,55 @@ public record ApiError(String code, String message, List<String> details) {}
 | Não autorizado | 403 |
 | Não encontrado | 404 |
 | Conflito (duplicado, otimista) | 409 |
+| Payload acima do limite | 413 |
 | Regra de negócio violada | 422 |
+| Quota/limite **do cliente** excedido | 429 + `Retry-After` |
 | Erro técnico inesperado | 500 |
+| Dependência respondeu erro/inválido (gateway) | 502 |
+| Serviço **saturado** ou indisponível (load shedding, breaker aberto, manutenção) | 503 + `Retry-After` quando houver estimativa |
+| Dependência não respondeu no prazo (gateway/proxy) | 504 |
+
+### Sobrecarga, quotas e repetição
+
+Distinga **quem** está em excesso — a resposta orienta o cliente de forma diferente:
+
+| Situação | Status | O que o cliente deve fazer | Métrica |
+|---|---|---|---|
+| Este cliente/tenant excedeu a quota | 429 | Esperar `Retry-After`; não afeta outros clientes | rejeições por quota, por cliente (agregado) |
+| O serviço está saturado (todos) | 503 | Backoff exponencial com jitter; respeitar `Retry-After` | rejeições por saturação; conta contra o SLO |
+| Requisição repetida com mesma `Idempotency-Key` | mesmo status/corpo da 1ª | Nada: repetição segura | repetições detectadas |
+| Mesma chave, payload diferente | 409 (ou 422, conforme convenção do projeto) | Corrigir o cliente | conflitos de chave |
+
+- **Rejeite cedo**: 429/503 devem sair antes de alocar recursos caros (conexão de banco, chamada remota); a
+  resposta de rejeição tem que ser barata (< poucos ms). Detalhes: `resiliencia-controle-fluxo-java`.
+- **`Retry-After`** (segundos ou data HTTP) só quando houver estimativa útil; clientes do catálogo honram o
+  header **dentro do deadline** e com jitter, nunca em loop imediato.
+- **Identidade da quota** vem da autenticação (cliente/tenant do token), não de header livre como
+  `X-Forwarded-For` — esse só é confiável quando definido pelo proxy de borda conhecido. Quota de aplicação não
+  substitui proteção de borda contra DDoS.
+- **Idempotência em POST** sujeito a repetição (pagamento, pedido): header `Idempotency-Key` obrigatório;
+  persistir chave + escopo + hash do payload + resposta; a repetição devolve a resposta original. Implementação:
+  `mensageria-sqs-kafka` → idempotência, outbox e replay.
+- **Limites de custo da consulta**: tamanho máximo de página, filtros indexados, profundidade/complexidade
+  (GraphQL), tamanho de payload (413) e tempo máximo de execução no banco.
+- **Deadline**: aceite `Request-Timeout`/deadline propagado quando o contrato prever; não processe trabalho
+  cujo prazo já venceu.
+
+Exemplo de 503 com Problem Details (RFC 9457):
+
+```java
+// infrastructure/web — handler central; a rejeição por saturação vira 503 barato e observável.
+@ExceptionHandler(AdmissaoPorPrioridade.Rejeitada.class)
+ResponseEntity<ProblemDetail> saturado(AdmissaoPorPrioridade.Rejeitada rejeicao) {
+    var problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+            "Serviço temporariamente sem capacidade; tente novamente.");
+    problema.setType(URI.create("https://api.exemplo.com/problemas/capacidade-esgotada"));
+    problema.setProperty("motivo", rejeicao.motivo().name());
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .header(HttpHeaders.RETRY_AFTER, "2")
+            .body(problema);
+}
+```
 
 > **Validação vs regra de negócio:** 400 é **formato** errado (campo vazio, `email` mal-formado),
 > sempre via Bean Validation (`@Valid`, ver `arquitetura-limpa-java` mapa de erros). 422 é
@@ -288,6 +335,8 @@ public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid CriarProdutoReq
 | Identificador | UUID | Long auto-incremento | Distribuído, sem enumeração | Humano-legível, debugging fácil |
 | Documentação | OpenAPI manual | Anotações Spring (`@Operation`) | Fonte de verdade versionada, gera SDK | Documentação "viva" só no backend, sem cliente gerado |
 | Validação | Bean Validation (`@Valid`) | Schema custom no service | Padrão JSR-380, mensagens i18n | Lógica muito específica que anotações não expressam |
+| Estilo de API | REST | gRPC / GraphQL / WebSocket | Recursos, cache HTTP, clientes heterogêneos | Ver `design-system-architecture` → protocolos (contrato tipado, streaming, projeção pelo cliente, duplex) |
+| Operação longa | Síncrona com deadline | 202 Accepted + recurso de status | Termina dentro do deadline do cliente | Excede o deadline; cliente consulta/recebe callback |
 
 ## Quem aplica o quê
 

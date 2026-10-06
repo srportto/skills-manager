@@ -1,111 +1,78 @@
-# Architecture Patterns
+# Padrões arquiteturais e evolução
 
-## Pattern Comparison
+Decida por requisito, capacidade, equipe e custo. Cite sempre a alternativa mais simples, a falha esperada, a
+proteção e o **gatilho mensurável** que justificaria evoluir.
 
-| Pattern | Best For | Team Size | Trade-offs |
-|---------|----------|-----------|------------|
-| **Monolith** | Simple domain, small team | 1-10 | Simple deploy; hard to scale parts |
-| **Modular Monolith** | Growing complexity | 5-20 | Module boundaries; still single deploy |
-| **Microservices** | Complex domain, large org | 20+ | Independent scale; operational complexity |
-| **Serverless** | Variable load, event-driven | Any | Auto-scale; cold starts, vendor lock |
-| **Event-Driven** | Async processing | 10+ | Loose coupling; debugging complexity |
+## Estilos
 
-## Monolith
+| Opção | Ganho | Custo | Gatilho legítimo |
+|---|---|---|---|
+| Monólito modular | Transações locais, um deploy, depuração simples | Deploy compartilhado; exige disciplina de módulos | Padrão inicial quando atende requisitos |
+| Microsserviços | Escala, release e propriedade independentes | Rede, dados distribuídos, contratos, observabilidade e on-call | Fronteira de domínio estável **e** necessidade operacional comprovada (times bloqueando uns aos outros, escala muito diferente por módulo) |
+| Serverless (FaaS) | Elasticidade, pagar por uso, sem host | Cold start, duração máxima, quotas de concorrência, lock-in, conexões ao banco por instância | Carga em rajadas/eventos, tarefas curtas, custo medido menor |
+| Event-driven | Desacoplamento temporal, replay, múltiplos consumidores | Duplicatas, ordem parcial, lag, evolução de schema | Consumidores independentes que toleram estado pendente |
+| CQRS | Leitura especializada e escala seletiva | Projeções, reconciliação, consistência eventual | Modelo de leitura diverge de verdade do de escrita |
+| Saga/outbox | Recuperação de efeitos entre fronteiras | Estados intermediários, compensação, duplicatas | Transação local não cobre a operação |
 
-```
-┌─────────────────────────────────────┐
-│            Application              │
-│  ┌─────┐  ┌─────┐  ┌─────┐         │
-│  │Users│  │Orders│ │Products│       │
-│  └─────┘  └─────┘  └─────┘         │
-│  └──────────┬──────────────┘        │
-│          Database                    │
-└─────────────────────────────────────┘
-```
+Hexagonal/camadas organizam o **interior** de uma aplicação; não são alternativa a microsserviços. DDD estratégico
+define contextos e o mapa entre eles; DDD tático, os modelos internos (`arquitetura-limpa-java`).
 
-**When to Use**:
-- Starting a new project
-- Small team (< 10 developers)
-- Simple domain
-- Rapid iteration needed
+### Monólito modular na prática
 
-**Pros**: Simple deployment, easy debugging, no network latency
-**Cons**: Hard to scale independently, technology locked, deployment risk
+Módulos por contexto de negócio, cada um com API interna explícita (porta), dados próprios (schemas ou tabelas
+com dono) e proibição de acesso direto às tabelas de outro módulo — verificada por teste de arquitetura
+(ArchUnit). Comunicação síncrona por interface ou assíncrona por eventos internos + outbox. Extrair um módulo
+para serviço vira mudança de **implantação**, não de modelo.
 
-## Microservices
+### Serverless com Java
 
-```
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│  Users   │  │  Orders  │  │ Products │
-│ Service  │  │ Service  │  │ Service  │
-└────┬─────┘  └────┬─────┘  └────┬─────┘
-     │             │             │
-┌────▼────┐  ┌────▼────┐  ┌────▼────┐
-│ User DB │  │Order DB │  │ Prod DB │
-└─────────┘  └─────────┘  └─────────┘
-```
+Cold start da JVM: use SnapStart/CRaC ou imagem nativa quando a latência de inicialização importar; meça.
+Concorrência da função × conexões ao banco: 1.000 execuções simultâneas com 1 conexão cada esgotam o banco —
+use proxy de conexões (ex.: RDS Proxy) ou limite a concorrência reservada da função. Duração máxima e
+reprocessamento por evento exigem idempotência.
 
-**When to Use**:
-- Large team (20+ developers)
-- Complex domain with clear boundaries
-- Different scaling requirements per service
-- Polyglot technology needs
+## Estado
 
-**Pros**: Independent scaling, team autonomy, fault isolation
-**Cons**: Distributed system complexity, eventual consistency, operational overhead
+- **Stateless** facilita escala horizontal e substituição, mas sessões, caches locais, uploads temporários e
+  conexões longas (WebSocket) reintroduzem estado.
+- **Stateful** exige afinidade (sticky) ou replicação, dono do estado, recuperação após queda e plano de
+  rebalanceamento. Prefira empurrar estado para armazenamento gerenciado e manter réplicas descartáveis.
 
-## Event-Driven
+## Escala
 
-```
-┌──────────┐     ┌─────────────┐     ┌──────────┐
-│ Producer │────▶│ Message Bus │────▶│ Consumer │
-└──────────┘     │  (Kafka)    │     └──────────┘
-                 └─────────────┘
-                       │
-                       ▼
-                 ┌──────────┐
-                 │ Consumer │
-                 └──────────┘
-```
+| Tipo | Quando | Limites |
+|---|---|---|
+| Vertical | Simples, sem mudança de código | Teto do hardware, downtime para trocar, custo não linear |
+| Horizontal | Carga paralelizável, réplicas sem estado | Coordenação, recurso compartilhado (banco) vira gargalo; somar conexões |
+| Particionamento | Dados/carga excedem um nó | Chave de partição, hot keys, consultas cruzadas, resharding |
 
-**When to Use**:
-- Async processing required
-- Loose coupling between services
-- Event sourcing needs
-- High throughput messaging
+## Isolamento por tenant
 
-**Pros**: Decoupled services, scalable, audit trail
-**Cons**: Eventual consistency, debugging complexity, message ordering
+| Modelo | Isolamento | Custo | Uso típico |
+|---|---|---|---|
+| Pool (tudo compartilhado) | Lógico (coluna `tenant_id`, quotas por tenant) | Menor | Muitos tenants pequenos |
+| Bridge (parcial) | Recursos críticos dedicados (schema, fila, pool) | Médio | Tenants grandes junto a pequenos |
+| Silo (dedicado) | Físico (conta/cluster/banco por tenant) | Maior | Compliance, contrato, tenant ruidoso extremo |
 
-## CQRS (Command Query Responsibility Segregation)
+Em pool, um tenant ruidoso esgota recursos dos demais sem **quota por tenant** e **bulkhead** por classe de
+cliente. Autorização sempre filtra por tenant no servidor; nunca confie em tenant enviado pelo cliente.
 
-```
-┌─────────┐         ┌─────────────┐
-│ Commands│────────▶│ Write Model │──┐
-└─────────┘         └─────────────┘  │
-                                     ▼
-                              ┌──────────┐
-                              │  Events  │
-                              └──────────┘
-                                     │
-┌─────────┐         ┌─────────────┐  │
-│ Queries │◀────────│ Read Model  │◀─┘
-└─────────┘         └─────────────┘
-```
+## Redundância e SPOF
 
-**When to Use**:
-- Read/write ratio heavily skewed
-- Complex read queries
-- Event sourcing architecture
-- Different optimization needs
+Redundância só ajuda se as falhas forem **independentes**. Duas réplicas na mesma zona, com a mesma credencial
+expirada ou o mesmo deploy defeituoso, caem juntas. Procure SPOF lógico: banco primário, DNS, provedor de
+identidade, certificado, região, pipeline, um único time que sabe operar. Para cada um: impacto, detecção,
+mitigação (réplica, failover, cache de tokens, rollout progressivo) e tempo de recuperação medido.
 
-## Quick Reference
+## Gatilhos de evolução (exemplos mensuráveis)
 
-| Requirement | Recommended Pattern |
-|-------------|---------------------|
-| Simple CRUD app | Monolith |
-| Growing startup | Modular Monolith |
-| Enterprise scale | Microservices |
-| Variable load | Serverless |
-| Async processing | Event-Driven |
-| Read-heavy | CQRS |
+| Sinal | Limiar ilustrativo | Evolução candidata |
+|---|---|---|
+| CPU/latência do primário de banco sob pico | > 70% CPU por 1 h com p99 de escrita fora do SLO | Réplicas de leitura, cache, depois particionamento |
+| Fila de deploy entre times | > 2 times bloqueados por release comum toda semana | Extrair módulo com fronteira estável |
+| Escala desigual | Um módulo exige 10× réplicas dos demais | Separar implantação desse módulo |
+| Lag de consumo | Idade do backlog > SLO por 3 dias | Mais partições/consumidores, processamento mais barato |
+| Custo | Custo por transação cresce > 20% por trimestre | Rever modelo de execução (reservas, serverless, batch) |
+
+Limiares são ilustrativos: derive os seus do SLO e do custo do sistema real. Evite microsserviço por entidade e
+reatividade por moda.

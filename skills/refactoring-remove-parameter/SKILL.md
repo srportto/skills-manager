@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: qualidade-codigo-java, padroes-de-projeto-java, remover-imports-nao-usados
 ---
----
 
 # Refactoring Java: Remove Parameter
 

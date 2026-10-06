@@ -13,7 +13,6 @@ metadata:
   output-format: code
   related-skills: arquitetura-limpa-java, mensageria-sqs-kafka, persistencia-jpa, java-moderno, java-architecture
 ---
----
 
 # Criar Aplicação Java (Spring Boot, hexagonal clássica)
 
@@ -37,6 +36,9 @@ A base entrega sempre:
   uma porta — é o exemplo vivo do padrão dentro do próprio esqueleto
 - Rota `GET /disponibilidade` → `200 OK`, corpo `{"aplicacao":"<nome>","status":"DISPONIVEL"}`
 - Tratamento de erros (`BusinessException` → 422, `ApplicationException` → 500, validação de bean)
+- Actuator com probes: `/actuator/health/liveness` (só o processo) e `/actuator/health/readiness` (estado +
+  dependências necessárias da variante) — semântica em `monitoramento-java`; `/disponibilidade` é smoke test
+- Limites básicos de borda: tamanho máximo de requisição e timeouts explícitos em todo cliente gerado
 - Teste de contexto (`@SpringBootTest`) que sobe sem infra externa
 
 ### Layout gerado
@@ -55,8 +57,8 @@ br.com.srportto.<nome>/
     └── config/                ← @Configuration
 ```
 
-> **Nunca** gere aplicação nova no layout legado `entrypoint`/`application`/`domain`/`shared` — as
-> apps de `apps/` ainda o usam, mas ele é transitório; a tabela de equivalência está em
+> **Nunca** gere aplicação nova no layout legado `entrypoint`/`application`/`domain`/`shared` (usado por
+> aplicações do monorepo de origem — contexto externo); a tabela de equivalência está em
 > `arquitetura-limpa-java`.
 
 ## Quando usar / Quando NÃO usar
@@ -71,16 +73,21 @@ REST que publica em Kafka.
 - Tirar dúvidas sobre mensageria sem a intenção de criar uma aplicação nova — use
   `mensageria-sqs-kafka`.
 
-## SEMPRE pergunte antes de gerar
+## Parâmetros: pergunte só o que falta
 
-| Parâmetro | Uso | Exemplo |
+Use o que o pedido já informou. **Nome da aplicação** e **variante** não têm default seguro: se faltarem,
+pergunte. Os demais têm default declarado — aplique-o sem perguntar e liste na entrega os valores assumidos,
+para o usuário poder corrigir.
+
+| Parâmetro | Uso | Default (se não informado) |
 |-----------|-----|---------|
-| **Nome da pasta destino** | diretório onde o projeto será gerado | `pedidos-service` |
-| **Nome da aplicação** | deriva `artifactId`, pacote `br.com.srportto.<nome>`, classe `<Nome>Application`, `spring.application.name` | `pedidos` |
-| **Porta** | `server.port` | `8081` |
+| **Nome da aplicação** | deriva `artifactId`, pacote `br.com.srportto.<nome>`, classe `<Nome>Application`, `spring.application.name` | — (perguntar) |
+| **Variante** | base pura ou uma das 6 variantes — ver tabela abaixo | — (perguntar; "só um CRUD" = `rest-crud-banco`) |
+| **Nome da pasta destino** | diretório onde o projeto será gerado | `<nome>-service` |
+| **Porta** | `server.port` | `8080` |
 | **Profile default** | `spring.profiles.default` | `local` |
-| **Container web** | Tomcat (default) ou Jetty — ver abaixo | `Jetty` |
-| **Variante** | base pura ou uma das 6 variantes — ver tabela abaixo | `sqs-listener` |
+| **Container web** | Tomcat (default) ou Jetty — ver abaixo | Tomcat |
+| **Carga esperada** | taxa/pico, dependências — decide limites e proteções | baixa; proteções mínimas de borda |
 
 > Derive os identificadores do "nome da aplicação": pacote = `br.com.srportto.<nome>` (minúsculo),
 > classe principal = `<Nome>Application` (PascalCase).
@@ -123,7 +130,7 @@ Para Jetty, exclua o Tomcat do starter web e adicione o starter Jetty:
 |----------|-------------|----------------------|
 | **base pura** | Só a base hexagonal, sem infra externa. | — |
 | **rest-crud-banco** | Modelo puro em `domain/model/`, `port/out` de repositório, use case em `application/usecase/`, e em `infrastructure/persistence/` a entidade JPA + Spring Data repo + adapter que implementa a porta (mapeamento via MapStruct). | `persistencia-jpa` |
-| **sqs-listener** | Listener (driving adapter) em `infrastructure/messaging/` com idempotência em memória, **interceptor central de erro de consumo** (`infrastructure/messaging/*ErrorInterceptor`) e **fila provisionada com DLQ + `RedrivePolicy`** (nunca uma sem a outra). | `mensageria-sqs-kafka` (seções 2 e 3) |
+| **sqs-listener** | Listener (driving adapter) em `infrastructure/messaging/` com idempotência (em memória só para demonstração de instância única; persistente em produção — ver `sqs-para-banco`), **interceptor central de erro de consumo** (`infrastructure/messaging/*ErrorInterceptor`) e **fila provisionada com DLQ + `RedrivePolicy`** (nunca uma sem a outra). | `mensageria-sqs-kafka` (seções 2 e 3) |
 | **sqs-para-banco** | Como acima + idempotência **persistente** (constraint única) + gravação via `port/out` e adapter JPA. | `mensageria-sqs-kafka`, `persistencia-jpa` |
 | **sqs-para-kafka** | Ponte: consome SQS (interceptor + DLQ, como acima) e republica no Kafka através de uma `port/out` implementada por um producer em `infrastructure/messaging/`. | `mensageria-sqs-kafka` |
 | **kafka-consumer** | `@KafkaListener` em `infrastructure/messaging/` + `DefaultErrorHandler`/`DeadLetterPublishingRecoverer` central (o ponto único de erro é o próprio `DefaultErrorHandler`, configurado em `infrastructure/config/`). | `mensageria-sqs-kafka` (seções 3 e 5) |
@@ -136,6 +143,22 @@ Para Jetty, exclua o Tomcat do starter web e adicione o starter Jetty:
 consumo** — não é opcional, é parte da definição da variante (ver regra de ouro em
 `mensageria-sqs-kafka` seção 2 e o padrão da seção 3).
 
+### Proteções e provas por variante
+
+Proporcional ao risco: a base não ganha broker, cache, WebFlux nem Resilience4j sem necessidade. Variantes com
+dependência remota ou mensageria nascem com a proteção pertinente **e** o teste que a prova.
+
+| Variante | Proteções obrigatórias | Prova mínima gerada |
+|---|---|---|
+| base pura / REST | Limite de payload, paginação com tamanho máximo, timeouts em clientes | Teste de contrato (status/erro) |
+| rest-crud-banco | Pool dentro do orçamento (`maximum-pool-size`, `connection-timeout`), timeout de consulta/transação, paginação | Teste de repositório + teste do limite de página |
+| sqs-listener / sqs-para-banco | Mensagens em voo limitadas, visibility timeout coerente (ou renovação), DLQ + RedrivePolicy, idempotência (persistente em `sqs-para-banco`), delete só após efeito | Duplicata não repete efeito; falha não apaga mensagem |
+| sqs-para-kafka | Tudo de SQS + producer `acks=all`/idempotente com timeout; delete SQS só após confirmação do Kafka | Falha do Kafka não apaga a mensagem SQS |
+| kafka-consumer | `max.poll.records` dimensionado, commit após efeito, `DefaultErrorHandler` com tentativas limitadas + DLT, idempotência | Reentrega não duplica efeito; DLT indisponível não commita |
+| rest-para-kafka | Deadline na publicação; 503 quando o broker não confirma; outbox se houver escrita em banco no mesmo fluxo | Broker fora → 503 sem evento fantasma |
+
+Detalhes: `resiliencia-controle-fluxo-java`, `mensageria-sqs-kafka`, `testes-sistemas-java`.
+
 ## Fluxo de geração
 
 1. **Gerar a base**: estrutura `domain`/`application`/`infrastructure` (ver "Layout gerado"), classe
@@ -147,9 +170,10 @@ consumo** — não é opcional, é parte da definição da variante (ver regra d
    Terraform contra o emulador) e implemente o interceptor central de erro **no mesmo passo** — não
    deixe para depois.
 
-3. **Buildar**: `mvn clean package`. Use `-DskipTests` quando a variante exigir infraestrutura externa
-   no ar para os testes de contexto passarem (ex.: variantes com `@SqsListener`/SDK SQS exigem o
-   emulador rodando com a fila já criada).
+3. **Buildar e testar**: `mvn clean verify`. Testes que dependem de infraestrutura externa usam
+   Testcontainers (Docker) num perfil separado (`-Pintegracao`); se o ambiente não tiver Docker/emulador,
+   **não** use `-DskipTests` para declarar sucesso — relate compilação, testes executados e testes
+   **pendentes** separadamente (o `java-revisor` trata pendência como pendência, não aprovação).
 
 4. **Smoke test**: suba a aplicação (`mvn spring-boot:run`) e confirme `GET /disponibilidade`
    respondendo `{"aplicacao":"<nome>","status":"DISPONIVEL"}`.
@@ -179,8 +203,11 @@ agent `java-revisor` (modo `auditoria`), independentemente de quem gerou os arqu
 
 ## Checklist final
 
-- [ ] Os 6 parâmetros foram confirmados com o usuário (pasta, nome, porta, profile, container web, variante)
-- [ ] `mvn clean package` (ou `mvn test` completo, com a infra da variante no ar) passou
+- [ ] Nome e variante informados ou confirmados; demais parâmetros listados com os defaults assumidos
+- [ ] Evidência registrada separadamente: compilação, testes unitários, integração (executado ou **pendente**
+      com motivo) — sem `-DskipTests` como prova
+- [ ] Proteções e provas da variante (tabela "Proteções e provas por variante") presentes
+- [ ] Probes `/actuator/health/liveness` e `/readiness` com a semântica de `monitoramento-java`
 - [ ] Rota `GET /disponibilidade` responde com o nome correto da aplicação
 - [ ] Estrutura hexagonal clássica (`domain` com `model`/`port/in`/`port/out`, `application/usecase`,
       `infrastructure` com os adapters) presente e completa

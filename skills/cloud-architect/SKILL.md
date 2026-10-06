@@ -13,7 +13,6 @@ metadata:
   output-format: architecture
   related-skills: devops-cicd, design-system-architecture, seguranca-aplicacao-java, monitoramento-java, java-architecture
 ---
----
 
 # Cloud Architect
 
@@ -92,12 +91,15 @@ aws elbv2 describe-target-health \
 
 ### MUST DO
 
-- Projetar para alta disponibilidade (99.9%+).
+- Derivar a disponibilidade-alvo do SLO de cada workload (`design-system-architecture` → capacidade e SLOs) e
+  justificar zonas/regiões por ele — não aplicar "99,9%+" ou multi-região como regra universal.
+- Somar limites e quotas de serviço (conexões de banco, quotas de API, IPs, throughput de fila) entre todas as
+  réplicas e ambientes que compartilham a conta; autoscaling tem teto coerente com o downstream.
 - Security by design (zero-trust, least-privilege).
 - Infrastructure as code (Terraform, CloudFormation).
 - Cost allocation tags e monitoramento de gasto habilitados.
 - DR com RTO/RPO definidos e testados periodicamente.
-- Multi-região para workloads críticos.
+- Multi-região quando RTO/RPO e o SLO exigirem, com custo e consistência de dados explícitos.
 - Preferir serviços gerenciados (reduz complexidade operacional).
 - Documentar decisões arquiteturais (ADR — ver `design-system-architecture`).
 
@@ -111,6 +113,25 @@ aws elbv2 describe-target-health \
 - Arquiteturas desnecessariamente complexas (YAGNI).
 - Ignorar compliance (LGPD, PCI, SOC2 quando aplicável).
 - Pular teste de DR.
+
+## Tráfego, limites e capacidade downstream
+
+Ao desenhar a topologia, registre para cada salto (DNS → CDN/WAF → LB → gateway → serviço → dependências):
+
+| Salto | Decisão obrigatória |
+|---|---|
+| DNS | TTL e tempo real de failover (caches de resolvers/clientes ignoram TTL baixo); health check e política (latência, geo, failover) |
+| CDN/edge | Chave de cache (inclui tenant/idioma quando aplicável), conteúdo autenticado nunca compartilhado, proteção de origem |
+| WAF/borda | Rate limit por IP/identidade na borda contra abuso volumétrico; a quota de aplicação é complementar |
+| Load balancer | L4 × L7, algoritmo, health check, **timeout ocioso** compatível com conexões longas, drenagem (deregistration delay) ≥ tempo de encerramento da aplicação |
+| Gateway/proxy | Timeout menor que o do cliente e maior que o do serviço; **um único dono do retry**; limites de body/header |
+| Serviço | Autoscaling com teto; métricas de saturação; readiness que reflete capacidade de atender |
+| Dependências gerenciadas | Quotas do provedor (ex.: conexões RDS, TPS de API), limites por conta/região e o que acontece ao atingi-los |
+
+Detalhes conceituais: `design-system-architecture` → [rede e tráfego](../design-system-architecture/references/rede-trafego.md);
+proteções na aplicação: `resiliencia-controle-fluxo-java`. Isolamento: separe contas/projetos por ambiente e,
+quando a criticidade exigir, por tenant/carga (bulkhead de infraestrutura) — quota compartilhada é ponto de falha
+comum.
 
 ## Padrões comuns com exemplos
 

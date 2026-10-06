@@ -13,7 +13,6 @@ metadata:
   output-format: diagram
   related-skills: design-system-architecture, arquitetura-limpa-java, java-architecture
 ---
----
 
 # Gerar Diagramas
 
