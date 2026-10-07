@@ -50,7 +50,7 @@ contextualizada, com limites/escopo explícitos e forma de verificar.
 
 O reteste de A01 motivou uma regra explícita de cálculo da drenagem pós-pico em `design-system-architecture/references/capacidade-slos.md` e o correspondente item no fluxo do agent `arquiteto-sistemas`. A avaliação mede as respostas com o catálogo-fonte; não é uma verificação da instalação do plugin em workspaces limpos.
 
-**Resumo da amostra atual:** 14/20 pontos (70%); média 1,4/2 por caso e execução; zero notas 0. Foram rodados
+**Resumo histórico da amostra de 2026-10-06:** 14/20 pontos (70%); média 1,4/2 por caso e execução; zero notas 0. Foram rodados
 dois pares independentes para A01, A03, A05, A07 e A08, atendendo ao mínimo de cinco casos definido no aceite
 da fase 2. A amostra não alcança a meta de 90% nem nota 2 em todos os casos: A05, A07 e A08 receberam nota 1
 nas duas execuções. A02, A04 e A06, além de A09–A12, continuam sem avaliação.
