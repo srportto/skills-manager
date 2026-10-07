@@ -15,6 +15,17 @@ metadata:
 
 # Padrões de Projeto Java (GoF)
 
+## Quando usar
+
+Ao decidir qual padrão resolve um problema concreto, refatorar código rígido/acoplado ou quando pedirem um
+padrão específico.
+
+## Quando NÃO usar
+
+Quando não há problema real a resolver: interface com uma única implementação, factory para `new` simples e
+Singleton manual onde a injeção do Spring resolve. Critérios e antes/depois em
+[references/quando-nao-aplicar.md](references/quando-nao-aplicar.md).
+
 ## Visão geral
 
 Catálogo de referência rápida dos 21 padrões de projeto GoF (criacionais, estruturais e
@@ -23,7 +34,7 @@ comportamentais), com exemplos **ANTES/DEPOIS** resumidos em `references/` (orig
 Use para decidir **qual** pattern resolve um problema concreto e
 para saber quando **não** aplicar nenhum pattern.
 
-## Tabela problema → pattern
+## Decisão: tabela problema → pattern
 
 | Problema | Pattern | Categoria |
 |----------|---------|-----------|
@@ -49,78 +60,9 @@ para saber quando **não** aplicar nenhum pattern.
 | Esqueleto de algoritmo com passos variáveis | Template Method | Comportamental |
 | Comunicação centralizada entre componentes | Mediator | Comportamental |
 
-## Quando NÃO aplicar pattern
-
-Nem todo código "rígido" precisa de um pattern. Aplicar pattern sem necessidade real é
-over-engineering — adiciona indireção, classes e complexidade cognitiva sem reduzir problema algum.
-Três armadilhas comuns:
-
-1. **Interface com 1 implementação, sem variação prevista** — criar `interface PagamentoService` só
-   porque "no futuro pode ter outro jeito de pagar" quando hoje só existe `PagamentoServiceImpl` é
-   abstração especulativa. Espere a segunda implementação aparecer de verdade.
-2. **Factory para `new` simples** — sem lógica condicional na criação, `PedidoFactory.criar()` que só
-   faz `return new Pedido(...)` é indireção sem ganho. Chame `new Pedido(...)` direto.
-3. **Singleton onde injeção resolve** — em Spring, um bean `@Service`/`@Component` já é singleton por
-   padrão (gerenciado pelo container). `getInstance()` estático manual duplica essa responsabilidade
-   e piora testabilidade (não dá para injetar mock/instância isolada por teste).
-
-## O pattern preferido do projeto: Strategy por lista injetada
-
-Quando o problema é "escolher um serviço/produto entre vários candidatos em runtime", o padrão deste
-repositório **não** usa uma factory dedicada — usa `List<Interface>` injetada pelo Spring, com cada
-implementação se autodeclarando capaz (ou não) de tratar a requisição. Fonte:
-`docs/based-java-aplication.md` ("Strategy Pattern para Múltiplos Produtos") — reconstrução
-ilustrativa, não existe `.java` literal em `docs/` para copiar:
-
-```java
-// Cada produto se autodeclara capaz de tratar a requisição — sem factory dedicada
-public interface ContratacaoService {
-    boolean validaContratacaoSuportada(CriarAutorizacaoRequest request);
-    AutorizacaoResponse contratar(CriarAutorizacaoRequest request);
-}
-
-@Service
-public class PixAutoService implements ContratacaoService {
-    @Override
-    public boolean validaContratacaoSuportada(CriarAutorizacaoRequest request) {
-        return TipoProduto.PIX_AUTO.equals(request.tipoProduto());
-    }
-    // ...
-}
-// DdaAutoService, BoletoAutoService etc. seguem o mesmo formato — um @Service por produto
-
-// Spring injeta TODAS as implementações de ContratacaoService automaticamente; sem factory,
-// sem if/switch por tipo — adicionar produto novo = criar um @Service novo, nada existente muda
-@Service
-public class ContratacaoOrquestradorService {
-    private final List<ContratacaoService> servicos;
-
-    public ContratacaoOrquestradorService(List<ContratacaoService> servicos) { this.servicos = servicos; }
-
-    public AutorizacaoResponse contratar(CriarAutorizacaoRequest request) {
-        return servicos.stream()
-                .filter(servico -> servico.validaContratacaoSuportada(request))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException("Produto não suportado"))
-                .contratar(request);
-    }
-}
-```
-
-Prefira esta forma (Strategy + lista injetada) a uma `ProdutoStrategyFactory` sempre que as
-implementações já são beans do Spring e a seleção pode virar um predicado simples
-(`validaXSuportada(request)`).
-
-## Referências por categoria
-
-- **Criacionais** (Builder, Factory Method, Abstract Factory, Singleton, Prototype) —
-  [references/criacionais.md](references/criacionais.md)
-- **Estruturais** (Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy) —
-  [references/estruturais.md](references/estruturais.md)
-- **Comportamentais** (Chain of Responsibility, Command, Iterator, Mediator, Memento, Observer, State,
-  Strategy, Template Method) — [references/comportamentais.md](references/comportamentais.md)
-
-Cada entrada traz: problema (2-3 linhas), exemplo ANTES/DEPOIS resumido, e quando usar/evitar.
+> **Preferência do projeto:** para "escolher um serviço entre vários candidatos em runtime" em Spring, use
+> Strategy por lista injetada, sem factory dedicada — ver
+> [references/strategy-lista-injetada.md](references/strategy-lista-injetada.md).
 
 ## Validação
 
@@ -128,3 +70,23 @@ Depois de aplicar um pattern em código real (não apenas em um exemplo didátic
 agent `java-revisor` antes de considerar a mudança concluída. O objetivo é confirmar que o pattern
 resolveu o problema real do código (e não introduziu indireção desnecessária — ver "Quando NÃO
 aplicar pattern" acima).
+
+## Guia de references
+
+| Arquivo | Quando ler |
+|---|---|
+| [references/criacionais.md](references/criacionais.md) | Builder, Factory Method, Abstract Factory, Singleton, Prototype |
+| [references/estruturais.md](references/estruturais.md) | Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy |
+| [references/comportamentais.md](references/comportamentais.md) | Chain of Responsibility, Command, Iterator, Mediator, Memento, Observer, State, Strategy, Template Method |
+| [references/strategy-lista-injetada.md](references/strategy-lista-injetada.md) | Escolher implementação em runtime com Spring; alternativa `sealed` + `switch` (com exemplo executável em `examples/java`) |
+| [references/quando-nao-aplicar.md](references/quando-nao-aplicar.md) | Antes de introduzir um pattern, para confirmar que não é over-engineering |
+
+Cada entrada traz: problema (2-3 linhas), exemplo ANTES/DEPOIS resumido, e quando usar/evitar.
+
+## Quem aplica o quê
+
+| Situação | Use |
+|---|---|
+| Revisar se o pattern resolveu o problema | agent `java-revisor` |
+| Refatorar código rígido para um pattern | agent `refatorador-java` / skill `qualidade-codigo-java` |
+| Feature moderna (`sealed`, `switch`, records) no lugar de um pattern | skill `java-moderno` |
