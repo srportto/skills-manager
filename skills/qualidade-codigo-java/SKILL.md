@@ -36,7 +36,7 @@ apontar a violacao depois.
 **Quando NAO usar:** para revisar um diff/PR com checklist por severidade, use
 `revisao-de-codigo-java` (ela referencia esta aqui). Para a regra de dependencia entre camadas
 (`domain`/`application`/`infrastructure`), use `arquitetura-limpa-java`. Para JPA/Hibernate (N+1, dirty
-checking), use `persistencia-jpa`. Para logging (formato, MDC), use `padrao-de-logs-java`.
+checking), use `persistencia-jpa`. Para logging (formato, MDC), use `monitoramento-java` (`references/logs-*.md`).
 
 ## Clean code - principios com exemplo
 

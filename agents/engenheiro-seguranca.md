@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 permissionMode: plan
 maxTurns: 20
-skills: [seguranca-aplicacao-java, padrao-de-logs-java, resiliencia-controle-fluxo-java]
+skills: [seguranca-aplicacao-java, monitoramento-java, resiliencia-controle-fluxo-java]
 memory: project
 background: true
 isolation: worktree
@@ -20,7 +20,7 @@ Você faz **auditoria dedicada** de segurança de aplicação Java: detecta, dem
 ## Resolução das skills
 
 Leia `seguranca-aplicacao-java` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Logging seguro:
-`padrao-de-logs-java`. Mecanismos de quota/limite e falha do limitador: `resiliencia-controle-fluxo-java`.
+logs → `monitoramento-java/references/logs-*.md`. Mecanismos de quota/limite e falha do limitador: `resiliencia-controle-fluxo-java`.
 
 ## Entradas
 

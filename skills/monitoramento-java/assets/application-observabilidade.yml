@@ -1,0 +1,53 @@
+# Propriedades de observabilidade para Spring Boot 4 (Java 25).
+# Copie os blocos necessários para o application.yaml da aplicação.
+# Dependências: spring-boot-starter-actuator, micrometer-registry-prometheus,
+# micrometer-tracing-bridge-otel, opentelemetry-exporter-otlp.
+# Confira os nomes das propriedades na versão do Boot em uso.
+
+# 1) Logs estruturados: uma linha JSON por evento, com os campos do MDC (traceId) incluídos.
+#    Ver references/logs-estruturados.md e references/logs-mdc-correlacao.md.
+logging:
+  structured:
+    format:
+      console: logstash      # use "ecs" para Elastic Common Schema
+  level:
+    root: INFO
+    # br.com.srportto.appbase: DEBUG   # verboso só em local; nunca em hml/prod
+
+management:
+  # 2) Endpoints expostos. Em produção, restrinja o acesso (rede interna ou porta separada).
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  server:
+    port: 8081               # porta de management separada do tráfego (opcional)
+
+  # 3) Probes e grupos de saúde (ver references/alertas-dashboards-probes.md).
+  endpoint:
+    health:
+      probes:
+        enabled: true        # automático em Kubernetes; explícito para rodar igual fora dele
+      group:
+        liveness:
+          include: livenessState          # nunca inclui banco, broker, cache ou API externa
+        readiness:
+          include: readinessState,db      # só o que é necessário para atender
+        operacional:
+          include: backlog                # saturação: alerta/dashboard, fora das probes
+
+  # 4) Métricas Micrometer + Prometheus (ver references/metricas-micrometer.md).
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true        # habilita p50/p95/p99 no histograma de latência
+    tags:
+      application: ${spring.application.name:app}   # tag fechada; nunca traceId ou ids de negócio
+
+  # 5) Tracing distribuído com OpenTelemetry (ver references/tracing-opentelemetry.md).
+  tracing:
+    sampling:
+      probability: 0.1       # decisão de volume/custo; serviço de baixo volume pode usar 1.0
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4318/v1/traces

@@ -1,12 +1,12 @@
 ---
 name: especialista-monitoramento
-description: "Use quando precisar OBSERVAR aplicação Java/Spring Boot em produção — SLI/SLO e alertas por consumo do orçamento de erro, métricas de saturação (fila, ativos, pool, lag, rejeições), Micrometer + Prometheus com cardinalidade controlada, tracing OpenTelemetry (W3C), logs estruturados, health groups, dashboards RED/USE, runbooks e incidentes. NÃO use para o padrão de formatação de logs (padrao-de-logs-java) nem para definir a arquitetura do serviço (arquitetura-limpa-java)."
+description: "Use quando precisar OBSERVAR aplicação Java/Spring Boot em produção — SLI/SLO e alertas por consumo do orçamento de erro, métricas de saturação (fila, ativos, pool, lag, rejeições), Micrometer + Prometheus com cardinalidade controlada, tracing OpenTelemetry (W3C), logs estruturados, health groups, dashboards RED/USE, runbooks e incidentes. NÃO use para definir a arquitetura do serviço (arquitetura-limpa-java)."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 effort: medium
 permissionMode: plan
 maxTurns: 20
-skills: [monitoramento-java, padrao-de-logs-java, resiliencia-controle-fluxo-java, criar-aplicacao-java]
+skills: [monitoramento-java, resiliencia-controle-fluxo-java, criar-aplicacao-java]
 memory: project
 background: true
 isolation: worktree
@@ -19,7 +19,7 @@ instrumentação validada (o dado precisa estar chegando). Código de instrument
 ## Resolução das skills
 
 Leia `monitoramento-java` e, conforme o assunto, `references/slo-saturacao-java.md` (instalação:
-`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Formato de log e MDC: `padrao-de-logs-java`. O que é
+`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Formato de log e MDC: logs → `monitoramento-java/references/logs-*.md`. O que é
 saturação/rejeição em cada mecanismo: `resiliencia-controle-fluxo-java`. Defaults de app nova:
 `criar-aplicacao-java`.
 
@@ -56,6 +56,6 @@ como pendentes.
 
 ## Fronteiras e encaminhamentos
 
-Formato de log → `padrao-de-logs-java`; probes nos manifests → `engenheiro-devops`; exercitar falhas para validar
+Formato de log → `monitoramento-java/references/logs-*.md`; probes nos manifests → `engenheiro-devops`; exercitar falhas para validar
 alertas → `engenheiro-chaos`; código da aplicação → `java-construtor`; validação de entrega Java →
 `java-revisor` (modo `auditoria`).

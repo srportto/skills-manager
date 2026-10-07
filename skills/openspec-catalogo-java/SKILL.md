@@ -48,7 +48,7 @@ skills `openspec-*` continuam sendo o fluxo; elas carregam esta skill nos pontos
 | `apply` — refatoração | `qualidade-codigo-java` (`references/refatoracoes-fowler.md`) | `refatorador-java` | Testes antes e depois |
 | `apply` — SQL e banco | `banco-de-dados-performance`, `persistencia-jpa` | `especialista-banco-dados` | Plano de execução antes/depois |
 | `apply` — pipeline e deploy | `devops-cicd` | `engenheiro-devops` | Build e manifest validados |
-| `apply` — observabilidade | `monitoramento-java`, `padrao-de-logs-java` | `especialista-monitoramento` | Métrica/alerta verificado |
+| `apply` — observabilidade | `monitoramento-java` | `especialista-monitoramento` | Métrica/alerta verificado |
 | Verificação antes do `archive` | `revisao-de-codigo-java`, `testes-sistemas-java` | `java-revisor` (modo auditoria); `engenheiro-seguranca` se tocar autenticação ou dados sensíveis | Veredicto APROVADO |
 | `archive` / sync | — | — | Specs sincronizadas; ADR do design preservada |
 

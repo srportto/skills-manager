@@ -11,7 +11,7 @@ metadata:
   role: specialist
   scope: application-security
   output-format: code
-  related-skills: padrao-de-logs-java, arquitetura-limpa-java, revisao-de-codigo-java
+  related-skills: monitoramento-java, arquitetura-limpa-java, revisao-de-codigo-java
 ---
 
 # Segurança de Aplicação Java
@@ -24,7 +24,7 @@ entrada, queries parametrizadas, JWT, headers de segurança, CORS e varredura de
 
 **Quando NÃO usar:** infraestrutura de nuvem profunda (redes, IAM, KMS) ou compliance corporativo
 (SOC2, ISO27001) — use o agent `engenheiro-seguranca`. Para segredo
-em log, `padrao-de-logs-java` (seção "Regras de ouro") é a fonte.
+em log, `monitoramento-java` (`references/logs-estruturados.md`, seção "Regras de ouro") é a fonte.
 
 ## Workflow de implementação segura
 
@@ -223,7 +223,7 @@ contrato 413/429/503: `api-rest-design`.
 ## A09 — Security Logging and Monitoring Failures
 
 - **Logar** falhas de autenticação, tentativas de privilege escalation, falhas de autorização,
-  rate limit triggers — **sem** logar o segredo que falhou (ver `padrao-de-logs-java`).
+  rate limit triggers — **sem** logar o segredo que falhou (ver `monitoramento-java/references/logs-estruturados.md`).
 - **Alertar** quando há pico de falhas de login (possível credential stuffing).
 
 ## A10 — Server-Side Request Forgery (SSRF)
@@ -366,7 +366,7 @@ qualquer revisão de segurança.
 | Situação | Quem | Skill |
 |---|---|---|
 | Implementar feature com segurança (auth, validação) | sessão principal | esta skill |
-| Auditar segurança completa de um serviço (pré-produção) | agent `engenheiro-seguranca` | esta skill + `padrao-de-logs-java` |
+| Auditar segurança completa de um serviço (pré-produção) | agent `engenheiro-seguranca` | esta skill + `monitoramento-java` |
 | Configurar Spring Security (filter chain, JWT, CORS) | sessão principal | esta skill |
 | Escanear dependências em CI | sessão principal | esta skill |
 | Revisão arquitetural completa | agent `java-revisor` (modo `auditoria`) | `revisao-de-codigo-java` + esta skill |

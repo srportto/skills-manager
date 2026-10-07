@@ -67,8 +67,7 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | `gerar-diagramas` | Diagramas Mermaid versionados | sessão principal |
 | `java-moderno` | Features do Java 25 (records, sealed, virtual threads...) | `java-construtor`, `java-revisor` |
 | `mensageria-sqs-kafka` | Ack/offset, DLQ, idempotência, outbox, controle de consumo e replay | `java-construtor`, `java-revisor` |
-| `monitoramento-java` | Métricas, tracing, SLO/saturação, alertas, health groups | `especialista-monitoramento` |
-| `padrao-de-logs-java` | Logs estruturados, MDC, níveis e correlação | `especialista-monitoramento`, `java-revisor` |
+| `monitoramento-java` | Logs (JSON, MDC, níveis), métricas, tracing, SLO/saturação, alertas, health groups | `especialista-monitoramento`, `java-revisor`, `engenheiro-seguranca` |
 | `padroes-de-projeto-java` | GoF e quando **não** aplicar | `java-revisor`, `refatorador-java` |
 | `persistencia-jpa` | JPA/Hibernate, transações, locking, idempotência transacional | `especialista-banco-dados`, `java-construtor` |
 | `qualidade-codigo-java` | Clean code e refactorings aplicados | `java-construtor`, `refatorador-java` |
@@ -154,8 +153,8 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 | Desenhar contrato de API | `api-rest-design` | `arquitetura-limpa-java` |
 | Resolver N+1, LazyInit, dirty checking | `persistencia-jpa` | `banco-de-dados-performance` |
 | Otimizar query SQL, criar índice, tuning, orçamento de conexões | `banco-de-dados-performance` | `persistencia-jpa` |
-| Padronizar logs (JSON, MDC, traceId) | `padrao-de-logs-java` | `monitoramento-java` |
-| Configurar observabilidade, SLO e alertas | `monitoramento-java` | `padrao-de-logs-java` |
+| Padronizar logs (JSON, MDC, traceId) | `monitoramento-java` | `revisao-de-codigo-java` |
+| Configurar observabilidade, SLO e alertas | `monitoramento-java` | `devops-cicd` |
 | Implementar autenticação/autorização ou quotas | `seguranca-aplicacao-java` | `resiliencia-controle-fluxo-java` |
 | Refinar demanda/história bruta | `refinamento-de-historias` | `openspec-propose`, `api-rest-design`, `design-system-architecture` |
 | Revisar diff/PR | `revisao-de-codigo-java` | `testes-sistemas-java`, `arquitetura-limpa-java`, `persistencia-jpa` |
@@ -202,6 +201,7 @@ Skills e agents que mudaram de nome ou foram fundidos; use o destino indicado.
 |---|---|---|
 | `refactoring-remove-parameter` | `qualidade-codigo-java` | `references/refatoracoes-fowler.md#remove-parameter` |
 | `java-architecture` | `arquitetura-limpa-java` + `testes-sistemas-java` | camadas clássicas em `references/camadas-classicas.md`, módulos Spring em `references/modulos-spring.md`; testes de slice e Testcontainers em `testes-sistemas-java/references/testes-slice-spring.md` |
+| `padrao-de-logs-java` | `monitoramento-java` | `references/logs-estruturados.md`, `logs-mdc-correlacao.md`, `logs-por-camada.md` |
 
 ## Validação do catálogo
 

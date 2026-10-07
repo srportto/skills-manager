@@ -23,7 +23,7 @@ Mecanismos gerais de proteção (deadline, retry, breaker) estão em `resilienci
 dona de ack, offset, DLQ/DLT, outbox e replay.
 
 **Quando NÃO usar:** gerar aplicação nova → `criar-aplicacao-java`; dúvida de camada → `arquitetura-limpa-java`;
-o que logar → `padrao-de-logs-java`; métricas de lag/backlog → `monitoramento-java`.
+o que logar → `monitoramento-java/references/logs-por-camada.md`; métricas de lag/backlog → `monitoramento-java`.
 
 ## Garantias em uma tabela
 
@@ -253,7 +253,7 @@ Detalhes e provas: [idempotência, outbox e replay](references/idempotencia-outb
 | Idempotência em memória em produção | Duplica após reinício ou em várias instâncias | Restrição única no banco, na transação do efeito |
 | `acks=all` com `min.insync.replicas=1` | Perda se o líder cair | `min.insync.replicas ≥ 2` com RF 3 |
 | Retry sem limite por partição | Partição travada por uma mensagem | Tentativas limitadas → DLT |
-| Logar payload | PII no log | Logar ids (`padrao-de-logs-java`) |
+| Logar payload | PII no log | Logar ids (`monitoramento-java`, logs) |
 
 ## 9. Validação
 
@@ -274,7 +274,7 @@ Detalhes e provas: [idempotência, outbox e replay](references/idempotencia-outb
 | Deadline, retry, breaker, limites gerais | skill `resiliencia-controle-fluxo-java` |
 | Transação e restrição única com JPA | skill `persistencia-jpa` |
 | Lag, idade do backlog, alertas | skill `monitoramento-java` |
-| O que logar no consumer | skill `padrao-de-logs-java` |
+| O que logar no consumer | skill `monitoramento-java` (`references/logs-por-camada.md`) |
 | Revisão de código de mensageria | agent `java-revisor` |
 
 Fontes: [KafkaConsumer (javadoc 4.x)](https://kafka.apache.org/42/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html),

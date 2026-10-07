@@ -6,7 +6,7 @@ model: opus
 effort: high
 permissionMode: plan
 maxTurns: 20
-skills: [revisao-de-codigo-java, testes-sistemas-java, resiliencia-controle-fluxo-java, arquitetura-limpa-java, padroes-de-projeto-java, padrao-de-logs-java, java-moderno, persistencia-jpa, mensageria-sqs-kafka, qualidade-codigo-java, seguranca-aplicacao-java, spring-data-redis]
+skills: [revisao-de-codigo-java, testes-sistemas-java, resiliencia-controle-fluxo-java, arquitetura-limpa-java, padroes-de-projeto-java, monitoramento-java, java-moderno, persistencia-jpa, mensageria-sqs-kafka, qualidade-codigo-java, seguranca-aplicacao-java, spring-data-redis]
 memory: project
 background: false
 isolation: none
@@ -27,7 +27,7 @@ Leia o `SKILL.md` pertinente (instalação: `.claude/skills/<nome>/`; fonte: `sk
 `revisao-de-codigo-java`. Conforme o diff: camadas/DDD → `arquitetura-limpa-java`; banco →
 `persistencia-jpa`; broker → `mensageria-sqs-kafka`; Redis → `spring-data-redis`; fila/concorrência/dependência
 remota → `resiliencia-controle-fluxo-java`; provas → `testes-sistemas-java`; auth/entrada →
-`seguranca-aplicacao-java`; logs → `padrao-de-logs-java`; patterns → `padroes-de-projeto-java`; refactoring →
+`seguranca-aplicacao-java`; logs → `monitoramento-java/references/logs-*.md`; patterns → `padroes-de-projeto-java`; refactoring →
 `qualidade-codigo-java`; features modernas → `java-moderno`.
 
 ## Entradas

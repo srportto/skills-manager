@@ -11,7 +11,7 @@ metadata:
   role: reviewer
   scope: code-review
   output-format: document
-  related-skills: qualidade-codigo-java, padroes-de-projeto-java, java-moderno, padrao-de-logs-java, persistencia-jpa, mensageria-sqs-kafka, seguranca-aplicacao-java
+  related-skills: qualidade-codigo-java, padroes-de-projeto-java, java-moderno, monitoramento-java, persistencia-jpa, mensageria-sqs-kafka, seguranca-aplicacao-java
 ---
 
 # Revisão de Código Java
@@ -26,7 +26,7 @@ depois de gerar código Java significativo.
 
 **Quando NÃO usar:** para dúvida pontual sobre em qual camada um código deve viver, use
 `arquitetura-limpa-java` diretamente (esta skill só referencia o checklist dela no grupo
-"Arquitetura"). Para revisar somente o padrão de logs, use `padrao-de-logs-java`. Esta skill é a
+"Arquitetura"). Para revisar somente o padrão de logs, use `monitoramento-java` (`references/logs-*.md`). Esta skill é a
 fonte de verdade usada tanto para autorrevisão quanto pelos agents `java-revisor` e
 `java-revisor` (modo `auditoria`) — veja "Quem revisa o quê" abaixo para saber qual agent invocar.
 
@@ -441,7 +441,7 @@ exija breaker, reatividade ou broker onde não há dependência/carga que justif
 
 ### 9. Logs
 
-Siga a skill `padrao-de-logs-java` para o formato e a estrutura completos. Nesta revisão, verifique:
+Siga `monitoramento-java/references/logs-*.md` para o formato e a estrutura completos. Nesta revisão, verifique:
 
 - nenhum dado sensível (senha, token, CPF, cartão) aparece em log, nem mesmo em nível `debug`;
 - a mensagem carrega contexto suficiente para investigar sem precisar reproduzir (IDs de negócio,
