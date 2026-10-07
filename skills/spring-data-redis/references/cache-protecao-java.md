@@ -70,10 +70,11 @@ opcional — por isso serve também para quotas e filas de trabalho.
 
 Implementação de referência:
 [CacheProtegido](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/CacheProtegido.java) —
-recomputação única por chave (faixas fixas de locks, sem mapa de locks ilimitado) e limite de concorrência ao
-banco. Provas em
+recomputação única por chave, no máximo N chaves recomputando ao mesmo tempo (excedente rejeitado; o mapa de
+chaves em voo nunca passa de N) e limite de concorrência ao banco. Provas em
 [CacheProtegidoTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/CacheProtegidoTest.java):
-cache indisponível mantém o limite do banco; chave quente tem uma única recomputação concorrente.
+cache indisponível mantém o limite do banco; chave quente tem uma única recomputação concorrente; chaves
+diferentes não se bloqueiam; o limite de recomputações rejeita a chave excedente.
 
 ## Métricas
 

@@ -11,11 +11,14 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -92,5 +95,18 @@ class ChamadaComDeadlineTest {
         tempo.set(Duration.ofMillis(10).toNanos());
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
         assertThrows(TimeoutException.class, () -> chamada.obter(uri("/rapida"), orcamento));
+    }
+
+    @DisplayName("ChamadaComDeadline: Orcamento que zera entre a checagem e a requisicao deve lancar TimeoutException")
+    @Test
+    void orcamentoQueZeraEntreAChecagemEARequisicaoDeveLancarTimeoutException() {
+        long limite = Duration.ofMillis(200).toNanos();
+        // Leituras do relógio: início, primeira leitura com prazo cheio, depois prazo esgotado.
+        var leituras = new ArrayDeque<>(List.of(0L, 0L, limite));
+        LongSupplier relogio = () -> leituras.size() > 1 ? leituras.poll() : leituras.peek();
+        var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
+        // Com leitura dupla, o segundo valor (zero) chega ao HttpRequest e vira IllegalArgumentException.
+        assertThrows(TimeoutException.class,
+                () -> chamada.obter(uri("/lenta"), new OrcamentoTempo(Duration.ofMillis(200), relogio)));
     }
 }

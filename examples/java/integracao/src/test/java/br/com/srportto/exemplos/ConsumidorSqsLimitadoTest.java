@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
+import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ class ConsumidorSqsLimitadoTest {
         final List<Integer> maximosPedidos = new CopyOnWriteArrayList<>();
         final List<Integer> extensoes = new CopyOnWriteArrayList<>();
         final List<String> apagadas = new CopyOnWriteArrayList<>();
+        final AtomicInteger renovacoesAFalhar = new AtomicInteger();
 
         synchronized void enviar(String corpo) { mensagens.add(new Mensagem(corpo)); }
 
@@ -77,6 +79,10 @@ class ConsumidorSqsLimitadoTest {
 
         @Override
         public synchronized ChangeMessageVisibilityResponse changeMessageVisibility(ChangeMessageVisibilityRequest pedido) {
+            // Só renovações (timeout > 0) falham; a reentrega com atraso 0 não é afetada.
+            if (pedido.visibilityTimeout() > 0 && renovacoesAFalhar.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
+                throw SqsException.builder().message("falha transitória na renovação").build();
+            }
             extensoes.add(pedido.visibilityTimeout());
             for (Mensagem m : mensagens) {
                 if (pedido.receiptHandle().equals(m.recibo)) {
@@ -173,5 +179,19 @@ class ConsumidorSqsLimitadoTest {
         assertTrue(fila.extensoes.contains(1), fila.extensoes::toString);
         // Capacidade livre existia (limite 2), então só a renovação explica a ausência de reentrega.
         assertEquals(List.of("longa"), processamentos);
+    }
+
+    @DisplayName("ConsumidorSqsLimitado: Falha em uma renovacao nao deve interromper as seguintes")
+    @Test
+    void falhaEmUmaRenovacaoNaoDeveInterromperAsSeguintes() {
+        fila.renovacoesAFalhar.set(1);
+        // Visibilidade 1 s → renovação a cada 0,5 s; processamento de 2,5 s: a 1ª renovação falha.
+        iniciar(m -> Thread.sleep(2_500), 1, Duration.ofSeconds(1));
+        fila.enviar("longa");
+
+        cicloAte(() -> fila.apagadas.contains("longa"));
+        // Exceção em tarefa periódica cancela as execuções seguintes; isolada, as renovações continuam.
+        long renovacoesOk = fila.extensoes.stream().filter(segundos -> segundos == 1).count();
+        assertTrue(renovacoesOk >= 2, fila.extensoes::toString);
     }
 }

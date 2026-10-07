@@ -21,9 +21,10 @@ public final class ChamadaComDeadline {
     }
 
     public String obter(URI uri, OrcamentoTempo orcamento) throws IOException, InterruptedException, TimeoutException {
-        // Não inicia I/O sem tempo disponível.
-        orcamento.exigirDisponivel();
-        var requisicao = HttpRequest.newBuilder(uri).timeout(orcamento.restante()).GET().build();
+        // Uma única leitura: checar e usar o mesmo valor evita prazo zerado entre a checagem e a requisição.
+        Duration restante = orcamento.restante();
+        if (restante.isZero()) throw new TimeoutException("Deadline esgotado antes de chamar " + uri);
+        var requisicao = HttpRequest.newBuilder(uri).timeout(restante).GET().build();
         try {
             return cliente.send(requisicao, HttpResponse.BodyHandlers.ofString()).body();
         } catch (HttpTimeoutException erro) {
