@@ -56,8 +56,7 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 }
 ```
 
-Use uma instância por recurso na JVM e some as réplicas ao dimensionar (ex.: 4 réplicas × 5 = 20 permissões
-globais). A soma das permissões nunca deve exceder o orçamento de conexões do banco.
+Use uma instância por recurso na JVM e some as réplicas ao dimensionar (ex.: o banco suporta 20 conexões para este fluxo; com 4 réplicas, cada uma recebe 5 permissões, totalizando 20 no total). A soma das permissões nunca deve exceder o orçamento de conexões do banco.
 
 ### Antes/depois: fallback
 

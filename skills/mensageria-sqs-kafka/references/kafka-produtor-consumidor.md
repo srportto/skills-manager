@@ -2,7 +2,7 @@
 
 Leia este arquivo quando for configurar produtor (chave, `acks`, idempotência), consumer group, commit de offset, `max.poll.interval.ms`, pause/resume ou rebalance.
 
-## 4. Kafka produtor
+## Kafka produtor
 
 - **Chave define partição e ordem**: mesma chave → mesma partição → ordem garantida entre elas. Use id de negócio
   estável (id do pedido/agregado). Chave muito concentrada vira **hot partition**.
@@ -26,9 +26,9 @@ spring:
 ```
 
 Publicar **depois** do commit do banco perde o evento se o processo cair entre os dois; publicar **antes** cria
-evento de algo que pode sofrer rollback. Use **outbox** (seção 6).
+evento de algo que pode sofrer rollback. Use **outbox** (ver `references/idempotencia-outbox-replay-java.md`).
 
-## 5. Kafka consumidor
+## Kafka consumidor
 
 - **Consumer group:** cada partição tem no máximo um consumidor ativo do grupo; paralelismo máximo = número de
   partições. Mais instâncias que partições ficam ociosas.

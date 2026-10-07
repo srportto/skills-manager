@@ -116,7 +116,7 @@ Detalhes e provas: [idempotência, outbox e replay](references/idempotencia-outb
 
 | Erro | Consequência | Correção |
 |---|---|---|
-| Fila SQS sem DLQ | Mensagem venenosa reentrega para sempre | Seção 2 |
+| Fila SQS sem DLQ | Mensagem venenosa reentrega para sempre | [sqs-dlq-redrive.md](references/sqs-dlq-redrive.md) |
 | Ack/commit antes do efeito durável | Perda em queda | Confirmar só após efeito ou quarentena durável |
 | Descarte genérico de mensagem "inválida" | Dado de negócio some sem rastro | Quarentena durável e então confirmar |
 | Receber mais mensagens do que processa | Reentregas por visibility timeout, duplicatas | Limitar em voo; deixar backlog no broker |

@@ -33,14 +33,18 @@ dentro do mesmo orçamento. Exemplo: cliente com 2 s.
 
 | Salto | Orçamento restante na entrada | Timeout deste salto | Tentativas | Observação |
 |---|---|---|---|---|
-| Cliente → gateway | 2.000 ms | 2.000 ms (total) | 1 (sem retry no cliente) | Dono do deadline |
-| Gateway → serviço | ~1.900 ms | 1.800 ms | até 2, só se sobrar orçamento | Margem de 100 ms para a resposta |
-| Serviço → banco | ~1.500 ms | 800 ms por consulta | 1 (efeito não repetido às cegas) | Timeout < restante; libera conexão antes do backoff |
-| Serviço → dependência externa | ~1.500 ms | 600 ms | até 2 (backoff 50 ms → 100 ms, teto 200 ms, full jitter) | Soma de timeouts + esperas ≤ restante |
+| Cliente → gateway | 2.000 ms | 2.000 ms (total) | 1 | Dono do deadline; sem retry |
+| Gateway → serviço | 1.950 ms | 1.900 ms | 1 | Sem retry: a camada dona do retry é o serviço; margem de 50 ms |
+| Serviço → banco | 1.850 ms | 800 ms por consulta | 1 | Efeito não repetido às cegas; libera a conexão antes de qualquer espera |
+| Serviço → dependência externa (**dona do retry**) | 1.000 ms (após a consulta de 800 ms) | 300 ms por tentativa | até 3 | Aritmética: 3 × 300 ms + esperas de backoff (50 ms + 100 ms, com full jitter, teto 200 ms) = 1.050 ms; como o restante é 1.000 ms, a 3ª tentativa só ocorre se couber (`OrcamentoTempo`), senão encerra antes de dormir |
+
+Aritmética do pior caso do serviço: 800 ms (banco) + 900 ms (3 tentativas de 300 ms) + 150 ms (backoff máximo
+sem jitter) = 1.850 ms ≤ 1.850 ms de restante na entrada do serviço. Cada timeout individual é menor que o
+restante de sua entrada e a soma de timeouts + esperas não passa do orçamento.
 
 Regras: (1) timeout de cada salto **menor** que o restante da entrada; (2) tentativas e esperas de backoff
 descontam do mesmo orçamento — se a espera consumir o restante, encerre antes de dormir; (3) backoff exponencial
-com **teto** e **jitter**; (4) uma só camada é dona do retry (se o gateway já repete, o serviço não repete);
+com **teto** e **jitter**; (4) uma só camada é dona do retry (aqui, o serviço; cliente e gateway não repetem);
 (5) repasse o deadline restante ao salto seguinte (prazo restante, não relógio de parede).
 
 ```java

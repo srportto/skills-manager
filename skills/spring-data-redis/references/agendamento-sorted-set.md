@@ -32,15 +32,22 @@ for (String id : vencidos) {
 ```
 
 ```java
-// DEPOIS: lote limitado e posse decidida por ZREM (retorno 1 = esta instância ganhou o item)
-Set<String> lote = redisTemplate.opsForZSet().rangeByScore(chaveAgenda, 0, agora, 0, 100);
-for (String id : lote) {
-    Long removido = redisTemplate.opsForZSet().remove(chaveAgenda, id);
-    if (removido != null && removido == 1) {
-        publicarNoStream(id); // efeito idempotente: se cair aqui, o item reaparece via reconciliação
-    }
+// DEPOIS (recomendado): ZREM + XADD no mesmo script Lua (veja lua-atomicidade.md); não há janela entre os dois
+Long movidos = redisTemplate.execute(scriptVarredura, List.of(chaveAgenda, chaveStream),
+    String.valueOf(agora), "100"); // lote limitado; só move quem ganhou o ZREM
+```
+
+Alternativa sem Lua: **publicar primeiro** com `XADD` idempotente e só então `ZREM`. Se o processo cair entre
+os dois, o item continua na agenda e será publicado de novo; o consumidor do stream deduplica por id
+(duplicata possível, perda não). Nunca faça `ZREM` antes do `XADD` em passos separados: uma queda entre eles
+perde o item.
+
+```java
+for (String id : redisTemplate.opsForZSet().rangeByScore(chaveAgenda, 0, agora, 0, 100)) {
+    redisTemplate.opsForStream().add(chaveStream, Map.of("id_autorizacao", id)); // consumidor idempotente por id
+    redisTemplate.opsForZSet().remove(chaveAgenda, id);
 }
 ```
 
-Para fazer varredura e move em um único passo atômico, veja [lua-atomicidade.md](lua-atomicidade.md).
+O script Lua do passo atômico está em [lua-atomicidade.md](lua-atomicidade.md).
 Recuperação de pendências do consumo: [RecuperacaoPendencias](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/RecuperacaoPendencias.java).

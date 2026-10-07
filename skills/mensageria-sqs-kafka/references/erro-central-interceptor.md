@@ -2,7 +2,7 @@
 
 Leia este arquivo quando for decidir entre confirmar, reentregar ou quarentenar uma mensagem, ou configurar o `DefaultErrorHandler`/DLT central.
 
-## 3. Ponto central de decisão de erro
+## Ponto central de decisão de erro
 
 Assim como o `@ControllerAdvice` classifica exceções HTTP num só lugar, **toda falha de consumo passa por um ponto
 único** que decide entre **confirmar**, **reentregar** ou **quarentenar**:
@@ -62,7 +62,7 @@ central.
 ## Antes/depois: classificação espalhada × ponto central
 
 ```java
-// ANTES: try/catch no listener decide o ack por conta própria; descarta dado de negócio sem rastro
+// ILUSTRATIVO - ANTES: try/catch no listener decide o ack por conta própria; descarta dado sem rastro
 @SqsListener("fila-pedidos")
 void ouvir(Message<String> msg) {
     try {
@@ -74,7 +74,8 @@ void ouvir(Message<String> msg) {
 ```
 
 ```java
-// DEPOIS: o listener só delega; falha vira decisão central (confirmar / reentregar / quarentena)
+// ILUSTRATIVO - DEPOIS: o listener só delega; falha vira decisão central (confirmar / reentregar / quarentena)
+@SqsListener("fila-pedidos")
 void ouvir(Message<String> msg) {
     var resultado = decisao.consumir(msg); // ConsumoControlado: transitória -> relança; permanente -> DLQ e então confirma
     if (resultado.decisao() == ConsumoControlado.Decisao.REENTREGAR) {

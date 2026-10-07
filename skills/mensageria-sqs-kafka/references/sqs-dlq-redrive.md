@@ -2,7 +2,7 @@
 
 Leia este arquivo quando for criar ou revisar uma fila SQS (Terraform, CLI, Floci local), ajustar `maxReceiveCount`, visibility timeout ou o limite de mensagens em voo.
 
-## 2. Regra de ouro: toda fila SQS nasce com sua DLQ
+## Regra de ouro: toda fila SQS nasce com sua DLQ
 
 **Nenhuma fila SQS é criada — em Terraform, CLI ou qualquer IaC, nem localmente — sem DLQ e `RedrivePolicy`.**
 Sem DLQ, uma mensagem venenosa reentrega para sempre, consome throughput e não deixa rastro.

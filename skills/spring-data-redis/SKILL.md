@@ -5,7 +5,7 @@ description: "Referência para Spring Data Redis/Valkey — cache-aside, conven�
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.0.0"
+  version: "2.0.0"
   domain: language
   triggers: Redis, Valkey, cache, cache-aside, sorted set, stream, consumer group, rate limiting, TTL, serialização, spring-data-redis, temporizacao
   role: specialist

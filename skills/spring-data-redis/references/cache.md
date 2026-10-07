@@ -98,7 +98,7 @@ public ProdutoResponse buscar(UUID id) {
 ```
 
 ```java
-// DEPOIS: recomputação serializada por chave + TTL com jitter, e o banco protegido por limite de concorrência
+// ILUSTRATIVO (limiteBanco é um Semaphore da aplicação, não uma API do Spring) - DEPOIS: recomputação serializada por chave + TTL com jitter, e o banco protegido por limite de concorrência
 @Cacheable(value = "produtos", key = "#id", sync = true) // um único recomputador por chave nesta instância
 public ProdutoResponse buscar(UUID id) {
     try (var permissao = limiteBanco.adquirir(Duration.ofMillis(200))) { // Semaphore com espera limitada

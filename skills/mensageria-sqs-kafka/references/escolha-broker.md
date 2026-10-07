@@ -2,7 +2,7 @@
 
 Leia este arquivo quando precisar decidir qual broker usar para um fluxo novo.
 
-## 7. Decisão SQS × Kafka × RabbitMQ
+## Decisão SQS × Kafka × RabbitMQ
 
 | Aspecto | SQS | Kafka | RabbitMQ |
 |---|---|---|---|
