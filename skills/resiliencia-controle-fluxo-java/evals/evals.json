@@ -17,12 +17,14 @@
     {
       "id": 2,
       "prompt": "Repita cobrança após timeout de resposta",
-      "expected_output": "Trata o resultado como desconhecido; usa chave idempotente persistida no provedor e localmente; consulta/reconcilia antes de repetir",
+      "expected_output": "Trata o resultado como desconhecido; usa chave idempotente persistida no provedor e localmente; consulta/reconcilia antes de repetir; consulta inconclusiva vira PENDENTE_RECONCILIACAO sem nova tentativa; timeouts derivados do deadline restante",
       "files": [],
       "expectations": [
         "Trata o timeout como resultado desconhecido",
         "Usa chave idempotente persistida no provedor e localmente",
         "Consulta ou reconcilia o estado antes de repetir",
+        "Se a consulta falha ou não cabe no orçamento, marca PENDENTE_RECONCILIACAO e não repete",
+        "Deriva o timeout de cada chamada (tentativa e consulta) do orçamento restante do deadline",
         "Não repete a cobrança sem idempotência ou consulta prévia"
       ]
     },

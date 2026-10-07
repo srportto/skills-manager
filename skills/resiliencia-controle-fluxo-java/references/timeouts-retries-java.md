@@ -4,6 +4,14 @@ Estabeleça deadline ponta a ponta. Divida o restante entre espera por conexão,
 
 Timeout da resposta não equivale a rollback remoto. Para cobrança, registre chave idempotente, payload e resultado, e consulte/reconcilie a operação antes de repetir efeito desconhecido. Erro de negócio, payload inválido, cancelamento e interrupção não devem ser repetidos indiscriminadamente.
 
+Só uma consulta **conclusiva** libera nova tentativa. Se a própria consulta falhar, der timeout ou não couber no orçamento, o resultado continua desconhecido: grave `PENDENTE_RECONCILIACAO`, responda ao chamador como pendente e **não repita** a cobrança nesta requisição. Quem resolve é a reconciliação assíncrona, que consulta de novo com a mesma chave. A chave idempotente reduz o dano de uma repetição, mas não autoriza repetir às cegas: o provedor pode ter janela de deduplicação limitada ou rejeitar payload diferente.
+
+| Resultado da consulta | Decisão |
+|---|---|
+| Operação encontrada (aprovada/recusada) | Usa esse resultado; não repete |
+| Operação inexistente (resposta conclusiva) | Pode repetir com a **mesma** chave, se houver orçamento para a chamada inteira |
+| Consulta falhou, timeout ou sem orçamento | `PENDENTE_RECONCILIACAO`; não repete |
+
 ## Política
 
 maxAttempts inclui a chamada inicial. Para tentativa de índice n começando em zero, teto da espera = min(maxDelay, baseDelay × 2^n), com cálculo protegido contra overflow. Full jitter sorteia entre zero e esse teto. Limite número e duração; se a espera consome o deadline, encerre antes de dormir. Honre Retry-After quando couber no orçamento.
@@ -44,10 +52,52 @@ Orçamento de entrada do serviço: o gateway entra com 1.950 ms, usa timeout de 
 pior caso), então a margem positiva vale com jitter máximo. A 3ª tentativa continua condicionada a
 `OrcamentoTempo.restante()` (se faltar tempo, encerra antes de dormir).
 
-Regras: (1) timeout de cada salto **menor** que o restante da entrada; (2) tentativas e esperas de backoff
-descontam do mesmo orçamento — se a espera consumir o restante, encerre antes de dormir; (3) backoff exponencial
-com **teto** e **jitter**; (4) uma só camada é dona do retry (aqui, o serviço; cliente e gateway não repetem);
-(5) repasse o deadline restante ao salto seguinte (prazo restante, não relógio de parede).
+Regras: (1) timeout de cada salto **menor** que o restante da entrada; (2) tentativas, esperas de backoff **e
+chamadas de consulta/reconciliação** descontam do mesmo orçamento — se a espera consumir o restante, encerre antes
+de dormir; (3) backoff exponencial com **teto** e **jitter**; (4) uma só camada é dona do retry (aqui, o serviço;
+cliente e gateway não repetem); (5) repasse o deadline restante ao salto seguinte (prazo restante, não relógio de
+parede); (6) o timeout de **cada chamada** (tentativa ou consulta) é derivado na hora: `min(timeout nominal,
+restante − margem)`. Se esse valor ficar abaixo do mínimo útil da chamada, ela **não começa** (efeito desconhecido
+→ pendente). Timeout fixo (`setReadTimeout(1500)`) não garante o deadline. Sem a regra (6), a soma do pior caso
+precisa incluir tentativas + consultas + backoff, e o código precisa provar essa soma.
+
+```java
+// Cobrança com efeito desconhecido: deadline garantido pelo código e consulta conclusiva antes de repetir
+sealed interface Consulta {
+    record Encontrada(ResultadoCobranca resultado) implements Consulta {}
+    record Inexistente() implements Consulta {}
+    record Inconclusiva(Exception causa) implements Consulta {}
+}
+
+ResultadoCobranca cobrar(Cobranca cobranca, OrcamentoTempo orcamento) {
+    for (int tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+        Optional<Duration> timeout = timeoutDaChamada(orcamento);
+        if (timeout.isEmpty()) return pendente(cobranca);           // sem tempo para a chamada inteira
+        try {
+            return gateway.cobrar(cobranca, cobranca.chaveIdempotencia(), timeout.get());
+        } catch (TimeoutException | IOException resultadoDesconhecido) {
+            Optional<Duration> timeoutConsulta = timeoutDaChamada(orcamento); // a consulta gasta o MESMO orçamento
+            if (timeoutConsulta.isEmpty()) return pendente(cobranca);
+            switch (gateway.consultar(cobranca.chaveIdempotencia(), timeoutConsulta.get())) {
+                case Consulta.Encontrada(ResultadoCobranca resultado) -> { return resultado; }
+                case Consulta.Inconclusiva _ -> { return pendente(cobranca); } // continua desconhecido: NÃO repete
+                case Consulta.Inexistente _ -> { }  // conclusivo: nova tentativa com a mesma chave (backoff no orçamento)
+            }
+        }
+    }
+    return pendente(cobranca);  // grava PENDENTE_RECONCILIACAO; a reconciliação assíncrona decide depois
+}
+
+private Optional<Duration> timeoutDaChamada(OrcamentoTempo orcamento) {
+    Duration util = orcamento.restante().minus(MARGEM);
+    if (util.compareTo(TIMEOUT_MINIMO_UTIL) < 0) return Optional.empty();
+    return Optional.of(util.compareTo(TIMEOUT_NOMINAL) < 0 ? util : TIMEOUT_NOMINAL);
+}
+```
+
+Provas exigidas: consulta lenta/falha → `PENDENTE_RECONCILIACAO` e **uma** cobrança registrada no stub; deadline
+de N ms com dependência lenta em todas as chamadas → chamador liberado em ≤ N ms (o mesmo padrão de
+`ChamadaComDeadlineTest`); consulta "inexistente" → segunda tentativa com a mesma chave.
 
 ```java
 // ANTES: sem timeout e retry em cada camada: pior caso 2 s × 3 × 3 = 18 s

@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 permissionMode: plan
 maxTurns: 20
-skills: [design-system-architecture, resiliencia-controle-fluxo-java, arquitetura-limpa-java, gerar-diagramas, monitoramento-java, cloud-architect]
+skills: [design-system-architecture, resiliencia-controle-fluxo-java, mensageria-sqs-kafka, arquitetura-limpa-java, gerar-diagramas, monitoramento-java, cloud-architect]
 memory: project
 background: true
 isolation: worktree
@@ -16,7 +16,8 @@ color: cyan
 Você **decide** a arquitetura de sistemas distribuídos: componentes e fronteiras, capacidade, consistência,
 proteções e falhas, registradas em ADRs. Não escreve código de aplicação (→ `java-construtor`) nem desenha
 topologia cloud concreta (→ `arquiteto-cloud`). Exemplos de implementação, quando necessários para ilustrar
-uma decisão, são em Java.
+uma decisão, são em Java e seguem a reference do assunto — o código não pode contradizer a garantia do desenho
+(ex.: consumidor que paraleliza registros da mesma partição quebra a "ordem por chave" declarada).
 
 ## Variantes
 
@@ -41,6 +42,7 @@ Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fon
 | Escolha de banco | `design-system-architecture` | `references/database-selection.md` |
 | ADR | `design-system-architecture` | `assets/adr-template.md` |
 | Proteções sob sobrecarga e falha | `resiliencia-controle-fluxo-java` | `references/capacidade-e-limites.md`, `references/backpressure-java.md`, `references/isolamento-degradacao-java.md` |
+| Consumo de broker: ordem por partição/chave, commit só do concluído, pausa e backpressure no consumidor | `mensageria-sqs-kafka` | `references/controle-consumo-java.md` (ler **antes** de escrever qualquer laço de consumo) |
 | Camadas clássicas e hexagonais, módulos Spring, bounded contexts (interior da aplicação) | `arquitetura-limpa-java` | `references/camadas-classicas.md`, `references/modulos-spring.md`, `references/decomposicao-bounded-contexts.md` |
 | SLO, saturação, alertas | `monitoramento-java` | `references/slo-saturacao-java.md`, `references/alertas-dashboards-probes.md` |
 | Diagramas | `gerar-diagramas` | `references/exemplos-mermaid.md` |

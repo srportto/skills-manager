@@ -7,7 +7,10 @@ Backpressure é realimentação: o consumidor controla demanda ou sinaliza redu�
 - MVC/JDBC: use admissão por recurso, conexões limitadas e timeout. Virtual threads permitem esperar I/O com menor custo de thread, sem criar CPU ou conexões extras.
 - Reactor/Flow: demanda inicial, request(n), cancelamento e prefetch devem ser conhecidos. Operadores podem solicitar itens antecipadamente; limite também concorrência de flatMap e buffers.
 - Origem não regulável: escolha overflow explícito (erro, persistência ou descarte aceitável). Nunca esconda pedidos perdidos como amostragem de métricas.
-- Mensageria: broker armazena backlog segundo retenção; poll do consumidor não limita automaticamente o produtor. Consulte [controle de consumo](../../mensageria-sqs-kafka/references/controle-consumo-java.md).
+- Mensageria: broker armazena backlog segundo retenção; poll do consumidor não limita automaticamente o produtor. Consulte [controle de consumo](../../mensageria-sqs-kafka/references/controle-consumo-java.md). Três regras que não mudam com a forma de execução (virtual threads inclusive):
+  1. **Paralelismo só entre partições/chaves.** Registros da mesma partição são processados um de cada vez, em ordem; mandar cada registro do `poll` para uma thread quebra a ordem por chave.
+  2. **Nunca confirme offset de registro não concluído.** O commit é `offset + 1` do último registro concluído **em sequência** na partição; falha ou registro pendente antes dele segura o commit daquela partição.
+  3. **Saturação no consumidor = `pause` + `seek`, não exceção.** Sem capacidade, pause a partição e volte a posição (`seek`) para o primeiro registro não concluído; lançar `RejectedExecutionException` e seguir para o próximo `poll`/commit perde o registro.
 
 Não execute JDBC ou sleep em event loop. Mover para executor não resolve sobrecarga se a fila desse executor for ilimitada. Não use onBackpressureBuffer sem capacidade, política de overflow e observação. limitRate regula pedidos upstream, não taxa temporal global.
 
@@ -43,6 +46,53 @@ Flux.range(1, 1_000).limitRate(32).subscribe(this::processar);          // pede 
 Flux.interval(Duration.ofMillis(1))
     .onBackpressureBuffer(100, descartado -> metricas.descartado(), BufferOverflowStrategy.DROP_LATEST);
 ```
+
+Laço de consumo Kafka (regras de mensageria acima):
+
+```java
+// ANTES: cada registro do poll numa virtual thread e commit do lote inteiro
+for (ConsumerRecord<String, Evento> registro : consumidor.poll(Duration.ofMillis(500))) {
+    workers.submit(() -> processar(registro));   // mesma chave em paralelo: ordem perdida; erro fica no Future
+}
+consumidor.commitSync();                          // confirma também o que falhou ou ainda nem terminou
+```
+
+```java
+// DEPOIS: paralelo só ENTRE partições; dentro da partição, em ordem; commit só do prefixo concluído
+ConsumerRecords<String, Evento> lote = consumidor.poll(Duration.ofMillis(500));
+Map<TopicPartition, Future<Long>> porParticao = new HashMap<>();
+for (TopicPartition particao : lote.partitions()) {
+    List<ConsumerRecord<String, Evento>> registros = lote.records(particao);
+    porParticao.put(particao, workers.submit(() -> processarEmOrdem(registros)));
+}
+Map<TopicPartition, OffsetAndMetadata> aCommitar = new HashMap<>();
+for (var entrada : porParticao.entrySet()) {
+    TopicPartition particao = entrada.getKey();
+    long proximo = entrada.getValue().get();      // tempo do lote ≪ max.poll.interval.ms
+    aCommitar.put(particao, new OffsetAndMetadata(proximo));
+    if (proximo <= lote.records(particao).getLast().offset()) { // parou antes do fim
+        consumidor.seek(particao, proximo);       // o não concluído volta no próximo poll
+        consumidor.pause(List.of(particao));      // resume() quando o downstream voltar ou após o backoff
+    }
+}
+consumidor.commitSync(aCommitar);                 // nunca além do último registro concluído
+
+/** Processa em ordem e devolve o próximo offset a ler: para no primeiro registro não concluído. */
+private long processarEmOrdem(List<ConsumerRecord<String, Evento>> registros) {
+    for (ConsumerRecord<String, Evento> registro : registros) {
+        try {
+            servico.processar(registro.value());  // idempotente: reentrega após falha é esperada
+        } catch (DownstreamSaturadoException | FalhaTransitoriaException naoConcluido) {
+            return registro.offset();             // este e os seguintes não avançam
+        }
+    }
+    return registros.getLast().offset() + 1;
+}
+```
+
+Falha permanente (esgotou tentativas) vai para a quarentena/DLT antes do commit; se a quarentena falhar, a
+partição não avança. Versão completa — limite de trabalho em voo, retomada, rebalance —, provada com
+`MockConsumer` e Kafka real: [controle de consumo](../../mensageria-sqs-kafka/references/controle-consumo-java.md#kafka-padrão-pausa-por-partição).
 
 Provas que executam essas regras:
 
