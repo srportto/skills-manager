@@ -1,0 +1,39 @@
+{
+  "skill_name": "gerar-diagramas",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Documente em docs/arquitetura/fluxo-pedido.md o fluxo de criação de pedido entre API, fila e banco com um diagrama.",
+      "expected_output": "Usa bloco mermaid nativo (sequenceDiagram para troca de chamadas) em .md versionado, baseado no código real, sem ASCII art; encaixa no arquivo de docs existente",
+      "files": [],
+      "expectations": [
+        "Usa bloco mermaid e não ASCII art no arquivo .md",
+        "Escolhe sequenceDiagram para troca de chamadas entre componentes",
+        "Mapeia o fluxo real no repositório sem inventar componentes",
+        "Decide o destino (docs/arquitetura, design.md da change ou CLAUDE.md do app) antes do formato"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Mostre aqui na conversa, rapidinho, como o fluxo funciona. Não vou salvar em arquivo.",
+      "expected_output": "Para diagrama só na resposta da conversa, ASCII direto na resposta é permitido e a skill não precisa ser invocada",
+      "files": [],
+      "expectations": [
+        "Aceita ASCII na resposta de conversa sem arquivo",
+        "Não força Mermaid quando nada será gravado em .md"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Crie um diagrama de sequência do checkout para o design.md da change.",
+      "Atualize o diagrama de máquina de estados do status do pedido na documentação.",
+      "Desenhe a arquitetura do serviço em um diagrama que fique versionado no repositório."
+    ],
+    "should_not_trigger": [
+      "Faça um gráfico de barras com a evolução de latência por semana.",
+      "Monte um dashboard de KPIs de negócio em uma página publicada.",
+      "Desenhe a topologia de VPC e subnets da nossa conta AWS."
+    ]
+  }
+}

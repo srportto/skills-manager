@@ -1,0 +1,41 @@
+{
+  "skill_name": "testes-sistemas-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Escreva um teste para o limite de concorrência de 10 do nosso Semaphore. Pode usar Thread.sleep(500) para esperar as threads.",
+      "expected_output": "Recusa Thread.sleep como sincronização; usa CountDownLatch/CyclicBarrier, mede o máximo ativo com AtomicInteger, libera recursos em finally e usa @Timeout",
+      "files": [],
+      "expectations": [
+        "Não usa Thread.sleep como sincronização",
+        "Usa latch ou barreira com condição observável",
+        "Mede o máximo ativo com AtomicInteger e não infere do tamanho do Semaphore",
+        "Libera latches e executors em finally"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Testei a idempotência com H2 em memória e o ack do SQS com um broker em memória. Está provado?",
+      "expected_output": "Não: H2 não comprova comportamento PostgreSQL nem broker em memória comprova ack/offset; usa Testcontainers PostgreSQL e Floci no perfil integracao, que deve falhar sem Docker",
+      "files": [],
+      "expectations": [
+        "Afirma que H2 não comprova comportamento do PostgreSQL",
+        "Usa Testcontainers (PostgreSQL, Floci) para integração",
+        "Perfil integracao sem Docker deve falhar e não ficar verde enganoso",
+        "Teste pulado não conta como aprovação"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Que tipo de teste prova que a mesma chave não é processada duas vezes?",
+      "Como testo retry e deadline sem depender de relógio real?",
+      "Quero impor regra de camadas com ArchUnit, como faço?"
+    ],
+    "should_not_trigger": [
+      "Desenhe um experimento de chaos com toxiproxy em produção.",
+      "Faça uma auditoria de segurança do projeto com OWASP Dependency-Check.",
+      "Dimensione o pool de conexões do banco para 8 réplicas."
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "skill_name": "cloud-architect",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Desenhe a topologia AWS do nosso novo workload. Use multi-região e 99,99% de disponibilidade porque é sempre bom.",
+      "expected_output": "Não aplica multi-região nem 99,99% como regra universal; deriva a disponibilidade do SLO do workload e explicita custo e consistência de dados de qualquer multi-região",
+      "files": [],
+      "expectations": [
+        "Deriva a disponibilidade-alvo do SLO e não de uma regra universal",
+        "Justifica zonas/regiões pelo RTO/RPO exigido",
+        "Explicita custo e consistência de dados se propuser multi-região",
+        "Aplica least-privilege no IAM e VPC com subnets privadas para dados"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Ativei autoscaling sem teto no serviço que consome nosso banco RDS e uma API de terceiros. Está ok?",
+      "expected_output": "Aponta que autoscaling sem teto coerente com o downstream derruba o banco ou estoura quota; soma conexões e quotas entre réplicas e ambientes da conta",
+      "files": [],
+      "expectations": [
+        "Define teto de autoscaling coerente com conexões do banco e quota da API externa",
+        "Soma limites e quotas entre todas as réplicas e ambientes da mesma conta",
+        "Não trata TTL baixo de DNS como garantia de failover rápido"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como estruturo a landing zone multi-conta na AWS com IAM de menor privilégio?",
+      "Preciso reduzir o custo da nuvem: right-sizing, reserved e spot. Por onde começo?",
+      "Qual estratégia de disaster recovery atende RTO de 1 hora e RPO de 5 minutos no Azure?"
+    ],
+    "should_not_trigger": [
+      "Escreva o pipeline de GitHub Actions e o Dockerfile da minha aplicação Java.",
+      "Devo ir de monolito modular para microsserviços? Escreva o ADR.",
+      "Como valido JWT e configuro CORS na aplicação Spring Boot?"
+    ]
+  }
+}

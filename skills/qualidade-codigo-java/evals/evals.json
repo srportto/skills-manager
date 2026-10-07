@@ -1,0 +1,53 @@
+{
+  "skill_name": "qualidade-codigo-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Refatore esse consumer mantendo comportamento (anexar consumer Kafka com commit manual)",
+      "expected_output": "Testes antes e depois; preserva ordenação por partição, momento do ack/commit, idempotência e cancelamento",
+      "files": [],
+      "expectations": [
+        "Roda testes antes e depois da refatoração",
+        "Preserva a ordenação por partição",
+        "Preserva o momento do ack/commit",
+        "Preserva idempotência e cancelamento",
+        "Não muda o momento do commit nem paraleliza partição sem perceber"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Esse método tem dois parâmetros que ele nunca usa e um 86400 solto no meio da conta. Limpe sem mudar o comportamento.",
+      "expected_output": "Aplica Remove Parameter e Replace Magic Number com constante nomeada, mantendo comportamento e rodando os testes antes e depois",
+      "files": [],
+      "expectations": [
+        "Remove os parâmetros não usados atualizando os chamadores",
+        "Troca o magic number por constante com nome e unidade",
+        "Não altera comportamento e valida com testes",
+        "Evita abstrações especulativas (YAGNI)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Aplique DRY: esses dois métodos parecem parecidos, junte tudo numa abstração genérica com vários flags.",
+      "expected_output": "Aplica DRY com bom senso: na 1ª e 2ª ocorrência duplicar pode ser mais barato que a abstração errada; não cria abstração com flags",
+      "files": [],
+      "expectations": [
+        "Não força abstração na segunda ocorrência",
+        "Evita parâmetros booleanos de modo para unificar métodos",
+        "Cita DRY com bom senso/KISS como critério"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Estou gerando uma classe de serviço Java: aplique clean code (nomes, imutabilidade, Optional).",
+      "Refatore este método longo com Extract Method.",
+      "Como uso streams e Optional de forma legível neste código?"
+    ],
+    "should_not_trigger": [
+      "Revise este PR e classifique os achados em Crítico, Importante e Menor.",
+      "Este service pode chamar o JpaRepository direto? Qual a regra de dependência entre camadas?",
+      "Padronize o formato JSON e o MDC dos logs da aplicação."
+    ]
+  }
+}

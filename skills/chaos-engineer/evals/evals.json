@@ -1,0 +1,40 @@
+{
+  "skill_name": "chaos-engineer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Quero derrubar o banco e injetar latência de rede ao mesmo tempo em produção para ver se o serviço aguenta. Monte o experimento.",
+      "expected_output": "Recusa combinar falhas e produção sem baseline/safety nets; propõe variável única, steady state medido, blast radius mínimo e rollback automatizado em até 30 segundos testado antes",
+      "files": [],
+      "expectations": [
+        "Não combina múltiplas falhas no mesmo experimento",
+        "Define steady state e métricas baseline antes de injetar",
+        "Limita o blast radius e exige rollback automatizado testado (até 30 s)",
+        "Exige safety nets (circuit breaker, feature flag ou canary) se for ambiente de cliente"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Terminamos o game day de ontem e todos os testes passaram. Posso fechar e arquivar?",
+      "expected_output": "Não aceita 'passou' sem métrica; exige learning summary escrito e ao menos uma melhoria rastreada, além de checar ChaosEngine ainda ativo sem dono",
+      "files": [],
+      "expectations": [
+        "Exige métrica que sustente o resultado do experimento",
+        "Pede learning summary escrito e uma melhoria rastreada",
+        "Verifica que nenhum ChaosEngine ficou com engineState active sem dono"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como planejo um game day com runbook para testar o failover do banco?",
+      "Quero usar toxiproxy para simular latência na dependência de pagamento em ambiente de teste.",
+      "Qual a diferença entre Litmus e Chaos Monkey e quando usar cada um?"
+    ],
+    "should_not_trigger": [
+      "Configure métricas Micrometer e alertas de burn rate para o serviço.",
+      "Escreva o Dockerfile multi-stage e o manifest de Deployment com probes.",
+      "Implemente retry com backoff e circuit breaker no cliente HTTP."
+    ]
+  }
+}

@@ -106,4 +106,39 @@ class PadraoAnthropicTest {
         }
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
+
+    @DisplayName("PadraoAnthropic: toda skill da trilha deve ter evals com disparo positivo e negativo")
+    @Test @SuppressWarnings("unchecked")
+    void skillsDevemTerEvals() throws IOException {
+        var erros = new ArrayList<String>();
+        for (Path pasta : Catalogo.skillsDaTrilha()) {
+            String nome = pasta.getFileName().toString();
+            Path arquivo = pasta.resolve("evals/evals.json");
+            if (!Files.exists(arquivo)) { erros.add(nome + " → sem evals/evals.json"); continue; }
+            Map<String, Object> raiz;
+            try {
+                // JSON é YAML válido; SafeConstructor evita instanciar tipos arbitrários
+                raiz = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(new org.yaml.snakeyaml.LoaderOptions()))
+                        .load(Files.readString(arquivo));
+            } catch (RuntimeException e) { erros.add(nome + " → evals.json inválido: " + e.getMessage()); continue; }
+            if (!nome.equals(raiz.get("skill_name"))) erros.add(nome + " → skill_name divergente");
+            var evals = raiz.get("evals") instanceof List<?> l ? (List<Object>) l : List.<Object>of();
+            if (evals.size() < 2) erros.add(nome + " → menos de 2 casos");
+            for (Object o : evals) {
+                var caso = o instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.<String, Object>of();
+                if (!naoVazio(caso.get("prompt")) || !naoVazio(caso.get("expected_output")) || !naoVazio(caso.get("expectations")))
+                    erros.add(nome + " → caso " + caso.get("id") + " sem prompt, expected_output ou expectations");
+            }
+            var trigger = raiz.get("trigger") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.<String, Object>of();
+            if (!naoVazio(trigger.get("should_trigger")) || !naoVazio(trigger.get("should_not_trigger")))
+                erros.add(nome + " → trigger sem caso positivo e negativo");
+        }
+        assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
+    }
+
+    private static boolean naoVazio(Object valor) {
+        if (valor instanceof String s) return !s.isBlank();
+        if (valor instanceof List<?> l) return !l.isEmpty();
+        return false;
+    }
 }

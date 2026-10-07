@@ -1,0 +1,40 @@
+{
+  "skill_name": "arquitetura-limpa-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tenho a classe PedidoEntity com @Entity e um use case CriarPedido que injeta JpaRepository<PedidoEntity>. Em qual camada cada coisa deveria ficar?",
+      "expected_output": "Aponta que JPA não pode estar em domain/ e que o use case deve depender de uma port/out declarada no domain; a entidade JPA e o adapter ficam em infrastructure/persistence",
+      "files": [],
+      "expectations": [
+        "Move @Entity e Spring Data repository para infrastructure/persistence",
+        "Cria interface em domain/port/out implementada por um adapter, em vez de JpaRepository no use case",
+        "Mantém a seta de dependência apontando para dentro (infrastructure depende de domain)",
+        "Não coloca @Transactional em domain/service"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Quero quebrar nosso monólito de cobrança em serviços. Por onde começo e como decido as fronteiras?",
+      "expected_output": "Usa bounded contexts (DDD) para decidir fronteiras, com ACL na integração; não parte da divisão técnica por camada",
+      "files": [],
+      "expectations": [
+        "Decide fronteiras por bounded context e não por camada técnica",
+        "Cita Anti-Corruption Layer na integração entre contextos",
+        "Não propõe microsserviços sem justificar o motivo da divisão"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Onde fica a interface do repositório num app hexagonal: domain ou infrastructure?",
+      "Como modelo um aggregate Pedido com value objects e domain events?",
+      "Meu projeto usa controller/service/repository clássico; vale migrar para hexagonal?"
+    ],
+    "should_not_trigger": [
+      "Gere um esqueleto novo de microsserviço Spring Boot com rota /disponibilidade.",
+      "Como resolvo N+1 neste repository com JOIN FETCH?",
+      "Quando aplicar o padrão Strategy em vez de if/else?"
+    ]
+  }
+}
