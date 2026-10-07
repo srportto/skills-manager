@@ -1,17 +1,16 @@
 ---
-
 name: arquitetura-limpa-java
-description: "Referência para decidir a camada de um código em app hexagonal Java/Spring Boot (ports & adapters) — `domain` / `application` / `infrastructure` —, estrutura de pacotes, DDD tático (aggregate, value object, domain event, specification, ACL) e decomposição de monólito em bounded contexts. Use em dúvida de camada, revisão de fronteiras ou modelagem de domínio. Uso: agent `java-revisor` (modo `auditoria`) ou `/arquitetura-limpa-java`; não carregar proativamente."
+description: "Referência para decidir a camada de um código em app hexagonal Java/Spring Boot (ports & adapters) — `domain` / `application` / `infrastructure` —, estrutura de pacotes, DDD tático (aggregate, value object, domain event, specification, ACL) e decomposição de monólito em bounded contexts; cobre também app não hexagonal (camadas clássicas) e escolha de módulos Spring. Use em dúvida de camada, revisão de fronteiras, modelagem de domínio ou escolha de stack. Uso: agent `java-revisor` (modo `auditoria`) ou `/arquitetura-limpa-java`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "2.1.0"
+  version: "3.0.0"
   domain: architecture
-  triggers: onde coloco, qual camada, estrutura de pacotes, arquitetura limpa, arquitetura hexagonal, ports and adapters, porta, adaptador, bounded context, decompor monólito, hexagonal, aggregate, agregado, value object, domain event, specification, anti-corruption layer, DDD
+  triggers: onde coloco, qual camada, estrutura de pacotes, arquitetura limpa, arquitetura hexagonal, ports and adapters, porta, adaptador, bounded context, decompor monólito, hexagonal, aggregate, agregado, value object, domain event, specification, anti-corruption layer, DDD, camadas clássicas, controller service repository, Spring Security, Spring Data JPA, WebFlux, arquitetura Spring Boot
   role: architect
   scope: code-organization
   output-format: document
-  related-skills: java-architecture, design-system-architecture, criar-aplicacao-java, revisao-de-codigo-java
+  related-skills: design-system-architecture, criar-aplicacao-java, revisao-de-codigo-java, testes-sistemas-java
 ---
 
 # Arquitetura Limpa Java (Hexagonal clássica + DDD)
@@ -21,13 +20,37 @@ metadata:
 Referência de bolso para decidir **em qual camada um código deve viver** em uma aplicação Java/Spring
 Boot que segue a **arquitetura hexagonal clássica (ports & adapters)** — `domain` / `application` /
 `infrastructure` — e para aplicar **DDD** ao decompor fronteiras entre contextos (microsserviço ou
-módulo).
+módulo). Cobre também a variante **não hexagonal** (camadas clássicas) e a escolha de módulos Spring,
+em `references/`.
+
+## Quando usar
+
+- Dúvida sobre em qual camada colocar uma classe, estrutura de pacotes ou revisão de fronteiras.
+- Modelagem de domínio (aggregate, value object, domain event, specification, ACL).
+- Decomposição de monólito em bounded contexts.
+- App existente em camadas clássicas (`controller`/`service`/`repository`) ou escolha de módulos Spring.
 
 **Quando NÃO usar:** para gerar o esqueleto de uma aplicação nova, use `criar-aplicacao-java` (que
-aplica exatamente este layout). Para camadas clássicas não-hexagonais
-(`controller`/`service`/`repository`), use `java-architecture`. Para mensageria, use
-`mensageria-sqs-kafka`. Para persistência JPA, use `persistencia-jpa`. Para revisão de código
-completa, use `revisao-de-codigo-java`.
+aplica exatamente este layout). Para mensageria, use `mensageria-sqs-kafka`. Para persistência JPA,
+use `persistencia-jpa`. Para estrutura de testes e Testcontainers, use `testes-sistemas-java`. Para
+revisão de código completa, use `revisao-de-codigo-java`. Para um design pattern GoF, use
+`padroes-de-projeto-java`.
+
+## Entradas
+
+- Código, classe ou diff em dúvida (ou descrição do requisito).
+- Estilo da aplicação: hexagonal (padrão do catálogo) ou camadas clássicas.
+- Se for decomposição: contextos candidatos, times e dados envolvidos.
+
+## Decisão: hexagonal (padrão) × camadas clássicas
+
+| Situação | Estilo | Onde ler |
+|---|---|---|
+| App nova ou migração deste catálogo | **Hexagonal** (`domain` / `application` / `infrastructure`) | este arquivo |
+| App existente em `controller`/`service`/`repository` que não migrou | Camadas clássicas | [camadas-classicas](references/camadas-classicas.md) |
+| Escolha de módulo Spring (Web × WebFlux, JPA, Security, Redis) | Independe do estilo | [modulos-spring](references/modulos-spring.md) |
+| Dúvida é "como modelar" | DDD tático | [ddd-tatico](references/ddd-tatico.md) |
+| Dúvida é "em qual serviço" | Bounded contexts | [decomposicao-bounded-contexts](references/decomposicao-bounded-contexts.md) |
 
 ## As três camadas e a regra de dependência
 
@@ -164,282 +187,51 @@ O tratamento centralizado é o `ApiExceptionHandler` (`@RestControllerAdvice`) e
 > pelo *shape* do corpo (`LayoutErrosApiValidationsResponse` vs `LayoutErrosApiResponse`), não pelo
 > status. Em projeto fora deste monorepo, o default de mercado para `@Valid` é 400.
 
-## Anti-padrões
+## Passo a passo
 
-| # | Anti-padrão | Por que é errado | Correção |
-|---|---|---|---|
-| 1 | Use case injetando `JpaRepository` direto | `application` passa a depender de Spring Data; o domínio deixa de ditar o contrato | Injete a `port/out`; o `JpaRepository` fica escondido dentro do adapter |
-| 2 | Entidade JPA usada como modelo de domínio | `@Entity` + setters gerados = domínio anêmico acoplado ao schema do banco | `domain/model/` puro + `*JpaEntity` no adapter + mapper entre os dois |
-| 3 | Chamada HTTP (`RestClient`) dentro do use case | Detalhe de infraestrutura vazando para `application` | Declare uma `port/out` e implemente em `infrastructure/external/` |
-| 4 | Lógica de negócio no controller | Regra vaza para o adapter, fica não-reutilizável e só testável via HTTP | Regra no agregado (`Pedido.adicionarItem()`); controller só traduz DTO ⇄ command |
-| 5 | Entidade JPA retornada como resposta HTTP | Acopla contrato REST ao schema e expõe campo interno | DTO próprio de `infrastructure/web/` |
-| 6 | Domínio anotado com `@Component`/`@Service`/`@Entity` | Domínio passa a depender do container/ORM e perde o teste isolado | Domínio sem nenhuma anotação de framework |
-| 7 | Service com parâmetro `HttpServletRequest` | `application` depende de `jakarta.servlet.*` | Controller extrai o dado (`@RequestHeader`) e passa tipo simples no command |
+1. Identifique o estilo da aplicação (tabela de decisão) — código novo nasce hexagonal.
+2. Classifique cada classe na tabela "Que classe vai em qual camada".
+3. Cheque a regra de dependência: `domain` sem Spring/JPA/Jackson; `application` sem HTTP/JPA/SDK de broker; `infrastructure` implementa `port/out`.
+4. Confirme que entidade JPA e modelo de domínio são classes distintas, com mapper no adapter.
+5. Valide o mapa de erros: exceção de negócio no `domain`/`application`, tratamento só no `ApiExceptionHandler`.
+6. Para o que não cabe aqui (DDD, bounded contexts, anti-padrões, legado, camadas clássicas, módulos Spring), siga o Guia de references.
 
-```java
-// ERRADO - infraestrutura vazando para o use case e dominio anemico
-@Service
-public class CriarPedidoService {
-    private final PedidoJpaRepository repo;      // JPA direto, sem porta
-    private final RestClient restClient;         // HTTP dentro da application
+## Saída
 
-    public PedidoJpaEntity criar(CriarPedidoRequest req) {
-        PedidoJpaEntity p = new PedidoJpaEntity();
-        p.setStatus("PENDENTE");                 // regra fora do dominio, status como String
-        restClient.post().uri("/reservar").body(req.itens()).retrieve();
-        return repo.save(p);                     // devolve entidade JPA para a borda
-    }
-}
+Veredicto por classe (camada correta ou movimento sugerido), violações da regra de dependência com a correção, e — quando houver modelagem — o agregado/value objects propostos. Em revisão, cite arquivo e linha.
 
-// CORRETO - ver "Exemplo minimo" acima: use case fala so com port/in e port/out
-```
+## Validação
 
-## Gotchas comuns
+- `domain/` não importa `org.springframework.*`, `jakarta.persistence.*` nem Jackson.
+- Use case injeta `port/out`, nunca `JpaRepository` nem cliente HTTP.
+- Controller injeta `port/in` e não contém regra de negócio.
+- `./mvnw verify` da aplicação passa (compilação não é teste; teste pulado é pendência).
 
-- Agent importa `jakarta.persistence` em `domain/` — a entidade JPA pertence a
-  `infrastructure/persistence/`.
-- Agent injeta `JpaRepository` no use case — use a `port/out`.
-- Agent põe `@Transactional` em `domain/service` — pertence a `application/usecase`.
-- Agent confunde os dois lados: `port/in` = o que a aplicação **oferece**, `port/out` = o que ela
-  **precisa**.
-- Agent cria domínio anêmico só com getters/setters — comportamento vive nos próprios objetos.
-- Agent expõe o `SpringDataXRepository` fora de `infrastructure/persistence/` — mantenha
-  package-private.
-- Agent usa `@MockBean` em teste — removido no Boot 4; use `@MockitoBean`.
-- Agent usa `spring-boot-starter-aop` — renomeado para `spring-boot-starter-aspectj` no Boot 4.
+## Gotchas
 
-## Equivalência com a estrutura legada do monorepo
+Os gotchas recorrentes de agents (JPA no `domain/`, `JpaRepository` no use case, `@Transactional` em `domain/service`, `port/in` × `port/out` trocados, domínio anêmico, `@MockBean` no Boot 4, `spring-boot-starter-aop`) e os 7 anti-padrões estão em [anti-padroes-e-gotchas](references/anti-padroes-e-gotchas.md).
 
-> **Contexto externo:** esta seção descreve o monorepo de origem do catálogo (`apps/`, `openspec/changes/`)
-> e é mantida como exemplo de migração de layout. Esses caminhos não existem neste repositório.
+## Guia de references
 
-A migração das cinco aplicações de `apps/` do layout anterior
-(`entrypoint`/`application`/`domain`/`shared`) para o de referência é trabalho em andamento,
-app por app (ver `openspec/changes/hexagonal-classico-*`). Estado em 2026-08-15: `contratocommand`
-já está no layout de referência, domínio incluindo a separação modelo/entidade JPA
-(`hexagonal-classico-contratocommand-portas` + `hexagonal-classico-contratocommand-dominio-puro`).
-`contratoquery`, `autorizacaostatus-producer`, `eventos-consumer` e `temporiza-autorizacao` ainda
-usam o layout anterior. **Código existente no layout anterior não é defeito** até ser migrado — o
-alvo desta tabela é orientar a migração e impedir que aplicação nova nasça no formato antigo.
-
-| Layout legado | Layout de referência |
+| Arquivo | Quando ler |
 |---|---|
-| `entrypoint/` (controller, DTOs) | `infrastructure/web/` |
-| `entrypoint/sqs/`, `entrypoint/kafka/` | `infrastructure/messaging/` |
-| `application/<contexto>/*Service` | `application/usecase/` + interface em `domain/port/in/` |
-| `application/<contexto>/*Repository` (JPA) | `domain/port/out/` + `infrastructure/persistence/` |
-| `domain/entities/*` (entidade JPA no domínio) | `domain/model/` (puro) + `*JpaEntity` em `infrastructure/persistence/` |
-| `domain/model/`, `domain/enums/` | inalterados |
-| `shared/` exceções de negócio | `domain/exception/` |
-| `shared/` handler de erro, interceptadores | `infrastructure/web/` |
-| `shared/config/` | `infrastructure/config/` |
-
-## DDD tático — blocos de construção do domain/model
-
-Quando o problema deixa de ser "em qual camada" e passa a ser **"como modelar o domínio"**, use os
-blocos táticos do DDD dentro de `domain/model/` (Java puro, sem framework).
-
-### Aggregate (agregado)
-
-- Um repositório por **aggregate root**.
-- Código externo só acessa o agregado pela **raiz** — nunca entidade filha diretamente.
-- Agregados referenciam outros agregados **por ID**, não por referência de objeto.
-- Mantenha agregados pequenos — mais de 3-4 entidades filhas, divida.
-
-```java
-// ✅ A raiz controla todo o acesso aos filhos
-pedido.adicionarItem(produtoId, quantidade);
-pedido.removerItem(itemId);
-
-// ❌ Acesso direto ao filho de fora — viola invariantes
-pedido.getItens().add(new ItemPedido(...));
-```
-
-### Value Object
-
-Imutável, sem identidade, igualdade por valor. Use `record` (Java 16+).
-
-```java
-public record Money(BigDecimal amount, Currency currency) {
-    public Money {
-        if (amount.compareTo(BigDecimal.ZERO) < 0)
-            throw new IllegalArgumentException("Valor não pode ser negativo");
-        Objects.requireNonNull(currency);
-    }
-
-    public Money add(Money outro) {
-        if (!currency.equals(outro.currency))
-            throw new CurrencyMismatchException(currency, outro.currency);
-        return new Money(amount.add(outro.amount), currency);
-    }
-}
-
-public record Email(String valor) {
-    public Email {
-        if (!valor.matches("^[\\w.-]+@[\\w.-]+\\.[a-z]{2,}$"))
-            throw new InvalidEmailException(valor);
-    }
-}
-```
-
-### Domain Events
-
-Eventos são **records imutáveis** coletados no agregado e publicados **após o commit**.
-
-```java
-public record PedidoRealizado(PedidoId id, ClienteId clienteId, Money total, Instant ocorridoEm) {
-    public static PedidoRealizado de(Pedido pedido) {
-        return new PedidoRealizado(pedido.getId(), pedido.getClienteId(), pedido.getTotal(), Instant.now());
-    }
-}
-
-// No agregado
-@Entity
-public class Pedido {
-    @Transient
-    private final List<Object> eventos = new ArrayList<>();
-
-    public void realizar() {
-        this.status = StatusPedido.REALIZADO;
-        eventos.add(PedidoRealizado.de(this));
-    }
-
-    public List<Object> pullEventos() {
-        var evts = List.copyOf(eventos);
-        eventos.clear();
-        return evts;
-    }
-}
-
-// No use case — publica depois de salvar
-@Transactional
-public Pedido realizar(RealizarPedidoCommand cmd) {
-    Pedido pedido = repository.findById(cmd.pedidoId()).orElseThrow();
-    pedido.realizar();
-    Pedido salvo = repository.save(pedido);
-    salvo.pullEventos().forEach(publisher::publishEvent); // após commit
-    return salvo;
-}
-```
-
-> **Prefira `@DomainEvents` e `@AfterDomainEventPublication`** do Spring Data: exponha os métodos
-> no agregado e o repositório publica automaticamente a cada `save()` — sem wiring manual.
-
-### Specifications (queries complexas)
-
-```java
-public class PedidoSpecifications {
-    public static Specification<Pedido> porStatus(StatusPedido status) {
-        return (root, query, cb) -> cb.equal(root.get("status"), status);
-    }
-
-    public static Specification<Pedido> porCliente(UUID clienteId) {
-        return (root, query, cb) -> cb.equal(root.get("clienteId"), clienteId);
-    }
-}
-
-Specification<Pedido> spec = PedidoSpecifications.porStatus(REALIZADO)
-    .and(PedidoSpecifications.porCliente(clienteId));
-repository.findAll(spec, pageable);
-```
-
-### Anti-Corruption Layer (ACL)
-
-Quando integrar com sistema externo ou legado, **não deixe o modelo dele vazar para o seu domínio**.
-O ACL é o adapter que traduz o modelo alheio para o seu `domain/model`.
-
-```java
-@Component
-@RequiredArgsConstructor
-public class PagamentoGatewayAdapter implements PagamentoPort {
-
-    private final PagamentoExternoClient client;  // SDK de terceiro
-
-    @Override
-    public ConfirmacaoPagamento cobrar(PedidoId pedidoId, Money valor) {
-        // Traduz domínio → externo
-        var request = new PagamentoApiRequest(
-            pedidoId.valor().toString(),
-            valor.amount().doubleValue(),
-            valor.currency().getCurrencyCode());
-
-        var response = client.cobrar(request);
-
-        // Traduz externo → domínio
-        return new ConfirmacaoPagamento(
-            PagamentoId.de(response.getTransactionId()),
-            response.isSucesso() ? StatusPagamento.CONFIRMADO : StatusPagamento.RECUSADO);
-    }
-}
-```
-
-### Armadilhas de modelagem
-
-| # | Armadilha | Correção |
-|---|---|---|
-| 1 | Modelo anêmico (só getters/setters) | Comportamento vive no próprio objeto (`Pedido.adicionarItem()`) |
-| 2 | `Long`/`String` para ID de entidade | Use value objects tipados (`PedidoId`, `ClienteId`) |
-| 3 | Regra de negócio em service | Service orquestra; regra decide no agregado |
-| 4 | Acesso a filho fora da raiz | Sempre pela aggregate root |
-| 5 | Publicar evento antes do save | Publique após save/commit |
-| 6 | Modelo externo vazando para o domínio | Use ACL para traduzir |
-
-## Decomposição de monolito em bounded contexts (DDD aplicado)
-
-Quando o problema deixa de ser "em qual camada" e passa a ser **"em qual serviço"**, aplique DDD antes
-de partir para hexagonal:
-
-1. **Identificar bounded contexts** — linguagem ubíqua própria por contexto (um `Pedido` em
-   `contexto-vendas` não é o mesmo `Pedido` de `contexto-fulfillment`); identifique o subdomínio
-   nuclear (vantagem competitiva real, fica na sua equipe) vs. subdomínios de suporte/genéricos;
-   documente o context map (Shared Kernel, Customer/Supplier, Anti-Corruption Layer, Conformist).
-
-2. **Critérios para uma nova fronteira de serviço** — antes de virar microsserviço, o candidato deve:
-   ser dono **exclusivo** dos seus dados (database-per-service); ter **contrato público** versionado;
-   ser **deployado independentemente**; ter **equipe dedicada** capaz de operar 24/7; tolerar
-   **consistência eventual** (não vale a pena se exige ACID entre dois domínios).
-   > **Regra prática:** comece com **monolito modular** e só extraia um microsserviço quando módulo,
-   > release ou equipe precisarem de independência real — microsserviço prematuro é a causa #1 de
-   > "distributed monolith".
-
-3. **Communication pattern por fronteira**:
-
-   | Relação | Padrão | Por quê |
-   |---|---|---|
-   | Query/command com SLA < 100 ms | Síncrono (REST/gRPC) | Coupling temporal curto é aceitável |
-   | Operação cross-aggregate, demorado | **Assíncrono** (evento, fila) | Falha de um serviço não derruba o outro |
-   | Replicação de dado para leitura | **Event-driven** (Kafka) | Cada lado tem sua cópia, evolui independente |
-   | Tradução entre domínios legados | **Anti-Corruption Layer** | Impede vazamento de modelo antigo |
-
-   > Toda comunicação externa atravessa uma porta: o contrato do outro serviço entra como `port/out`,
-   > e o ACL é justamente o adapter que traduz o modelo alheio para o seu `domain/model`.
-
-4. **Resiliência mínima por chamada síncrona entre serviços** (fonte: `resiliencia-controle-fluxo-java`):
-   deadline da requisição propagado e timeout explícito no cliente (nunca o default infinito); retry só
-   para falha transitória de operação idempotente, com backoff exponencial + jitter, dentro do deadline e
-   com **uma** camada dona; bulkhead/limite de concorrência por dependência (circuit breaker não limita
-   concorrência); circuit breaker quando o volume dá amostra; `Idempotency-Key` em POST sujeito a
-   reentrega. Essas proteções moram no **adapter** de saída (`infrastructure`), não no domínio. Contexto de
-   rastreamento propagado via W3C Trace Context: ver `monitoramento-java`.
-
-5. **Health & readiness probe** — use os grupos do Actuator: `/actuator/health/liveness` (só o estado do
-   processo; falha **reinicia** o pod — nunca inclua banco/broker) e `/actuator/health/readiness` (estado +
-   dependências necessárias para atender; falha tira a réplica do balanceador, **não** reinicia). Semântica,
-   configuração dos grupos e exemplo testado: `monitoramento-java` (seção probes); manifests: `devops-cicd`.
-   ```yaml
-   livenessProbe:
-     httpGet: { path: /actuator/health/liveness, port: 8080 }
-     periodSeconds: 15
-   readinessProbe:
-     httpGet: { path: /actuator/health/readiness, port: 8080 }
-     periodSeconds: 10
-   ```
+| [anti-padroes-e-gotchas](references/anti-padroes-e-gotchas.md) | Revisando fronteira de camada ou PR; suspeita de JPA/HTTP vazando para `application` |
+| [equivalencia-legado](references/equivalencia-legado.md) | Migrando do layout anterior (`entrypoint`/`shared`) para o hexagonal |
+| [ddd-tatico](references/ddd-tatico.md) | Modelando aggregate, value object, domain event, specification ou ACL |
+| [decomposicao-bounded-contexts](references/decomposicao-bounded-contexts.md) | Decidindo "em qual serviço"; fronteiras, comunicação, resiliência e probes |
+| [camadas-classicas](references/camadas-classicas.md) | App não hexagonal (`controller`/`service`/`repository`), DTOs e injeção de dependência |
+| [modulos-spring](references/modulos-spring.md) | Escolhendo módulos Spring, resource server JWT, virtual threads e proteção contra sobrecarga |
 
 ## Quem aplica o quê
 
 | Situação | Quem | Skill usada |
 |---|---|---|
 | Dúvida sobre em qual camada colocar uma classe | sessão principal | esta skill |
+| Desenhar arquitetura de aplicação Spring Boot nova | sessão principal | esta skill |
 | Revisão arquitetural completa (camadas + DDD) | agent `java-revisor` (modo `auditoria`) | esta skill + `revisao-de-codigo-java` |
+| Revisar estrutura de pacotes e escolhas de stack | agent `java-revisor` (modo `auditoria`) | `revisao-de-codigo-java` |
 | Decompor monolito em microsserviços (design) | sessão principal (design, não há agent dedicado) | esta skill |
 | Aplicar microsserviço novo (gerar) | agent `java-construtor` | `criar-aplicacao-java` + esta skill |
+| Tuning de JPA/Hibernate | session principal | `persistencia-jpa` |
+| Configurar segurança (JWT, CORS, headers) | session principal | `seguranca-aplicacao-java` |
+| Configurar observabilidade | session principal | `monitoramento-java` |

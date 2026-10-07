@@ -1,0 +1,40 @@
+{
+  "skill_name": "padroes-de-projeto-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tenho um if/else gigante escolhendo qual serviço de frete chamar conforme a transportadora, num app Spring. Qual padrão uso?",
+      "expected_output": "Strategy por lista injetada de implementações, sem factory dedicada, preferência do projeto para escolher serviço entre candidatos em runtime",
+      "files": [],
+      "expectations": [
+        "Recomenda Strategy com lista injetada pelo Spring",
+        "Não cria uma Factory dedicada para escolher a implementação",
+        "Remove o if/else por tipo em favor de implementações intercambiáveis"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Crie um Singleton manual e uma interface com Factory para a classe ConversorMoeda, que só tem uma implementação.",
+      "expected_output": "Recusa padrão sem problema real: interface com implementação única, factory para new simples e Singleton manual onde a injeção do Spring resolve",
+      "files": [],
+      "expectations": [
+        "Não cria interface para implementação única sem motivo",
+        "Não cria Factory para um new simples",
+        "Usa bean singleton do Spring em vez de Singleton manual",
+        "Cita os critérios de quando não aplicar padrão"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Qual padrão GoF resolve a construção de um objeto com muitos parâmetros opcionais?",
+      "Preciso adicionar comportamento a um componente em runtime sem mudar a classe. Decorator serve?",
+      "Quando usar Observer e quando um evento de domínio resolve melhor?"
+    ],
+    "should_not_trigger": [
+      "Troque este switch com break por uma switch expression moderna do Java.",
+      "Em qual camada hexagonal esta classe de cálculo de frete deve ficar: domain ou infrastructure?",
+      "Remova o parâmetro não usado deste método."
+    ]
+  }
+}

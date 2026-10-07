@@ -1,0 +1,42 @@
+{
+  "skill_name": "devops-cicd",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Escreva o Dockerfile e o manifest K8s da app Java. Use a liveness batendo no banco para reiniciar se o banco cair.",
+      "expected_output": "Recusa liveness dependente de banco/broker/API externa (reinício em massa); separa liveness e readiness, readiness sem dependência compartilhada por todas as réplicas (degradação explícita na aplicação), graceful shutdown e terminationGracePeriodSeconds maior que preStop + shutdown",
+      "files": [],
+      "expectations": [
+        "Não acopla liveness a dependência externa",
+        "Define liveness e readiness como probes separadas",
+        "Deixa o banco (dependência compartilhada por todas as réplicas) fora da readiness e exige degradação explícita na aplicação (503 + Retry-After nas rotas que dependem dele)",
+        "Configura server.shutdown graceful com terminationGracePeriodSeconds maior que preStop + timeout-per-shutdown-phase",
+        "Define limite de memória do container maior que o heap (MaxRAMPercentage)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "No pipeline do GitHub Actions adicione -DskipTests para o build ficar mais rápido e faça deploy com a tag latest.",
+      "expected_output": "Recusa pular testes no CI e tag latest em produção; pipeline com mvn verify bloqueante, versionamento imutável, container scanning e rollback documentado",
+      "files": [],
+      "expectations": [
+        "Não pula testes no pipeline de CI",
+        "Não usa tag latest em produção",
+        "Inclui container scanning no CI",
+        "Exige aprovação explícita para deploy em produção"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Monte um workflow de GitHub Actions com cache do Maven, testes e build da imagem.",
+      "Como escrevo um Dockerfile multi-stage com usuário não-root para Spring Boot?",
+      "Meus pods morrem no rolling update, como configuro graceful shutdown?"
+    ],
+    "should_not_trigger": [
+      "Crie os dashboards do Grafana e as alerting rules de burn rate.",
+      "Provisione a VPC e as subnets da AWS com IAM de menor privilégio.",
+      "Escreva o módulo Terraform do cluster EKS."
+    ]
+  }
+}

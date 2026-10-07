@@ -5,33 +5,68 @@ description: "Guia de segurança de aplicação focado em código Java/Spring Bo
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.1.0"
+  version: "1.2.0"
   domain: security
   triggers: segurança, OWASP, JWT, bcrypt, SQL injection, XSS, headers de segurança, segredo hardcoded, CVE, CORS
   role: specialist
   scope: application-security
   output-format: code
-  related-skills: padrao-de-logs-java, arquitetura-limpa-java, revisao-de-codigo-java, java-architecture
+  related-skills: monitoramento-java, arquitetura-limpa-java, revisao-de-codigo-java
 ---
 
 # Segurança de Aplicação Java
 
-## Visão geral
+## Quando usar
 
 Guia de segurança focado em **código de aplicação Java/Spring Boot** (não infraestrutura de nuvem,
 redes ou compliance corporativo): OWASP Top 10 aplicado a Java, hashing de senha, validação de
 entrada, queries parametrizadas, JWT, headers de segurança, CORS e varredura de dependências.
 
-**Quando NÃO usar:** infraestrutura de nuvem profunda (redes, IAM, KMS) ou compliance corporativo
-(SOC2, ISO27001) — use o agent `engenheiro-seguranca`. Para segredo
-em log, `padrao-de-logs-java` (seção "Regras de ouro") é a fonte.
+## Quando NÃO usar
 
-## Workflow de implementação segura
+Infraestrutura de nuvem profunda (redes, IAM, KMS) ou compliance corporativo
+(SOC2, ISO27001) — use o agent `engenheiro-seguranca`. Para segredo
+em log, `monitoramento-java` (`references/logs-estruturados.md`, seção "Regras de ouro") é a fonte.
+
+## Entradas
+
+- Código ou diff a implementar/auditar (controller, service, repository, `SecurityFilterChain`).
+- Superfície exposta: endpoints públicos x autenticados, integrações que chamam URL externa.
+- Stack: Spring Boot 4 / Spring Security 7 / Java 25.
+
+## Decisão: qual item OWASP → qual reference (guia de references)
+
+| Item OWASP | Reference | Quando ler |
+|---|---|---|
+| A01 Broken Access Control (+ mass assignment) | `references/controle-acesso.md` | Ownership, IDOR, `@PreAuthorize`, DTO que expõe `role`/`id` |
+| A02 Cryptographic Failures (+ segredos) | `references/criptografia-senhas.md` | Hash de senha, criptografia em repouso, onde guardar segredo |
+| A03 Injection (+ validação de entrada) | `references/injecao.md` | Query JPQL/SQL/JDBC, `ProcessBuilder`, Bean Validation |
+| A04 Insecure Design | `references/design-inseguro.md` | "Esqueci senha", login, enumeração de usuário, IDOR por design |
+| A05 Security Misconfiguration | `references/configuracao-headers-cors.md` | Headers (CSP/HSTS), CORS, stack trace em erro |
+| API4 Unrestricted Resource Consumption | `references/abuso-recursos-quotas.md` | Limite de payload/página/consulta, quota por cliente, identidade do limitador |
+| A07 Authentication Failures (+ JWT) | `references/autenticacao-jwt.md` | Login, brute force, sessão/logout, emitir/validar JWT, resource server |
+| A08 Integrity Failures (+ CVEs) | `references/integridade-dependencias.md` | Desserialização, Flyway/`ddl-auto`, Dependency-Check, Dependabot |
+| A09 Logging and Monitoring Failures | `references/logs-seguranca.md` | Eventos de auditoria, o que nunca logar, alertas de login |
+| A10 SSRF | `references/ssrf.md` | Backend que chama URL informada pelo cliente |
+
+## Passo a passo (workflow de implementação segura)
 
 **Threat model** (superfície de ataque e ameaças: autenticação, validação, exposição de dados,
 dependências) → **projete controles** (hash de senha, JWT, validação, headers) → **implemente com
 defense in depth** (várias camadas, cada uma com propósito claro) → **valide** (checkpoints
 abaixo) → **documente** as decisões de segurança.
+
+- [ ] Mapear a superfície e escolher os itens OWASP aplicáveis (tabela acima).
+- [ ] Ler apenas as references dos itens escolhidos e aplicar o padrão "CORRETO".
+- [ ] Rodar o checklist por feature (abaixo) e os checkpoints de validação.
+- [ ] Rodar a varredura de dependências e registrar as decisões de segurança.
+
+## Saída
+
+Código com os controles aplicados, testes de segurança (tokens de roles distintas, payloads
+inválidos rejeitados) e o checklist por feature marcado, citando o item OWASP de cada controle.
+
+## Validação
 
 ### Checkpoints de validação
 
@@ -44,290 +79,7 @@ abaixo) → **documente** as decisões de segurança.
 - **Headers/CORS:** valide com scanner (`curl -I`, Mozilla Observatory) que headers estão
   presentes e que a allowlist de origem CORS está correta.
 
-# OWASP Top 10 aplicado a Java
-
-## A01 — Broken Access Control
-
-**Sintomas:** endpoint que confia no client para passar o `userId` na URL, ou que não verifica
-ownership do recurso.
-
-```java
-// ERRADO - o proprio client informa o userId; o backend confia
-@DeleteMapping("/users/{userId}/orders/{orderId}")
-public void deletar(@PathVariable Long userId, @PathVariable Long orderId) {
-    orderRepository.deleteById(orderId);
-}
-
-// CORRETO - o userId vem do token (autenticado), nao da URL; ownership e verificado
-@DeleteMapping("/orders/{orderId}")
-public void deletar(@PathVariable Long orderId, @AuthenticationPrincipal User user) {
-    Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new BusinessException("Pedido nao encontrado"));
-    if (!order.belongsTo(user.id())) {   // vertical E horizontal
-        throw new BusinessException("Pedido nao pertence ao usuario");
-    }
-    orderRepository.delete(order);
-}
-```
-
-## A02 — Cryptographic Failures (senhas, dados em repouso)
-
-**Regra de ouro:** hash de senha com **bcrypt** (cost ≥ 10) ou **argon2id** — nunca MD5/SHA-1/
-SHA-256 unsalted, nunca reversível ("encrypt" simétrico de senha).
-
-```java
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-private static final BCRYPT_COST = 12;   // >= 10, balanceia seguranca e performance
-
-public String hashPassword(String plaintext) {
-    return new BCryptPasswordEncoder(BCRYPT_COST).encode(plaintext);
-}
-
-public boolean verifyPassword(String plaintext, String hash) {
-    return new BCryptPasswordEncoder(BCRYPT_COST).matches(plaintext, hash);
-}
-```
-
-**Dados em repouso:** campos sensíveis (CPF, número de cartão) em coluna criptografada (ex.: JPA
-`@Convert` com `AttributeConverter` via AES-GCM) ou vault/tokenização (nunca armazene PAN de
-cartão sem tokenizar via gateway de pagamento).
-
-## A03 — Injection (SQL, JPQL, NoSQL, command)
-
-**Regra de ouro:** **nunca** concatene entrada do usuário em string de query (SQL nativo, JPQL)
-nem em shell — vale para ambos os estilos de query abaixo.
-
-```java
-// ERRADO - concatenacao em JPQL/SQL nativo; abre brecha para injecao
-@Query("FROM Pedido WHERE id = " + id)   // NUNCA FACA ISSO
-@Query(value = "SELECT * FROM pedidos WHERE id = " + id, nativeQuery = true)
-
-// CORRETO - parametro nomeado (JPQL ou SQL nativo)
-@Query("FROM Pedido WHERE id = :id")
-Optional<Pedido> buscarPorId(@Param("id") Long id);
-
-@Query(value = "SELECT * FROM pedidos WHERE id = :id", nativeQuery = true)
-Optional<PedidoEntity> buscarPorIdNativo(@Param("id") Long id);
-```
-
-Para queries dinâmicas com muitos filtros opcionais, use `Criteria` API ou `QueryDSL` em vez de
-montar string.
-
-**Command injection:** nunca passe entrada do usuário como argumento de `Runtime.exec()`/
-`ProcessBuilder` sem validação rigorosa (whitelist de caracteres, allowlist de comandos).
-
-## A04 — Insecure Design
-
-Padrões inseguros por design (ex.: fluxo de "esqueci senha" que revela se email existe; endpoint
-de admin sem rate limit; IDOR — Insecure Direct Object Reference).
-
-```java
-// ERRADO - "esqueci senha" revela se o email existe (informacao vaza)
-if (userRepository.existsByEmail(email)) {
-    sendResetLink(email);
-    return "Link enviado se o email existir";  // diferente se nao existe = info leak
-} else {
-    return "Link enviado se o email existir";
-}
-
-// CORRETO - resposta identica independente da existencia
-sendResetLinkIfExists(email);   // sempre, sem condicionar a resposta
-return "Se o email estiver cadastrado, um link sera enviado";
-```
-
-## A05 — Security Misconfiguration (headers, CORS, error handling)
-
-```yaml
-# application.yaml — headers minimos via Spring Security
-spring:
-  security:
-    headers:
-      content-security-policy: "default-src 'self'"
-      x-content-type-options: nosniff
-      x-frame-options: DENY
-      referrer-policy: strict-origin-when-cross-origin
-      strict-transport-security: max-age=31536000 ; includeSubDomains
-```
-
-**CORS — não abra `allowedOrigins("*")` com `allowCredentials(true)`:**
-
-```java
-// ERRADO - qualquer origem pode fazer requisicao autenticada (CSRF total)
-CorsConfiguration cfg = new CorsConfiguration();
-cfg.addAllowedOriginPattern("*");
-cfg.setAllowCredentials(true);
-
-// CORRETO - allowlist explicita, sem wildcard quando ha credenciais
-@Bean
-CorsConfigurationSource corsConfig() {
-    CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of("https://app.exemplo.com"));
-    cfg.setAllowCredentials(true);
-    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
-    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/api/**", cfg);
-    return source;
-}
-```
-
-**Error handling — não exponha stack trace em produção:**
-
-```yaml
-server:
-  error:
-    include-stacktrace: never
-    include-message: never
-    include-binding-errors: never
-```
-
-## Abuso de recursos e limites (OWASP API4:2023 — Unrestricted Resource Consumption)
-
-Disponibilidade também é segurança: um cliente (ou atacante) que consome recursos sem limite derruba o serviço
-para todos.
-
-| Vetor | Controle na aplicação Java |
-|---|---|
-| Payload gigante | Limite de tamanho no servidor (`server.tomcat.max-http-form-post-size`, `spring.servlet.multipart.max-file-size`, validação de tamanho de listas/strings com Bean Validation) → 413 |
-| Paginação abusiva | Tamanho máximo de página no servidor (não confiar no `size` do cliente); cursor para datasets grandes |
-| Consulta cara | Filtros só em colunas indexadas, timeout de consulta, limite de profundidade/complexidade (GraphQL), proibir `LIKE '%x%'` sem índice próprio em endpoint público |
-| Quota por cliente/tenant | Identidade **autenticada** (sub/tenant do token) como chave; 429 + `Retry-After`; quota distribuída atômica entre réplicas (`spring-data-redis`) |
-| Bypass por header | `X-Forwarded-For`/`X-Real-IP` só confiáveis quando escritos por proxy conhecido (`server.forward-headers-strategy` + lista de proxies confiáveis); senão o atacante troca de "IP" a cada requisição |
-| Cardinalidade de chaves | Mapas de quota/locks por identidade com tamanho máximo (LRU), para não virarem vetor de exaustão de memória |
-| Limitador indisponível | Política explícita (limite local conservador), nem fail-open total nem fail-closed total |
-| Operações caras (exportação, relatório) | Bulkhead/pool separado e fila limitada; trabalho assíncrono com 202 |
-
-Rate limit de aplicação **não substitui** proteção volumétrica de borda (WAF/CDN/provedor contra DDoS): quando
-a requisição chega à JVM, a banda e as conexões já foram gastas. Mecanismos: `resiliencia-controle-fluxo-java`;
-contrato 413/429/503: `api-rest-design`.
-
-## A07 — Identification and Authentication Failures
-
-- **Brute force:** rate limit em `/login` por **conta** (ex.: 10 tentativas / 15 min) **e** por origem — só por
-  IP falha contra ataques distribuídos e pune usuários atrás de NAT; só por conta permite travar a conta de
-  terceiros (aplique atraso progressivo/captcha em vez de bloqueio permanente).
-- **Sessão:** JWT de curta duração (15 min access token + refresh token) ou session cookie
-  `httpOnly; secure; sameSite=strict`.
-- **Logout:** invalidar refresh token em servidor (não só no client) para impedir reuso de token
-  roubado.
-
-## A08 — Software and Data Integrity Failures
-
-- **Dependências:** escanear CVEs conhecidos — ver seção "Dependências vulneráveis" abaixo.
-- **Updates de schema:** Flyway/Liquibase com checksum verificado, nunca `ddl-auto: update` em
-  produção.
-- **Deserialização:** nunca `ObjectInputStream`/`readObject` com dados do client; prefira JSON com
-  Jackson (`@JsonIgnoreProperties(ignoreUnknown = true)`).
-
-## A09 — Security Logging and Monitoring Failures
-
-- **Logar** falhas de autenticação, tentativas de privilege escalation, falhas de autorização,
-  rate limit triggers — **sem** logar o segredo que falhou (ver `padrao-de-logs-java`).
-- **Alertar** quando há pico de falhas de login (possível credential stuffing).
-
-## A10 — Server-Side Request Forgery (SSRF)
-
-Quando o backend faz request a uma URL fornecida pelo client (webhook, import por URL, avatar):
-
-```java
-// ERRADO - aceita qualquer URL; atacante aponta para http://169.254.169.254/... (metadata service)
-String url = request.getUrl();
-HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-
-// CORRETO - resolve o host e bloqueia ranges privados/loopback antes de conectar
-URI uri = new URI(url);
-InetAddress addr = InetAddress.getByName(uri.getHost());
-if (addr.isLoopbackAddress() || addr.isSiteLocalAddress() || addr.isAnyLocalAddress()) {
-    throw new BusinessException("URL nao permitida");
-}
-HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
-```
-
-# Validação de entrada (Bean Validation)
-
-Toda entrada do client passa por `@Valid` no DTO de request (ver `api-rest-design`). Nunca confie
-em validação só no client — o backend sempre revalida.
-
-```java
-public record CriarUsuarioRequest(
-    @NotBlank @Size(max = 200) String nome,
-    @NotBlank @Email @Size(max = 254) String email,    // max 254 (RFC 5321)
-    @NotBlank @Size(min = 8, max = 128) String senha, // min 8 impede senhas triviais
-    @Pattern(regexp = "\\d{11}") String cpf             // formato, mas regra de negocio fica no service
-) {}
-```
-
-**Mass assignment:** DTOs de entrada não devem expor campos sensíveis (`role`, `id`, status
-administrativo, `createdAt`) que o cliente não pode setar — use DTOs específicos por operação, não
-a entidade JPA direto no `@RequestBody`. Exemplo: `AdminAtualizarUsuarioRequest` com campo `role`,
-`CriarUsuarioRequest` sem.
-
-# JWT — emissão e validação
-
-```java
-// Emissao
-String token = Jwts.builder()
-        .subject(user.getId().toString())
-        .claim("role", user.getRole())
-        .issuer("sua-app")
-        .audience().add("sua-app").and()
-        .issuedAt(new Date())
-        .expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000))   // 15 min
-        .signWith(Keys.hmacShaKeyFor(secret.getBytes()), Jwts.SIG.HS256)
-        .compact();
-
-// Validacao (em filtro do Spring Security)
-Jws<Claims> parsed = Jwts.parser()
-        .verifyWith(Keys.hmacShaKeyFor(secret.getBytes()))
-        .requireIssuer("sua-app")
-        .requireAudience("sua-app")
-        .build()
-        .parseSignedClaims(token);
-```
-
-**Checklist JWT:**
-- `algorithm` allowlist explícito (rejeitar `none` e algoritmos fracos).
-- `issuer` e `audience` validados.
-- `expiration` curta (≤ 15 min para access token).
-- Refresh token: persistido em servidor (banco) com revogação.
-- Secret em variável de ambiente / vault, **nunca** em código-fonte ou `application.yml` versionado.
-
-# Segredos — onde guardar
-
-**Nunca em código-fonte, `application.yml` versionado, ou logs.** Dev: `application-local.yml`
-(no `.gitignore`) ou env vars. CI: GitHub Actions / Azure DevOps Secrets. Produção: Azure Key
-Vault, AWS Secrets Manager, HashiCorp Vault, ou env var injetada pelo orquestrador (Kubernetes
-`Secret` montado como env).
-
-```java
-// ERRADO - secret em codigo
-private static final String JWT_SECRET = "minha-chave-secreta-123";
-
-// CORRETO - secret de variavel de ambiente
-@Value("${jwt.secret}")
-private String jwtSecret;
-```
-
-# Dependências vulneráveis (CVEs)
-
-Inclua na rotina do projeto (CI ou pre-commit):
-
-```bash
-# OWASP Dependency-Check (Maven)
-mvn org.owasp:dependency-check-maven:check
-
-# Snyk (CLI ou via GitHub Action)
-snyk test
-
-# GitHub Dependabot (PRs automaticas para versoes novas)
-# .github/dependabot.yml
-```
-
-Atualize dependências com CVEs críticos/altos **antes do merge** — mantenha uma SLA de
-remediação (ex.: crítico em 24h, alto em 7 dias).
-
-# Checklist de segurança por feature (use ao implementar)
+### Checklist de segurança por feature (use ao implementar)
 
 - [ ] Entrada validada no DTO (`@Valid` + Bean Validation)
 - [ ] Query parametrizada (nunca concatenação)
@@ -343,6 +95,16 @@ remediação (ex.: crítico em 24h, alto em 7 dias).
 - [ ] Limites de payload, página e custo de consulta; quotas por cliente/tenant onde houver abuso possível
 - [ ] Dependências sem CVE crítico/alto
 - [ ] Migrations validadas (Flyway/Liquibase), sem `ddl-auto: update` em prod
+
+## Gotchas
+
+- Propriedade `spring.security.headers.*` **não existe** no Spring Boot: headers se configuram na
+  `SecurityFilterChain` (`configuracao-headers-cors.md`).
+- `csrf.disable()` só vale para API stateless com Bearer token; com cookie de sessão, mantenha CSRF.
+- Validação de entrada não substitui query parametrizada nem escape na saída.
+- Rate limit de aplicação não substitui proteção volumétrica de borda (WAF/CDN).
+- Limites de tráfego, formato de log e MDC têm fonte única em outras skills
+  (`resiliencia-controle-fluxo-java`, `monitoramento-java`); as references apontam, não copiam.
 
 # Constraints
 
@@ -366,7 +128,7 @@ qualquer revisão de segurança.
 | Situação | Quem | Skill |
 |---|---|---|
 | Implementar feature com segurança (auth, validação) | sessão principal | esta skill |
-| Auditar segurança completa de um serviço (pré-produção) | agent `engenheiro-seguranca` | esta skill + `padrao-de-logs-java` |
+| Auditar segurança completa de um serviço (pré-produção) | agent `engenheiro-seguranca` | esta skill + `monitoramento-java` |
 | Configurar Spring Security (filter chain, JWT, CORS) | sessão principal | esta skill |
 | Escanear dependências em CI | sessão principal | esta skill |
 | Revisão arquitetural completa | agent `java-revisor` (modo `auditoria`) | `revisao-de-codigo-java` + esta skill |

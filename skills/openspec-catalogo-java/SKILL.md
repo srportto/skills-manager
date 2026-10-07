@@ -45,10 +45,10 @@ skills `openspec-*` continuam sendo o fluxo; elas carregam esta skill nos pontos
 | `propose` → design | `design-system-architecture`, `resiliencia-controle-fluxo-java`, `arquitetura-limpa-java`, `mensageria-sqs-kafka`, `persistencia-jpa`, `cloud-architect` | `arquiteto-sistemas` | ADR com alternativas, capacidade, matriz de falhas |
 | `propose` → tasks | `testes-sistemas-java`, `criar-aplicacao-java` | — | Cada tarefa com teste nomeado e comando |
 | `apply` — código de aplicação | `criar-aplicacao-java`, `qualidade-codigo-java`, `java-moderno` | `java-construtor` | Teste RED→GREEN executado |
-| `apply` — refatoração | `qualidade-codigo-java`, `refactoring-remove-parameter` | `refatorador-java` | Testes antes e depois |
+| `apply` — refatoração | `qualidade-codigo-java` (`references/refatoracoes-fowler.md`) | `refatorador-java` | Testes antes e depois |
 | `apply` — SQL e banco | `banco-de-dados-performance`, `persistencia-jpa` | `especialista-banco-dados` | Plano de execução antes/depois |
 | `apply` — pipeline e deploy | `devops-cicd` | `engenheiro-devops` | Build e manifest validados |
-| `apply` — observabilidade | `monitoramento-java`, `padrao-de-logs-java` | `especialista-monitoramento` | Métrica/alerta verificado |
+| `apply` — observabilidade | `monitoramento-java` | `especialista-monitoramento` | Métrica/alerta verificado |
 | Verificação antes do `archive` | `revisao-de-codigo-java`, `testes-sistemas-java` | `java-revisor` (modo auditoria); `engenheiro-seguranca` se tocar autenticação ou dados sensíveis | Veredicto APROVADO |
 | `archive` / sync | — | — | Specs sincronizadas; ADR do design preservada |
 

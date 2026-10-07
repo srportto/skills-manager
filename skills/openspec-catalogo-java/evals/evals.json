@@ -1,0 +1,39 @@
+{
+  "skill_name": "openspec-catalogo-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Terminei a change de adicionar o endpoint de cancelamento (tocou Cancelar.java e pom.xml). Arquive com /opsx:archive.",
+      "expected_output": "Como a change alterou código Java, exige veredicto APROVADO do java-revisor (modo auditoria) antes de arquivar; sem veredicto conta como PENDENTE e bloqueia, salvo risco assumido explicitamente pelo usuário e registrado no resumo",
+      "files": [],
+      "expectations": [
+        "Exige veredicto APROVADO do java-revisor em modo auditoria",
+        "Trata veredicto ausente como PENDENTE e bloqueia o archive",
+        "Só libera com assunção explícita de risco pelo usuário, registrada no resumo do archive"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Marque as tarefas da change como concluídas; o build compilou mas rodei mvn com -DskipTests.",
+      "expected_output": "Recusa marcar [x]: compilação não é teste e -DskipTests não é prova; a tarefa só fecha com o teste executado e a saída lida, teste pulado é pendência",
+      "files": [],
+      "expectations": [
+        "Não marca a tarefa como [x] com -DskipTests",
+        "Afirma que compilação não é teste",
+        "Trata teste pulado como pendência"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Qual skill orienta cada artefato do OpenSpec num projeto Java e qual agent executa as tarefas?",
+      "Vou rodar /opsx:propose num projeto Java; como o catálogo se encaixa nessa fase?",
+      "Configure openspec/config.yaml para usar as skills do catálogo Java."
+    ],
+    "should_not_trigger": [
+      "Refine esta demanda vaga em história com critérios de aceite Dado/Quando/Então.",
+      "Desenhe o diagrama de sequência do checkout para a documentação.",
+      "Revise este PR Java e classifique os achados por severidade."
+    ]
+  }
+}

@@ -48,7 +48,7 @@ acontece, **medido por** métricas M, e o sistema **recupera** em T." Hipóteses
 | Dependência com latência acima do timeout | Requisições terminam no deadline, threads/conexões não acumulam, breaker abre | Deadline, bulkhead, circuit breaker |
 | Cache indisponível | Banco recebe no máximo o orçamento de recomputação; excedente rejeitado/degradado | Limite de recomputação, fallback limitado |
 | Carga sustentada acima da capacidade | Rejeição 503 rápida e medida, filas limitadas, SLO dos que entram preservado | Admissão / load shedding |
-| Banco indisponível | Liveness continua UP (sem reinício em massa), readiness DOWN, recuperação sem tempestade | Semântica de probes, backoff com jitter |
+| Banco indisponível | Liveness e readiness continuam UP (sem reinício em massa nem Service vazio), rotas dependentes com 503 + `Retry-After`, recuperação sem tempestade | Semântica de probes, degradação explícita, backoff com jitter |
 | Retorno após falha | Replay/retries em taxa limitada; latência não explode de novo | Replay controlado, orçamento de retry |
 
 ## Controle de falha em Java (Testcontainers + Toxiproxy)

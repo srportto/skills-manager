@@ -59,7 +59,7 @@ recuperação — ver [experiment-design](references/experiment-design.md)):
 | Consumidor lento | Lag cresce no broker, memória estável, poll mantido, nenhuma mensagem perdida |
 | Dependência com latência > timeout | Deadline respeitado, sem acúmulo de threads/conexões, breaker abre e fecha |
 | Cache indisponível | Banco recebe no máximo o orçamento de recomputação |
-| Banco fora | Liveness UP, readiness DOWN, sem reinício em massa |
+| Banco fora | Liveness e readiness UP (sem reinício em massa nem Service vazio); rotas que usam o banco respondem 503 + `Retry-After` |
 | Retorno após a falha | Retries e replay em taxa limitada; sem segunda queda |
 
 Controle de falha em código Java (Testcontainers + Toxiproxy) — experimento executável:
@@ -77,6 +77,7 @@ escreva-o em Java.
 | Kubernetes | `references/kubernetes-chaos.md` | Pod, node, Litmus, chaos mesh |
 | Ferramentas e automação | `references/chaos-tools.md` | Chaos Monkey, Gremlin, Pumba, CI/CD |
 | Game Days | `references/game-days.md` | Planejar, executar, aprender |
+| Toxiproxy em Java | `references/toxiproxy-java.md` | Injetar latência/timeout em teste Java com hipótese, baseline, abort e recuperação |
 
 ## Checklist de segurança
 
@@ -221,6 +222,8 @@ Todo experimento deve entregar:
 3. **Setup de monitoramento** + configuração de alertas.
 4. **Procedimento de rollback** + controles de segurança testados.
 5. **Learning summary** + melhorias rastreadas.
+
+Template pronto para preencher: `assets/relatorio-experimento.md`.
 
 ## Quem aplica o quê
 

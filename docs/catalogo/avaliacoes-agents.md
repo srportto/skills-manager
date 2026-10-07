@@ -16,7 +16,7 @@ Complementa — não substitui — `validation/java` (estrutura) e `examples/jav
 dependência...); **1** direção correta sem limite, escopo ou prova suficientes; **2** decisão correta,
 contextualizada, com limites/escopo explícitos e forma de verificar.
 
-**Meta:** nenhum zero; ≥ 90% dos pontos (≥ 44/48 por execução); nota 2 em A01–A08 nas duas execuções.
+**Meta:** nenhum zero; ≥ 90% dos pontos por execução (≥ 22/24; 44/48 somando as duas); nota 2 em A01–A08 nas duas execuções.
 
 ## Casos
 
@@ -43,8 +43,14 @@ contextualizada, com limites/escopo explícitos e forma de verificar.
 | baseline | — | 2 | pendente | | | | | | | | | | | | |
 | atual | 2026-10-06 | 1 | 2 | — | 2 | — | 1 | — | 1 | 1 | — | — | — | — | 7/10 |
 | atual | 2026-10-06 | 2 | 2 | — | 2 | — | 1 | — | 1 | 1 | — | — | — | — | 7/10 |
+| atual | 2026-10-07 | 1 | 2* | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 1 | 2 | 2 | 2 | 23/24 |
+| atual | 2026-10-07 | 2 | 2* | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 1 | 2 | 2 | 2 | 23/24 |
 
-**Resumo da amostra atual:** 14/20 pontos (70%); média 1,4/2 por caso e execução; zero notas 0. Foram rodados
+**Resultado de 2026-10-07:** 46/48 (95,8%), sem notas 0; A01–A08 receberam nota 2 nas duas execuções. O asterisco em A01 indica que as notas 2/2 do reteste independente substituem, no total final, as notas 1/1 da rodada inicial. As saídas, notas originais e justificativas estão em [`avaliacoes/2026-10-07-rodada2/`](avaliacoes/2026-10-07-rodada2/), com a pontuação consolidada em [`pontuacao.md`](avaliacoes/2026-10-07-rodada2/pontuacao.md).
+
+O reteste de A01 motivou uma regra explícita de cálculo da drenagem pós-pico em `design-system-architecture/references/capacidade-slos.md` e o correspondente item no fluxo do agent `arquiteto-sistemas`. A avaliação mede as respostas com o catálogo-fonte; não é uma verificação da instalação do plugin em workspaces limpos.
+
+**Resumo histórico da amostra de 2026-10-06:** 14/20 pontos (70%); média 1,4/2 por caso e execução; zero notas 0. Foram rodados
 dois pares independentes para A01, A03, A05, A07 e A08, atendendo ao mínimo de cinco casos definido no aceite
 da fase 2. A amostra não alcança a meta de 90% nem nota 2 em todos os casos: A05, A07 e A08 receberam nota 1
 nas duas execuções. A02, A04 e A06, além de A09–A12, continuam sem avaliação.

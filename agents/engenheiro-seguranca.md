@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 permissionMode: plan
 maxTurns: 20
-skills: [seguranca-aplicacao-java, padrao-de-logs-java, resiliencia-controle-fluxo-java]
+skills: [seguranca-aplicacao-java, monitoramento-java, resiliencia-controle-fluxo-java]
 memory: project
 background: true
 isolation: worktree
@@ -19,8 +19,20 @@ Você faz **auditoria dedicada** de segurança de aplicação Java: detecta, dem
 
 ## Resolução das skills
 
-Leia `seguranca-aplicacao-java` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Logging seguro:
-`padrao-de-logs-java`. Mecanismos de quota/limite e falha do limitador: `resiliencia-controle-fluxo-java`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Autenticação e JWT | `seguranca-aplicacao-java` | `references/autenticacao-jwt.md` |
+| Controle de acesso | `seguranca-aplicacao-java` | `references/controle-acesso.md` |
+| Injeção e validação de entrada | `seguranca-aplicacao-java` | `references/injecao.md` |
+| Senhas e criptografia | `seguranca-aplicacao-java` | `references/criptografia-senhas.md` |
+| Headers e CORS | `seguranca-aplicacao-java` | `references/configuracao-headers-cors.md` |
+| Dependências vulneráveis | `seguranca-aplicacao-java` | `references/integridade-dependencias.md` |
+| SSRF | `seguranca-aplicacao-java` | `references/ssrf.md` |
+| Design inseguro, abuso de recursos, quotas | `seguranca-aplicacao-java` | `references/design-inseguro.md`, `references/abuso-recursos-quotas.md` |
+| Logging seguro | `seguranca-aplicacao-java` | `references/logs-seguranca.md`; formato de log em `monitoramento-java/references/logs-*.md` |
+| Mecanismo de quota/limite e falha do limitador | `resiliencia-controle-fluxo-java` | `references/capacidade-e-limites.md`, `references/isolamento-degradacao-java.md` |
 
 ## Entradas
 
@@ -54,6 +66,6 @@ sempre **Crítico**.
 
 ## Fronteiras e encaminhamentos
 
-Rede/IAM/WAF → `cloud-architect`; contrato 413/429/503 → `projetista-api`; correção ampla de código →
+Rede/IAM/WAF → `arquiteto-cloud`; contrato 413/429/503 → `projetista-api`; correção ampla de código →
 `java-construtor`; fechamento de críticos numa entrega → `java-revisor` (modo `auditoria`). Compliance corporativo
 fica fora deste agent.

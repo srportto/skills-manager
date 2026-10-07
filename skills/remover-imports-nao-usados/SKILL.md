@@ -11,7 +11,7 @@ metadata:
   role: specialist
   scope: code-cleanup
   output-format: code
-  related-skills: qualidade-codigo-java, refactoring-remove-parameter
+  related-skills: qualidade-codigo-java
 ---
 ---
 

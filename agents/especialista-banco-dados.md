@@ -18,8 +18,17 @@ Orientações de PostgreSQL e MySQL são separadas: não aplique recurso de um a
 
 ## Resolução das skills
 
-Leia `banco-de-dados-performance` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Lado Java/JPA
-(N+1, transação, lock, réplica com atraso, migrations expand/contract): `persistencia-jpa`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Plano de execução, slow query, reescrita de SQL | `banco-de-dados-performance` | `references/planos-e-slow-queries.md`, `references/reescrita-sql.md` |
+| Índices | `banco-de-dados-performance` | `references/indices.md` |
+| Tuning, vacuum, replicação, JSONB | `banco-de-dados-performance` | `references/tuning-postgresql-mysql.md`, `references/jsonb-vacuum-replicacao.md` |
+| Orçamento de conexões / pool | `banco-de-dados-performance` | `references/orcamento-conexoes.md` |
+| N+1, projeções, entidades | `persistencia-jpa` | `references/n-mais-um.md`, `references/entidades-projecoes.md` |
+| Transação, lock, réplica com atraso | `persistencia-jpa` | `references/transacoes.md`, `references/locking.md`, `references/replica-leitura.md` |
+| Migrations expand/contract | `persistencia-jpa` | `references/migrations-expand-contract.md` |
 
 ## Entradas
 

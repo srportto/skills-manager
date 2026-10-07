@@ -4,13 +4,47 @@ Catálogo de **skills** e **agents** para engenharia de software e system design
 Spring Boot 4). Use para consultar convenções, decidir arquitetura, construir, revisar e operar
 sistemas Java com limites de recursos explícitos e evidência de funcionamento.
 
+## Comece aqui
+
+1. **Instale o plugin** (detalhes na seção [Instalação como plugin do Claude Code](#instalação-como-plugin-do-claude-code)):
+   `/plugin marketplace add srportto/skills-manager` e `/plugin install catalogo-java@srportto-catalogo`.
+2. **Use um destes 3 comandos** (finos: só delegam ao agent e à skill certos):
+   - `/java:nova-app` — cria uma aplicação Java hexagonal buildável e a audita ao fim.
+   - `/java:revisar` — revisa diff, classe ou entrega com o `java-revisor`.
+   - `/opsx:propose` — abre uma change OpenSpec com todos os artefatos.
+3. **Não decore nomes de skill**: o comando aciona o agent, e o agent lê só a skill e a reference do
+   assunto (tabela "Resolução das skills" de cada agent).
+
+```mermaid
+flowchart LR
+    pedido["Pedido: revisar PR com N+1"] --> comando["/java:revisar"]
+    comando --> agent["agent java-revisor"]
+    agent --> skill["skill persistencia-jpa"]
+    skill --> reference["references/n-mais-um.md"]
+```
+
 ## Fonte e instalação
+
+### Instalação como plugin do Claude Code
+
+```text
+/plugin marketplace add srportto/skills-manager
+/plugin install catalogo-java@srportto-catalogo
+```
+
+Skills, agents e comandos `/opsx:*` passam a vir do plugin `catalogo-java` (marketplace `srportto-catalogo`).
+Validação manual pendente: o teste ponta a ponta numa sessão limpa ainda não foi registrado; o
+`PluginManifestoTest` só garante a coerência dos manifestos em `.claude-plugin/`.
+
+A cópia manual descrita abaixo continua válida como alternativa.
+
+### Cópia manual (alternativa)
 
 Este repositório é a **fonte** do catálogo:
 
 | Conteúdo | Fonte (este repositório) | Destino típico de instalação |
 |---|---|---|
-| Skills | `skills/<nome>/SKILL.md` (+ `references/`) | `.claude/skills/<nome>/SKILL.md`, `.codex/skills/...` |
+| Skills | `skills/<nome>/SKILL.md` (+ `references/`, `assets/`, `evals/`) | `.claude/skills/<nome>/SKILL.md`, `.codex/skills/...` |
 | Agents | `agents/<nome>.md` | `.claude/agents/<nome>.md` |
 | Exemplos Java executáveis | `examples/java/` | permanecem no repositório (não são instalados) |
 | Validação do catálogo | `validation/java/` | permanece no repositório |
@@ -52,28 +86,27 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 
 ## Inventário
 
+31 skills, uma pasta cada em `skills/`: 21 da trilha Java, 1 de fluxo spec-driven e 9 auxiliares.
+
 ### Trilha Java — engenharia, arquitetura e operação
 
 | Skill | Responsabilidade | Agents principais |
 |---|---|---|
 | `api-rest-design` | Contrato REST, OpenAPI 3.1, paginação, RFC 9457, 429/503 e idempotência | `projetista-api` |
-| `arquitetura-limpa-java` | Camadas hexagonais, DDD tático/estratégico, fronteiras | `java-revisor`, `java-construtor` |
+| `arquitetura-limpa-java` | Camadas hexagonais (e clássicas), módulos Spring, DDD tático/estratégico, fronteiras | `java-revisor`, `java-construtor` |
 | `banco-de-dados-performance` | SQL/SGBD: EXPLAIN, índices, tuning, conexões, replicação | `especialista-banco-dados` |
 | `chaos-engineer` | Experimentos de falha, game days, abort e recuperação | `engenheiro-chaos` |
-| `cloud-architect` | Topologia de nuvem, DNS/LB/CDN, IAM, DR, FinOps | `cloud-architect` |
+| `cloud-architect` | Topologia de nuvem, DNS/LB/CDN, IAM, DR, FinOps | `arquiteto-cloud` |
 | `criar-aplicacao-java` | Esqueleto Spring Boot 4 + variantes (REST, banco, SQS, Kafka) | `java-construtor` |
 | `design-system-architecture` | System design, capacidade/SLO, consistência, protocolos, ADR, estudos de caso | `arquiteto-sistemas` |
 | `devops-cicd` | Pipeline, Dockerfile, manifests K8s, probes e drenagem | `engenheiro-devops` |
 | `gerar-diagramas` | Diagramas Mermaid versionados | sessão principal |
-| `java-architecture` | Arquitetura interna Spring clássica e escolha de módulos | sessão principal |
 | `java-moderno` | Features do Java 25 (records, sealed, virtual threads...) | `java-construtor`, `java-revisor` |
 | `mensageria-sqs-kafka` | Ack/offset, DLQ, idempotência, outbox, controle de consumo e replay | `java-construtor`, `java-revisor` |
-| `monitoramento-java` | Métricas, tracing, SLO/saturação, alertas, health groups | `especialista-monitoramento` |
-| `padrao-de-logs-java` | Logs estruturados, MDC, níveis e correlação | `especialista-monitoramento`, `java-revisor` |
+| `monitoramento-java` | Logs (JSON, MDC, níveis), métricas, tracing, SLO/saturação, alertas, health groups | `especialista-monitoramento`, `java-revisor`, `engenheiro-seguranca` |
 | `padroes-de-projeto-java` | GoF e quando **não** aplicar | `java-revisor`, `refatorador-java` |
 | `persistencia-jpa` | JPA/Hibernate, transações, locking, idempotência transacional | `especialista-banco-dados`, `java-construtor` |
 | `qualidade-codigo-java` | Clean code e refactorings aplicados | `java-construtor`, `refatorador-java` |
-| `refactoring-remove-parameter` | Passo a passo do Remove Parameter | `refatorador-java` |
 | `refinamento-de-historias` | Demanda → história pronta (DoR, critérios observáveis, limites) | sessão principal |
 | `resiliencia-controle-fluxo-java` | Backpressure, admissão, rate limiting, deadline, retry, breaker, bulkhead, fallback | `arquiteto-sistemas`, `java-construtor`, `java-revisor` |
 | `revisao-de-codigo-java` | Checklist de revisão por severidade | `java-revisor`, `projetista-api` |
@@ -104,7 +137,7 @@ Preservadas sem reescrita; a regra "todo exemplo de programação é Java" não 
 | Agent | Papel | Entrega verificável |
 |---|---|---|
 | `arquiteto-sistemas` | Decide arquitetura, capacidade, consistência e proteções | ADR + orçamento de capacidade + matriz de falhas |
-| `cloud-architect` | Topologia de nuvem, limites de serviço, DR e custo | Topologia + capacidade + custo + plano de recuperação |
+| `arquiteto-cloud` | Topologia de nuvem, limites de serviço, DR e custo | Topologia + capacidade + custo + plano de recuperação |
 | `engenheiro-chaos` | Exercita sobrecarga, falhas e recuperação | Hipótese + baseline + abort + relatório |
 | `engenheiro-devops` | Pipeline, imagem, manifests, probes e drenagem | Pipeline e ciclo de vida verificados |
 | `engenheiro-seguranca` | Auditoria dedicada, abuso de recursos e limites por identidade | Modelo de ameaça + testes de abuso |
@@ -121,7 +154,7 @@ falhas.
 ## Estrutura da fonte
 
 ```text
-skills/                      # uma pasta por skill (SKILL.md + references/ opcionais)
+skills/                      # uma pasta por skill (SKILL.md + references/, assets/, evals/ opcionais)
 agents/                      # um .md por agent
 docs/catalogo/               # convenções, matriz de cobertura, compatibilidade, avaliações de agents
 examples/java/               # exemplos Maven executáveis (fundamentos, linguagem, reativo, integracao, carga)
@@ -137,6 +170,7 @@ validation/java/             # testes Java que validam estrutura, links e lingua
 Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 
 - Frontmatter com `name`, `description` (gatilhos em pt-BR) e `metadata` opcional.
+- Anatomia (`SKILL.md` ≤ 500 linhas, `references/`, `assets/`, `evals/evals.json`) em [convenções](../docs/catalogo/convencoes.md#anatomia-de-skill).
 - Quando usar / **quando não usar**, entradas, decisão, passo a passo, saída, critérios de validação e
   limites; referências longas em `references/`, lidas sob demanda.
 - Explicações e comentários de código em português; termos técnicos consagrados em inglês.
@@ -148,7 +182,7 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 | Tarefa | Skill principal | Skills complementares |
 |---|---|---|
 | Criar aplicação nova do zero | `criar-aplicacao-java` | `arquitetura-limpa-java`, `mensageria-sqs-kafka`, `persistencia-jpa` |
-| Dúvida sobre em qual camada colocar código | `arquitetura-limpa-java` | `java-architecture` |
+| Dúvida sobre em qual camada colocar código | `arquitetura-limpa-java` | `criar-aplicacao-java` |
 | Desenhar sistema distribuído, estimar capacidade, escrever ADR | `design-system-architecture` | `resiliencia-controle-fluxo-java`, `arquitetura-limpa-java` |
 | Proteger fluxo contra sobrecarga/falha (fila, retry, breaker, bulkhead) | `resiliencia-controle-fluxo-java` | `testes-sistemas-java`, `monitoramento-java` |
 | Provar concorrência, idempotência, falha ou carga | `testes-sistemas-java` | `resiliencia-controle-fluxo-java` |
@@ -156,12 +190,12 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 | Desenhar contrato de API | `api-rest-design` | `arquitetura-limpa-java` |
 | Resolver N+1, LazyInit, dirty checking | `persistencia-jpa` | `banco-de-dados-performance` |
 | Otimizar query SQL, criar índice, tuning, orçamento de conexões | `banco-de-dados-performance` | `persistencia-jpa` |
-| Padronizar logs (JSON, MDC, traceId) | `padrao-de-logs-java` | `monitoramento-java` |
-| Configurar observabilidade, SLO e alertas | `monitoramento-java` | `padrao-de-logs-java` |
+| Padronizar logs (JSON, MDC, traceId) | `monitoramento-java` | `revisao-de-codigo-java` |
+| Configurar observabilidade, SLO e alertas | `monitoramento-java` | `devops-cicd` |
 | Implementar autenticação/autorização ou quotas | `seguranca-aplicacao-java` | `resiliencia-controle-fluxo-java` |
 | Refinar demanda/história bruta | `refinamento-de-historias` | `openspec-propose`, `api-rest-design`, `design-system-architecture` |
 | Revisar diff/PR | `revisao-de-codigo-java` | `testes-sistemas-java`, `arquitetura-limpa-java`, `persistencia-jpa` |
-| Aplicar refactoring | `qualidade-codigo-java` | `refactoring-remove-parameter` |
+| Aplicar refactoring | `qualidade-codigo-java` | `remover-imports-nao-usados` |
 | Escolher entre patterns | `padroes-de-projeto-java` | `qualidade-codigo-java` |
 | Migrar para features modernas Java | `java-moderno` | `revisao-de-codigo-java` |
 | Adicionar mensageria (SQS/Kafka) | `mensageria-sqs-kafka` | `criar-aplicacao-java`, `resiliencia-controle-fluxo-java` |
@@ -195,6 +229,17 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 `java-revisor` é a última linha de defesa antes de algo ser declarado pronto; os modos diferem em
 amplitude (`tempestivo` = diff pontual; `auditoria` = entrega completa com veredicto
 APROVADO/REPROVADO/PENDENTE quando faltar evidência executada).
+
+## Migração de nomes
+
+Skills e agents que mudaram de nome ou foram fundidos; use o destino indicado.
+
+| Nome antigo | Destino | Observação |
+|---|---|---|
+| `refactoring-remove-parameter` | `qualidade-codigo-java` | `references/refatoracoes-fowler.md#remove-parameter` |
+| `java-architecture` | `arquitetura-limpa-java` + `testes-sistemas-java` | camadas clássicas em `references/camadas-classicas.md`, módulos Spring em `references/modulos-spring.md`; testes de slice e Testcontainers em `testes-sistemas-java/references/testes-slice-spring.md` |
+| `padrao-de-logs-java` | `monitoramento-java` | `references/logs-estruturados.md`, `logs-mdc-correlacao.md`, `logs-por-camada.md` |
+| agent `cloud-architect` | agent `arquiteto-cloud` | nome igual ao da skill `cloud-architect` causava ambiguidade; a skill mantém o nome |
 
 ## Validação do catálogo
 

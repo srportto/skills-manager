@@ -2,6 +2,18 @@
 
 Comprehensive guide for cloud cost optimization including reserved instances, spot/preemptible, right-sizing, and FinOps practices.
 
+## Sumário
+
+- [FinOps Framework](#finops-framework)
+- [Compute Cost Optimization](#compute-cost-optimization)
+- [Storage Cost Optimization](#storage-cost-optimization)
+- [Network Cost Optimization](#network-cost-optimization)
+- [Serverless Cost Optimization](#serverless-cost-optimization)
+- [Cost Allocation and Tagging](#cost-allocation-and-tagging)
+- [Automation and Governance](#automation-and-governance)
+- [Cost Metrics and KPIs](#cost-metrics-and-kpis)
+- [Quick Wins Checklist](#quick-wins-checklist)
+
 ## FinOps Framework
 
 ### FinOps Principles

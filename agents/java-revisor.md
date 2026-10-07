@@ -6,7 +6,7 @@ model: opus
 effort: high
 permissionMode: plan
 maxTurns: 20
-skills: [revisao-de-codigo-java, testes-sistemas-java, resiliencia-controle-fluxo-java, arquitetura-limpa-java, padroes-de-projeto-java, padrao-de-logs-java, java-moderno, persistencia-jpa, mensageria-sqs-kafka, qualidade-codigo-java, seguranca-aplicacao-java, spring-data-redis]
+skills: [revisao-de-codigo-java, testes-sistemas-java, resiliencia-controle-fluxo-java, arquitetura-limpa-java, padroes-de-projeto-java, monitoramento-java, java-moderno, persistencia-jpa, mensageria-sqs-kafka, qualidade-codigo-java, seguranca-aplicacao-java, spring-data-redis]
 memory: project
 background: false
 isolation: none
@@ -23,12 +23,29 @@ A diferença é amplitude da varredura e peso do veredicto, não o critério.
 
 ## Resolução das skills
 
-Leia o `SKILL.md` pertinente (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Base sempre:
-`revisao-de-codigo-java`. Conforme o diff: camadas/DDD → `arquitetura-limpa-java`; banco →
-`persistencia-jpa`; broker → `mensageria-sqs-kafka`; Redis → `spring-data-redis`; fila/concorrência/dependência
-remota → `resiliencia-controle-fluxo-java`; provas → `testes-sistemas-java`; auth/entrada →
-`seguranca-aplicacao-java`; logs → `padrao-de-logs-java`; patterns → `padroes-de-projeto-java`; refactoring →
-`qualidade-codigo-java`; features modernas → `java-moderno`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Checklist base: correção, `Optional`, exceções, recursos | `revisao-de-codigo-java` | `references/checklist-correcao.md` |
+| Contrato HTTP, DTO | `revisao-de-codigo-java` | `references/checklist-contrato-http.md` |
+| Imutabilidade, streams, nomes, complexidade, DRY | `revisao-de-codigo-java` | `references/checklist-estilo.md` |
+| Resiliência, testes, evidência | `revisao-de-codigo-java` | `references/checklist-testes-resiliencia.md` |
+| Logs e camadas no diff | `revisao-de-codigo-java` | `references/checklist-logs-arquitetura.md` |
+| Exemplos de achados e severidade | `revisao-de-codigo-java` | `references/exemplos-revisao-java.md` |
+| Camadas, DDD, fronteiras | `arquitetura-limpa-java` | `references/camadas-classicas.md`, `references/ddd-tatico.md`, `references/anti-padroes-e-gotchas.md` |
+| N+1, `LazyInitializationException`, transação, lock | `persistencia-jpa` | `references/n-mais-um.md`, `references/transacoes.md`, `references/locking.md` |
+| DLQ, `RedrivePolicy`, redrive SQS | `mensageria-sqs-kafka` | `references/sqs-dlq-redrive.md` |
+| Ponto central de erro, ack/commit, interceptor | `mensageria-sqs-kafka` | `references/erro-central-interceptor.md` |
+| Idempotência, outbox, replay | `mensageria-sqs-kafka` | `references/idempotencia-outbox-replay-java.md` |
+| Cache, rate limiting, streams Redis | `spring-data-redis` | `references/cache.md`, `references/cache-protecao-java.md`, `references/rate-limiting.md`, `references/streams-consumer-group.md` |
+| Fila/espera sem limite, timeout, retry, bulkhead | `resiliencia-controle-fluxo-java` | `references/backpressure-java.md`, `references/timeouts-retries-java.md`, `references/isolamento-degradacao-java.md` |
+| Provas: concorrência, falha, contrato, slice | `testes-sistemas-java` | `references/concorrencia-resiliencia.md`, `references/contratos-arquitetura.md`, `references/testes-slice-spring.md` |
+| Auth, JWT, injeção, entrada | `seguranca-aplicacao-java` | `references/autenticacao-jwt.md`, `references/injecao.md`, `references/controle-acesso.md` |
+| Formato de log, MDC, nível por camada | `monitoramento-java` | `references/logs-estruturados.md`, `references/logs-mdc-correlacao.md`, `references/logs-por-camada.md` |
+| Padrões de projeto (e quando não aplicar) | `padroes-de-projeto-java` | `references/quando-nao-aplicar.md`, `references/strategy-lista-injetada.md` |
+| Clean code, exceções, imutabilidade | `qualidade-codigo-java` | `references/clean-code-principios.md`, `references/excecoes.md`, `references/imutabilidade-optional-streams.md` |
+| Features modernas do Java | `java-moderno` | `references/records.md`, `references/sealed-e-switch.md`, `references/pattern-matching.md` |
 
 ## Entradas
 
@@ -40,7 +57,7 @@ declarados. Não peça de novo o que veio no pedido.
 - **Mensageria:** toda fila SQS nova/alterada tem DLQ + `RedrivePolicy` (sem DLQ = **Crítico**, inclusive
   local); existe ponto central de decisão de erro (`try/catch` decidindo ack inline = **Crítico**); ack/commit
   só depois do efeito durável ou da quarentena durável; trabalho em voo limitado; poll mantido.
-- **Resiliência e efeitos** (tabela 8.1 de `revisao-de-codigo-java`): fila/espera sem limite, retry amplificado,
+- **Resiliência e efeitos** (tabela 8.1 em `revisao-de-codigo-java/references/checklist-testes-resiliencia.md`): fila/espera sem limite, retry amplificado,
   idempotência ausente em efeito repetível, fallback que inventa sucesso, permissão liberada antes do fim do
   trabalho assíncrono, liveness acoplada a dependência, `traceId` como label de métrica.
 - **Invariantes provados:** para cada risco relevante, existe teste que falharia sem a proteção? Teste que só
@@ -63,6 +80,18 @@ declarados. Não peça de novo o que veio no pedido.
 - Tabela de evidência: compilação, unitários, integração, carga — executado (com contagem) ou **pendente**.
 - **Veredicto (auditoria):** APROVADO; REPROVADO (1+ Crítico); **PENDENTE** quando faltar evidência executada
   para um risco relevante (ex.: build passou com testes pulados → PENDENTE, nunca APROVADO).
+- **PENDENTE de resiliência** sempre lista as **três** famílias de prova, cada uma com o teste que a demonstra e
+  o comando que a executa (`Skipped: 0` exigido). Faltando uma, o veredicto está incompleto:
+  1. **Concorrência:** o limite vale sob disputa (máximo ativo ≤ limite, permissão liberada após falha). Ex.:
+     `mvn clean verify` com latch/barreira.
+  2. **Falha:** dependência lenta/fora → timeout, retry limitado, rejeição/fallback, ack/DLQ corretos. Ex.:
+     `mvn -Pintegracao clean verify` (Testcontainers/Toxiproxy).
+  3. **Recuperação:** depois da falha ou do pico, o sistema volta sozinho — dependência restaurada volta a
+     atender (breaker em half-open fecha), backlog/lag drena dentro do prazo, replay/retry em taxa limitada sem
+     segunda queda. Ex.: o mesmo IT com a falha removida no meio do teste, ou `mvn -Pcarga verify` medindo a
+     drenagem após o pico.
+  Fonte da tabela risco → prova: `testes-sistemas-java` e
+  `revisao-de-codigo-java/references/checklist-testes-resiliencia.md` ("Evidência executada").
 
 ## Fronteiras e encaminhamentos
 

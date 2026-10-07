@@ -67,6 +67,31 @@ Deadline ponta a ponta definido pelo cliente/contrato; cada salto consome parte 
 
 ## 6. Exercício de aceite — buffer não resolve déficit
 
+Para um pico finito, calcule também quanto backlog sobra e em quanto tempo ele será drenado. Seja `B0` o
+backlog existente no início do pico, `λpico` a taxa de entrada durante o pico, `μ` a capacidade de
+processamento e `T` a duração do pico. Com taxas constantes durante o pico:
+
+```text
+Bfim = max(0, B0 + (λpico − μ) × T)
+tempo de drenagem = Bfim ÷ (μ − λpós-pico), somente se μ > λpós-pico
+```
+
+`Bfim` é o backlog total ao fim do pico; `λpós-pico` é a taxa que continua chegando durante a recuperação.
+As fórmulas de drenagem pressupõem taxas constantes também durante a recuperação. Se `μ ≤ λpós-pico`, o
+backlog não diminui e não há tempo finito de drenagem. Para cumprir um prazo de recuperação `D > 0`,
+dimensione a capacidade para `μ ≥ λpós-pico + Bfim ÷ D`. Registre as unidades e trate `B0`, `T`, as taxas e
+`D` como hipóteses até medi-las.
+
+No cenário de 1.000 eventos/s de entrada e 100/s de processamento, o déficit é 900 eventos/s. Se esse pico
+durar `T` segundos, acumula `900 × T` eventos. Se a entrada parar após o pico, a 100/s de processamento a
+drenagem leva `9 × T` segundos. Se a entrada voltar a 1.000/s, 100/s não drena nada; mesmo elevando o
+processamento a 1.200/s, a margem de drenagem é só 200/s e serão necessários `4,5 × T` segundos. Assim,
+o pico pode ser absorvível por um buffer limitado e ainda deixar atraso acima do prazo de negócio.
+
+Multiplique `Bfim` pelo payload e pelo overhead medido para estimar o armazenamento em memória; para um
+broker, inclua retenção, replicação e índices. Verifique ainda a idade máxima dos itens e se o processamento
+atrasado continua útil.
+
 Chegam 1.000 itens/s, processam-se 800 itens/s durante 10 s, itens de 2 KiB:
 
 - Déficit: 200 itens/s × 10 s = **2.000 itens** acumulados.

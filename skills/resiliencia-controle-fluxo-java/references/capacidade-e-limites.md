@@ -55,3 +55,31 @@ O [módulo fundamentos](../../../examples/java/fundamentos/pom.xml) mede máximo
   [LeakyBucket](../../../examples/java/fundamentos/src/main/java/br/com/srportto/exemplos/LeakyBucket.java).
 - Taxa com burst limitado e isolamento por tenant (um balde por chave):
   [TokenBucket](../../../examples/java/fundamentos/src/main/java/br/com/srportto/exemplos/TokenBucket.java).
+
+## Antes/depois (Java 25): admissão por capacidade e prioridade
+
+```java
+// ANTES: um único limite para tudo; relatório pesado consome a capacidade do checkout
+var limite = new Semaphore(20);
+limite.acquire();                         // espera sem limite: a fila de espera é invisível
+try { atender(requisicao); } finally { limite.release(); }
+```
+
+```java
+// DEPOIS: capacidade 20 com 4 reservadas ao fluxo crítico; rejeita cedo se o deadline não cobre o custo mínimo
+var admissao = new AdmissaoPorPrioridade(20, 4, Duration.ofMillis(50));
+try (var permissao = admissao.admitir(Prioridade.NORMAL, orcamento.restante())) {
+    atender(requisicao);
+} catch (AdmissaoPorPrioridade.Rejeitada r) {
+    return Resposta.indisponivel(r.motivo()); // SATURADO ou DEADLINE_INSUFICIENTE -> 503/429 com métrica
+}
+```
+
+Provas: [AdmissaoPorPrioridadeTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/AdmissaoPorPrioridadeTest.java)
+(reserva crítica preservada sob saturação; rejeição cedo por deadline; fechar duas vezes não devolve capacidade
+extra) e [FilaLimitadaTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/FilaLimitadaTest.java) (capacidade nunca
+excedida). Taxa por tenant: [TokenBucketTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/TokenBucketTest.java);
+ritmo constante: [LeakyBucketTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/LeakyBucketTest.java). A implementação
+do contador distribuído em Redis/Valkey está em `spring-data-redis`
+([rate-limiting](../../spring-data-redis/references/rate-limiting.md)); a política (local × global, falha do
+coordenador) fica **aqui**, na seção "Rate limiting distribuído".

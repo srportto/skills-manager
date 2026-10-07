@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -10,15 +11,21 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.datasource.DelegatingDataSource;
 
+import javax.sql.DataSource;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.SQLTransientConnectionException;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,10 +35,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"checkout.capacidade=2", "spring.datasource.url=jdbc:h2:mem:checkout-${random.uuid};DB_CLOSE_DELAY=-1"})
 class CheckoutApplicationTest {
-    /** Provedor de pagamento controlado pelo teste: pode segurar chamadas para simular dependência lenta. */
+    /**
+     * Dependências controladas pelo teste: provedor de pagamento que pode segurar chamadas (dependência lenta) e
+     * banco "desligável" (conexão recusada como no timeout do pool).
+     */
     @TestConfiguration(proxyBeanMethods = false)
     static class PagamentoDeTeste {
         static final AtomicReference<CountDownLatch> BLOQUEIO = new AtomicReference<>(new CountDownLatch(0));
+        static final AtomicBoolean BANCO_FORA = new AtomicBoolean();
+
+        @Bean
+        @Primary
+        DataSource bancoDesligavel() {
+            var h2 = new JdbcDataSource();
+            h2.setURL("jdbc:h2:mem:checkout-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
+            return new DelegatingDataSource(h2) {
+                @Override
+                public Connection getConnection() throws SQLException {
+                    if (BANCO_FORA.get()) throw new SQLTransientConnectionException("Banco indisponível");
+                    return super.getConnection();
+                }
+            };
+        }
 
         @Bean
         @Primary
@@ -53,6 +78,7 @@ class CheckoutApplicationTest {
 
     @AfterEach
     void liberar() {
+        PagamentoDeTeste.BANCO_FORA.set(false);
         PagamentoDeTeste.BLOQUEIO.get().countDown();
         PagamentoDeTeste.BLOQUEIO.set(new CountDownLatch(0));
     }
@@ -115,11 +141,34 @@ class CheckoutApplicationTest {
         assertTrue(rejeitada.headers().firstValue("Retry-After").isPresent());
         // A rejeição precisa ser barata: não espera a dependência lenta.
         assertTrue(duracaoMs < 1_000, "rejeição levou " + duracaoMs + " ms");
-        assertEquals(1, registro.get("app.requisicoes").tag("resultado", "rejeitada").timer().count());
+        // Filtra também pela operação: só por resultado, timer() pega qualquer uma das séries (criar-pedido/outra).
+        assertEquals(1, registro.get("app.requisicoes").tag("operacao", "criar-pedido").tag("resultado", "rejeitada").timer().count());
 
         PagamentoDeTeste.BLOQUEIO.get().countDown();
         assertEquals(201, a.get(10, TimeUnit.SECONDS).statusCode());
         assertEquals(201, b.get(10, TimeUnit.SECONDS).statusCode());
+    }
+
+    private int status(String caminho) throws Exception {
+        return enviar(HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho)).GET().build()).statusCode();
+    }
+
+    @DisplayName("CheckoutApplication: Banco fora deve degradar com 503 e Retry-After sem derrubar as probes")
+    @Test
+    void bancoForaDeveDegradarCom503SemDerrubarProbes() throws Exception {
+        PagamentoDeTeste.BANCO_FORA.set(true);
+
+        var resposta = enviar(pedido(UUID.randomUUID().toString(), 1500));
+
+        // Degradação explícita: erro rápido e acionável, não 500 genérico nem Service vazio.
+        assertEquals(503, resposta.statusCode());
+        assertEquals("5", resposta.headers().firstValue("Retry-After").orElse(null));
+        assertTrue(resposta.body().contains("DEPENDENCIA_INDISPONIVEL"), resposta.body());
+        // Banco compartilhado fora da readiness: a réplica segue na rotação e viva; o estado vai para alerta.
+        assertEquals(200, status("/actuator/health/liveness"));
+        assertEquals(200, status("/actuator/health/readiness"));
+        assertEquals(503, status("/actuator/health/dependencias"));
+        assertEquals(200, status("/disponibilidade"));
     }
 
     @DisplayName("CheckoutApplication: Probes e smoke test devem responder")

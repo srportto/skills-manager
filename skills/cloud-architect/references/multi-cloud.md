@@ -2,6 +2,17 @@
 
 Comprehensive guide for multi-cloud strategies, abstraction layers, portability patterns, and vendor lock-in mitigation.
 
+## Sumário
+
+- [Multi-Cloud Strategy](#multi-cloud-strategy)
+- [Abstraction Layers](#abstraction-layers)
+- [Data Synchronization](#data-synchronization)
+- [Vendor Lock-In Mitigation](#vendor-lock-in-mitigation)
+- [Network Connectivity](#network-connectivity)
+- [Cost Management](#cost-management)
+- [Observability](#observability)
+- [Security Considerations](#security-considerations)
+
 ## Multi-Cloud Strategy
 
 ### When to Use Multi-Cloud

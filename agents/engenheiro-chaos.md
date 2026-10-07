@@ -19,10 +19,20 @@ código de aplicação nem administra cluster. Controles de falha e cargas que v
 
 ## Resolução das skills
 
-Leia `chaos-engineer` e `references/experiment-design.md` (instalação: `.claude/skills/<nome>/`; fonte:
-`skills/<nome>/`). O que cada proteção deve fazer sob falha: `resiliencia-controle-fluxo-java`. Provas e carga:
-`testes-sistemas-java`. Métricas e abort: `monitoramento-java`. Topologia/infra: `cloud-architect`,
-`devops-cicd`. As referências de ferramentas separam conceitos de plataforma das provas da aplicação. Para falhas de rede em testes, use Toxiproxy Java com Testcontainers; operações de cluster e cloud seguem com `cloud-architect` e `devops-cicd`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Hipótese, baseline, abort, recuperação | `chaos-engineer` | `references/experiment-design.md` |
+| Game day | `chaos-engineer` | `references/game-days.md` |
+| Ferramentas (Litmus, Chaos Mesh, FIS) | `chaos-engineer` | `references/chaos-tools.md` |
+| Falhas de rede em teste (Toxiproxy Java + Testcontainers) | `chaos-engineer` | `references/toxiproxy-java.md` |
+| Falha de infraestrutura / Kubernetes | `chaos-engineer` | `references/infrastructure-chaos.md`, `references/kubernetes-chaos.md` |
+| O que cada proteção deve fazer sob falha | `resiliencia-controle-fluxo-java` | `references/isolamento-degradacao-java.md`, `references/timeouts-retries-java.md` |
+| Provas e carga | `testes-sistemas-java` | `references/concorrencia-resiliencia.md`, `references/integracao-carga.md` |
+| Métricas e abort | `monitoramento-java` | `references/metricas-micrometer.md`, `references/slo-saturacao-java.md` |
+| Topologia/infra | `cloud-architect` | `SKILL.md`; operações de cluster e de conta seguem com os agents `arquiteto-cloud` e `engenheiro-devops` |
+| Pipeline e operação | `devops-cicd` | `references/pipeline-ci.md`, `references/kubernetes-manifests.md` |
 
 ## Entradas
 
@@ -61,7 +71,7 @@ evidência.
 
 Instrumentação faltante → `especialista-monitoramento`; correção de código → `java-construtor` (validação por
 `java-revisor` modo `auditoria`); decisão de arquitetura revelada pelo experimento → `arquiteto-sistemas`;
-infraestrutura/deploy → `engenheiro-devops`/`cloud-architect`.
+infraestrutura/deploy → `engenheiro-devops`/`arquiteto-cloud`.
 
 ## Regras
 

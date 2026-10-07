@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 permissionMode: acceptEdits
 maxTurns: 20
-skills: [qualidade-codigo-java, refactoring-remove-parameter, remover-imports-nao-usados, padroes-de-projeto-java, testes-sistemas-java]
+skills: [qualidade-codigo-java, remover-imports-nao-usados, padroes-de-projeto-java, testes-sistemas-java]
 memory: project
 background: true
 isolation: worktree
@@ -19,10 +19,15 @@ transação, idempotência, cancelamento, timeouts e liberação de recursos em 
 
 ## Resolução das skills
 
-Leia `qualidade-codigo-java` e, para exemplos completos, `references/refatoracoes-java.md` (instalação:
-`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Remove Parameter: `refactoring-remove-parameter`. Limpeza de
-imports: `remover-imports-nao-usados`. O que **não** refatorar (abstração especulativa): `padroes-de-projeto-java`.
-Testes de caracterização de concorrência, consumo e falha: `testes-sistemas-java`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Remove Parameter e demais refactorings do Fowler | `qualidade-codigo-java` | `references/refatoracoes-fowler.md` (`#remove-parameter`) |
+| Nomes, clean code | `qualidade-codigo-java` | `references/nomenclatura.md`, `references/clean-code-principios.md` |
+| Limpeza de imports | `remover-imports-nao-usados` | `SKILL.md` |
+| O que **não** refatorar (abstração especulativa) | `padroes-de-projeto-java` | `references/quando-nao-aplicar.md` |
+| Testes de caracterização de concorrência, consumo e falha | `testes-sistemas-java` | `references/concorrencia-resiliencia.md` |
 
 ## Entradas
 
@@ -31,8 +36,10 @@ Código-alvo, motivo do refactoring (smell apontado), testes existentes e como r
 ## Fluxo
 
 1. **Confirme o motivo.** Sem smell concreto, não refatore (estilo não é bug).
-2. **Rede de segurança:** rode os testes existentes; se não houver, escreva testes de caracterização do
-   comportamento atual — para consumers/listeners, inclua ordem, momento do ack/commit, idempotência e falha.
+2. **Rede de segurança:** rode os testes existentes; se eles **não cobrem o trecho que você vai alterar** (não
+   só "se não houver testes"), escreva antes testes de caracterização do comportamento atual daquele trecho —
+   para consumers/listeners, inclua ordem, momento do ack/commit, idempotência, falha e cancelamento/revogação.
+   Trecho sem cobertura e sem caracterização não é refatorado: fica fora do diff e vira pendência declarada.
 3. **Aplique em passos pequenos** (Extract Method em 2–3 trechos, não um gigante).
 4. **Valide após cada passo** (`mvn -q compile` + testes do módulo); quebrou → reverta o passo.
 5. **Limpe imports** da classe alterada.
@@ -41,8 +48,17 @@ Código-alvo, motivo do refactoring (smell apontado), testes existentes e como r
 ## Entregas e evidências
 
 Diff por passo, refactoring aplicado e motivo, resultado dos testes **antes e depois** (comando e contagem),
-invariantes preservados explicitamente listados (ex.: "commit continua após o efeito; ordem por partição
-mantida").
+invariantes preservados explicitamente listados, cada um com o teste ou o trecho que o garante.
+
+Para consumer/listener (Kafka, SQS, Redis Streams), a lista tem **sempre os quatro** invariantes. Omitir um
+deles, mesmo que o refactoring não o toque, deixa a entrega incompleta:
+
+| Invariante | O que declarar |
+|---|---|
+| Ordem por partição/chave | Registros da mesma partição continuam em sequência; nenhum paralelismo novo dentro dela |
+| Momento do ack/commit | Continua depois do efeito durável (ou da quarentena); nunca confirma registro não concluído |
+| Idempotência | A chave de deduplicação e o ponto onde é gravada/consultada não mudaram; reentrega após falha continua sem efeito duplicado |
+| Cancelamento/revogação | Interrupção, `close` e revogação de partição seguem com o mesmo commit/espera de antes |
 
 ## Fronteiras e encaminhamentos
 

@@ -5,22 +5,28 @@ description: "Design e auditoria de contratos REST para Java/Spring Boot — mod
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.1.0"
+  version: "1.2.0"
   domain: api-design
   triggers: REST API, OpenAPI, swagger, versionamento, paginação, HATEOAS, RFC 9457, Problem Details, contrato HTTP
   role: architect
   scope: api-contract
   output-format: document
-  related-skills: arquitetura-limpa-java, java-architecture, revisao-de-codigo-java, seguranca-aplicacao-java
+  related-skills: arquitetura-limpa-java, revisao-de-codigo-java, seguranca-aplicacao-java
 ---
 
 # API REST Design (Java/Spring Boot)
 
-## Visão geral
-
 Guia de design de APIs REST aplicadas ao stack Java/Spring Boot deste catálogo. Cobre desde
 modelagem de recursos e versionamento até o contrato HTTP concreto (status, Problem Details RFC 9457,
 paginação, HATEOAS, validação de borda).
+
+## Quando usar
+
+- Desenhar API nova, modelar recursos e escrever o `openapi.yaml`.
+- Auditar contrato existente: status, erro, paginação, versionamento, idempotência e quotas.
+- Padronizar formato de erro (RFC 9457) e paginação entre serviços.
+
+## Quando NÃO usar
 
 **Quando NÃO usar:** para implementar controllers (`@RestController`), use `arquitetura-limpa-java`
 (camada e padrão de DTOs). Para validar a API gerada (testes de contrato, mocks), use
@@ -28,302 +34,74 @@ paginação, HATEOAS, validação de borda).
 serviços), use `arquitetura-limpa-java` (seção DDD) — esta skill é só o **contrato HTTP** de um
 único serviço.
 
-## Workflow de design
+## Entradas
+
+- Domínio e requisitos de negócio; clientes da API (públicos, parceiros, internos).
+- Contrato existente (`openapi.yaml`), se houver, e política de breaking changes.
+- Restrições de capacidade: quotas por cliente, SLO, deadline dos chamadores.
+
+## Decisão
+
+| Pergunta | Se sim | Onde ver |
+|---|---|---|
+| Qual status devolver (400/422/409/429/503)? | Tabela de status e distinção de sobrecarga | [convencoes-rest](references/convencoes-rest.md) |
+| POST com repetição (pagamento/pedido)? | `Idempotency-Key` + 422/409 definido | [idempotencia-quotas-http](references/idempotencia-quotas-http.md) |
+| Lista grande ou feed? | Cursor em vez de offset; teto de página | [paginacao](references/paginacao.md) |
+| Formato de erro? | Problem Details (RFC 9457), não envelope próprio | [problem-details-rfc9457](references/problem-details-rfc9457.md) |
+| Cliente precisa descobrir transições? | HATEOAS (só API pública de longa duração) | [hateoas](references/hateoas.md) |
+| Começar um contrato? | Partir de `assets/openapi-base.yaml` | [openapi-31](references/openapi-31.md) |
+| Entrada do cliente? | Bean Validation no record de request | [validacao-borda](references/validacao-borda.md) |
+
+## Passo a passo
 
 1. **Analise o domínio** — requisitos de negócio, modelos de dados, necessidades dos clientes.
 2. **Modele os recursos** — identifique recursos, relacionamentos e operações antes de escrever
    qualquer linha de OpenAPI.
 3. **Defina endpoints** — URI patterns, métodos HTTP, schemas de request/response (seção
    "Convenções REST" abaixo como checklist).
-4. **Especifique o contrato** — escreva o `openapi.yaml` (3.1); valide com
+4. **Especifique o contrato** — escreva o `openapi.yaml` (3.1) a partir de `assets/openapi-base.yaml`; valide com
    `npx @redocly/cli lint openapi.yaml`.
 5. **Moque e verifique** — `npx @stoplight/prism-cli mock openapi.yaml` antes de implementar.
 6. **Planeje a evolução** — versionamento, deprecation, política de breaking changes.
 
-## Convenções REST (aplicadas a este catálogo)
+## Saída
 
-### Response Envelope
+- `openapi.yaml` 3.1 válido (base: `assets/openapi-base.yaml`) com erros em `application/problem+json`
+  (exemplo de corpo: `assets/problem-details.json`).
+- Lista de decisões de contrato (tradeoffs abaixo) registrada no PR ou ADR.
 
-Todos os endpoints retornam um envelope consistente — opcional, mas útil quando a API é consumida por
-múltiplos clientes que precisam de um ponto único de metadados (timestamp, errorCode). Em sucesso,
-`data` é preenchido e `error` é `null`; em falha, o inverso — `error` traz `code`/`message`/`details`.
+## Validação
 
-```json
-{
-  "success": false,
-  "data": null,
-  "error": { "code": "ORDER_NOT_FOUND", "message": "Order with id 123 not found", "details": [] },
-  "timestamp": "2026-04-13T10:00:00Z"
-}
-```
+- `npx @redocly/cli lint openapi.yaml` sem erros; mock com Prism responde os exemplos.
+- Todo endpoint documenta 400/401/403/404/422 aplicáveis e, quando exposto sob carga, 429/503 com `Retry-After`.
+- POST sujeito a repetição declara `Idempotency-Key` e o status de payload divergente (422 ou 409).
 
-```java
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public record ApiResponse<T>(
-    boolean success,
-    T data,
-    ApiError error,
-    Instant timestamp
-) {
-    public static <T> ApiResponse<T> ok(T data) {
-        return new ApiResponse<>(true, data, null, Instant.now());
-    }
-    public static <T> ApiResponse<T> error(String code, String message) {
-        return new ApiResponse<>(false, null, new ApiError(code, message, List.of()), Instant.now());
-    }
-}
+## Gotchas
 
-public record ApiError(String code, String message, List<String> details) {}
-```
+- Misturar envelope customizado e Problem Details causa inconsistência: escolha **um**.
+- 400 é formato; 422 é regra de negócio; não use 500 para validação.
+- 429 é culpa do cliente (quota); 503 é saturação do serviço e conta no SLO.
+- Quota por `X-Forwarded-For` livre é burlável: identidade vem do token autenticado.
+- Aninhamento de recursos acima de 2 níveis e IDs auto-incrementais vazam volume e permitem enumeração.
 
-> **Alternativa:** Problem Details (RFC 9457) via `ProblemDetail` nativo do Boot 4.x — ver seção
-> dedicada abaixo. Escolha **um** dos dois; misturar os dois causa inconsistência.
+## Guia de references
 
-### HTTP Status Mapping
-
-| Cenário | Status |
-|---------|--------|
-| GET — encontrado | 200 |
-| POST — recurso criado | 201 |
-| PUT/PATCH — atualizado | 200 |
-| DELETE — deletado | 204 (sem corpo) |
-| Falha de validação (formato) | 400 |
-| Não autenticado | 401 |
-| Não autorizado | 403 |
-| Não encontrado | 404 |
-| Conflito (duplicado, otimista) | 409 |
-| Payload acima do limite | 413 |
-| Regra de negócio violada | 422 |
-| Quota/limite **do cliente** excedido | 429 + `Retry-After` |
-| Erro técnico inesperado | 500 |
-| Dependência respondeu erro/inválido (gateway) | 502 |
-| Serviço **saturado** ou indisponível (load shedding, breaker aberto, manutenção) | 503 + `Retry-After` quando houver estimativa |
-| Dependência não respondeu no prazo (gateway/proxy) | 504 |
-
-### Sobrecarga, quotas e repetição
-
-Distinga **quem** está em excesso — a resposta orienta o cliente de forma diferente:
-
-| Situação | Status | O que o cliente deve fazer | Métrica |
-|---|---|---|---|
-| Este cliente/tenant excedeu a quota | 429 | Esperar `Retry-After`; não afeta outros clientes | rejeições por quota, por cliente (agregado) |
-| O serviço está saturado (todos) | 503 | Backoff exponencial com jitter; respeitar `Retry-After` | rejeições por saturação; conta contra o SLO |
-| Requisição repetida com mesma `Idempotency-Key` | mesmo status/corpo da 1ª | Nada: repetição segura | repetições detectadas |
-| Mesma chave, payload diferente | 409 (ou 422, conforme convenção do projeto) | Corrigir o cliente | conflitos de chave |
-
-- **Rejeite cedo**: 429/503 devem sair antes de alocar recursos caros (conexão de banco, chamada remota); a
-  resposta de rejeição tem que ser barata (< poucos ms). Detalhes: `resiliencia-controle-fluxo-java`.
-- **`Retry-After`** (segundos ou data HTTP) só quando houver estimativa útil; clientes do catálogo honram o
-  header **dentro do deadline** e com jitter, nunca em loop imediato.
-- **Identidade da quota** vem da autenticação (cliente/tenant do token), não de header livre como
-  `X-Forwarded-For` — esse só é confiável quando definido pelo proxy de borda conhecido. Quota de aplicação não
-  substitui proteção de borda contra DDoS.
-- **Idempotência em POST** sujeito a repetição (pagamento, pedido): header `Idempotency-Key` obrigatório;
-  persistir chave + escopo + hash do payload + resposta; a repetição devolve a resposta original. Implementação:
-  `mensageria-sqs-kafka` → idempotência, outbox e replay.
-- **Limites de custo da consulta**: tamanho máximo de página, filtros indexados, profundidade/complexidade
-  (GraphQL), tamanho de payload (413) e tempo máximo de execução no banco.
-- **Deadline**: aceite `Request-Timeout`/deadline propagado quando o contrato prever; não processe trabalho
-  cujo prazo já venceu.
-
-Exemplo de 503 com Problem Details (RFC 9457):
-
-```java
-// infrastructure/web — handler central; a rejeição por saturação vira 503 barato e observável.
-@ExceptionHandler(AdmissaoPorPrioridade.Rejeitada.class)
-ResponseEntity<ProblemDetail> saturado(AdmissaoPorPrioridade.Rejeitada rejeicao) {
-    var problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
-            "Serviço temporariamente sem capacidade; tente novamente.");
-    problema.setType(URI.create("https://api.exemplo.com/problemas/capacidade-esgotada"));
-    problema.setProperty("motivo", rejeicao.motivo().name());
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-            .header(HttpHeaders.RETRY_AFTER, "2")
-            .body(problema);
-}
-```
-
-> **Validação vs regra de negócio:** 400 é **formato** errado (campo vazio, `email` mal-formado),
-> sempre via Bean Validation (`@Valid`, ver `arquitetura-limpa-java` mapa de erros). 422 é
-> **regra de negócio** violada (`BusinessException`) — formato ok, valor não faz sentido no domínio.
-
-### Convenções de URL
-
-- **Plural para recursos**: `/orders`, `/users`, `/products`.
-- **Kebab-case** para multi-palavra: `/order-items`, nunca `/orderItems`.
-- **Versionamento em path**: `/api/v1/orders` — preferir route nativo com API versioning (Spring
-  Boot 4) a duplicar controllers por versão.
-- **Recursos aninhados no máximo 2 níveis**: `/orders/{id}/items` ✅,
-  `/orders/{id}/items/{itemId}/notes` ❌.
-- **IDs como UUID** na URL, nunca inteiros auto-incremento (vazam volume e permitem enumeração).
-
-### Versionamento de API (nativo no Boot 4)
-
-Spring Boot 4 / Framework 7 roteia por versão nativamente — sem `@RequestMapping` com prefixo manual
-por controller:
-
-```yaml
-spring:
-  mvc:
-    apiversion:
-      use:
-        path-segment: 1
-      supported: [1.0, 1.1, 2.0]
-      default: 1.0
-```
-
-## Paginação
-
-### Padrão de payload
-
-```json
-{ "success": true, "data": { "content": [...], "page": 0, "size": 20, "totalElements": 150, "totalPages": 8, "last": false } }
-```
-
-Query params: `?page=0&size=20&sort=createdAt,desc`
-
-### Limite o tamanho da página
-
-```yaml
-spring:
-  data:
-    web:
-      pageable:
-        default-page-size: 20
-        max-page-size: 100
-```
-
-### Quando usar cursor em vez de offset
-
-| Caso | Use |
+| Arquivo | Quando ler |
 |---|---|
-| UI com "próxima página" e "página anterior", dataset pequeno-médio | Offset (`page`/`size`) — simples, suporta saltar para página N |
-| Feed infinito, dataset grande, alta concorrência de inserts | Cursor (`?cursor=<opaco>`) — estável quando itens são inseridos no meio da lista; offset fica inconsistente |
-| Export de relatórios | Cursor — não há "fim" previsível |
+| [references/convencoes-rest.md](references/convencoes-rest.md) | Envelope, mapeamento de status, sobrecarga/quotas, URL e versionamento nativo Boot 4 |
+| [references/idempotencia-quotas-http.md](references/idempotencia-quotas-http.md) | `Idempotency-Key`, 429 + `Retry-After`, 503 por admissão, deadline; aponta para [resiliencia-controle-fluxo-java](../resiliencia-controle-fluxo-java/references/capacidade-e-limites.md) e [cache-protecao-java](../spring-data-redis/references/cache-protecao-java.md) |
+| [references/paginacao.md](references/paginacao.md) | Payload de página, limite de tamanho, offset vs cursor |
+| [references/problem-details-rfc9457.md](references/problem-details-rfc9457.md) | Payload de erro RFC 9457 e handler global |
+| [references/hateoas.md](references/hateoas.md) | Links hypermedia: quando usar e como modelar |
+| [references/openapi-31.md](references/openapi-31.md) | Contrato OpenAPI 3.1, lint, mock e geração de código |
+| [references/validacao-borda.md](references/validacao-borda.md) | Bean Validation no request, 400 vs 422 |
+| [assets/openapi-base.yaml](assets/openapi-base.yaml) | Esqueleto OpenAPI 3.1: paginação, ProblemDetail, 429/503 com `Retry-After` |
+| [assets/problem-details.json](assets/problem-details.json) | Corpo de erro RFC 9457 de exemplo |
 
-## Problem Details — RFC 9457
-
-Spring Boot 4.x tem suporte nativo a RFC 9457 via `ProblemDetail` — é o padrão IETF recomendado
-para o payload de erro, em vez de um envelope customizado. Ative com `spring.mvc.problemdetails.enabled: true`
-no `application.yaml`. Shape da resposta:
-
-```json
-{
-  "type": "https://api.example.com/errors/order-not-found",
-  "title": "Order Not Found",
-  "status": 404,
-  "detail": "No order found with id: 550e8400-e29b-41d4-a716-446655440000",
-  "instance": "/api/v1/orders/550e8400-e29b-41d4-a716-446655440000",
-  "errorCode": "ORDER_NOT_FOUND",
-  "timestamp": "2026-04-13T10:00:00Z"
-}
-```
-
-Handler global:
-
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-    @ExceptionHandler(BusinessException.class)
-    public ProblemDetail handleBusiness(BusinessException ex, HttpServletRequest req) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-            HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
-        pd.setType(URI.create("https://api.example.com/errors/" + ex.getCode()));
-        pd.setTitle("Business rule violation");
-        pd.setInstance(URI.create(req.getRequestURI()));
-        pd.setProperty("errorCode", ex.getCode());
-        pd.setProperty("timestamp", Instant.now());
-        return pd;
-    }
-}
-```
-
-`BusinessException`, `ApplicationException` e `@Valid` (Bean Validation) são todos tratados no mesmo
-handler central (`ApiExceptionHandler`, em `infrastructure/web/`). Veja o mapa completo em
-`arquitetura-limpa-java` (seção "Mapa de
-erros e onde lançar").
-
-## HATEOAS (hypermedia)
-
-Use quando a API precisa ser descobrível — clientes navegam pelos relacionamentos via links
-incluídos nas respostas, sem hardcode de URL.
-
-```json
-{
-  "id": "550e8400-...",
-  "status": "PENDING",
-  "customerId": "abc-123",
-  "_links": {
-    "self":    { "href": "/api/v1/orders/550e8400-..." },
-    "approve": { "href": "/api/v1/orders/550e8400-.../approve" },
-    "items":   { "href": "/api/v1/orders/550e8400-.../items" }
-  }
-}
-```
-
-**Quando usar:** APIs públicas com clientes de longa duração (mobile, parceiros B2B). **Quando
-evitar:** APIs internas entre microsserviços, CRUD simples, integrações máquina-a-máquina — preferem
-contrato explícito e estável.
-
-## OpenAPI 3.1 (especificação)
-
-A fonte da verdade do contrato. Gere o `openapi.yaml` **antes** de implementar o controller; o
-controller é uma consequência do contrato, não o contrário.
-
-```yaml
-openapi: 3.1.0
-info:
-  title: Orders API
-  version: 1.0.0
-paths:
-  /api/v1/orders/{id}:
-    get:
-      summary: Get order by id
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        '200':
-          description: Order found
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Order' }
-        '404':
-          description: Not found
-components:
-  schemas:
-    Order:
-      type: object
-      required: [id, status, customerId]
-      properties:
-        id: { type: string, format: uuid }
-        status: { type: string, enum: [PENDING, APPROVED, CANCELLED] }
-        customerId: { type: string, format: uuid }
-```
-
-Em vez de escrever DTO e controller à mão, gere-os a partir do `openapi.yaml` com
-`openapi-generator-maven-plugin` — o contrato vira a fonte única de verdade.
-
-## Validação de borda — Bean Validation
-
-Toda entrada do cliente passa por `@Valid` no DTO de request; o handler global traduz
-`MethodArgumentNotValidException` em `ProblemDetail` 400. Anotações vão **no record de request**,
-nunca na entidade JPA:
-
-```java
-public record CriarProdutoRequest(
-    @NotBlank @Size(max = 200) String nome,
-    @NotNull @DecimalMin(value = "0.01") BigDecimal preco,
-    @NotNull @Min(0) Integer estoque
-) {}
-
-@PostMapping
-public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid CriarProdutoRequest request) {
-    // 400 via @Valid se formato errado; 422 via BusinessException se regra falhar
-    return ResponseEntity.status(201).body(mapper.paraResposta(service.criar(mapper.paraEntidade(request))));
-}
-```
+Código executável relacionado (em `examples/java`):
+[`AdmissaoPorPrioridade`](../../examples/java/fundamentos/src/main/java/br/com/srportto/exemplos/AdmissaoPorPrioridade.java) (origem do 503),
+[`TokenBucket`](../../examples/java/fundamentos/src/main/java/br/com/srportto/exemplos/TokenBucket.java) (quota/429),
+[`ProcessadorIdempotente`](../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/ProcessadorIdempotente.java) (idempotência).
 
 ## Tradeoffs comuns (decidir antes de implementar)
 

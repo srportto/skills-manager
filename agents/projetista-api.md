@@ -19,10 +19,21 @@ consequência.
 
 ## Resolução das skills
 
-Leia `api-rest-design` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Onde o controller vive
-(driving adapter em `infrastructure/web`, chamando `port/in`): `arquitetura-limpa-java`. DTOs e handler de
-erros: `revisao-de-codigo-java` (Contrato HTTP). Testes de contrato: `testes-sistemas-java`. Quotas e rejeição
-por saturação (mecanismo): `resiliencia-controle-fluxo-java`, só quando o pedido envolver limites.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Recursos, verbos, status | `api-rest-design` | `references/convencoes-rest.md` |
+| OpenAPI 3.1 | `api-rest-design` | `references/openapi-31.md` |
+| Paginação | `api-rest-design` | `references/paginacao.md` |
+| Erros (RFC 9457) | `api-rest-design` | `references/problem-details-rfc9457.md` |
+| Validação de borda | `api-rest-design` | `references/validacao-borda.md` |
+| HATEOAS | `api-rest-design` | `references/hateoas.md` |
+| Idempotência, 429/503, quotas | `api-rest-design` | `references/idempotencia-quotas-http.md` |
+| Onde o controller vive (`infrastructure/web` chamando `port/in`) | `arquitetura-limpa-java` | `references/camadas-classicas.md` |
+| DTOs e handler de erros | `revisao-de-codigo-java` | `references/checklist-contrato-http.md` |
+| Testes de contrato | `testes-sistemas-java` | `references/contratos-arquitetura.md` |
+| Rejeição por saturação (só se o pedido envolver limites) | `resiliencia-controle-fluxo-java` | `references/capacidade-e-limites.md` |
 
 ## Entradas
 
@@ -61,4 +72,4 @@ arquivo:linha e correção.
 ## Fronteiras e encaminhamentos
 
 Implementação → `java-construtor`; validação final da entrega Java → `java-revisor` (modo `auditoria`); decisão
-de arquitetura (sync × async, gRPC/GraphQL) → `arquiteto-sistemas`; quotas na borda/WAF → `cloud-architect`.
+de arquitetura (sync × async, gRPC/GraphQL) → `arquiteto-sistemas`; quotas na borda/WAF → `arquiteto-cloud`.

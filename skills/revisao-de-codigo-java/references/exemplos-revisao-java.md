@@ -1,6 +1,19 @@
 # Exemplos de revisão — nomenclatura, tipagem e Object Calisthenics
 
 Exemplos movidos de `revisao-de-codigo-java` (SKILL mantém o checklist). Severidade padrão destes itens: **Menor** (estilo/heurística), salvo quando o achado demonstra um risco concreto (ex.: número mágico que diverge entre dois pontos de uma regra de negócio → Importante).
+## Sumário
+
+- [5.1. Magic Numbers](#51-magic-numbers-replace-magic-number-with-symbolic-constant)
+- [5.2. Tipagem explícita](#52-tipagem-explícita)
+- [5.3. Comentários "por que", não "o que"](#53-comentários-por-que-não-o-que)
+- [6. Complexidade](#6-complexidade)
+- [6.1. Tell, Don't Ask](#61-tell-dont-ask-sem-getters--setters-para-o-dominio)
+- [6.2. Primitive Obsession](#62-primitive-obsession-encapsular-em-value-objectsrecords)
+- [6.3. Bloaters e Change Preventers](#63-bloaters-e-change-preventers-centralização-de-mudança)
+- [6.4. First Class Collections](#64-first-class-collections-object-calisthenics)
+- [6.5. One Dot Per Line / Lei de Demeter](#65-one-dot-per-line--law-of-demeter-object-calisthenics)
+- [6.6. No máximo duas variáveis de instância](#66-no-classes-with-more-than-two-instance-variables-object-calisthenics)
+
 
 ### 5.1. Magic Numbers (Replace Magic Number with Symbolic Constant)
 

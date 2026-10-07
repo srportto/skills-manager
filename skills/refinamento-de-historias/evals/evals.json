@@ -1,0 +1,41 @@
+{
+  "skill_name": "refinamento-de-historias",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Refine esta história: 'Como operador quero reprocessar autorizações expiradas'. Precisa aguentar qualquer volume.",
+      "expected_output": "Não inventa número nem regra; devolve lacunas classificadas Bloqueia/Ajusta/Registra, critérios de aceite Dado/Quando/Então observáveis e perguntas de idempotência, concorrência e carga com limite explícito",
+      "files": [],
+      "expectations": [
+        "Classifica lacunas em Bloqueia, Ajusta ou Registra",
+        "Não inventa regra de negócio nem número para fechar lacuna",
+        "Escreve critérios de aceite em Dado/Quando/Então que podem falhar",
+        "Pergunta o comportamento sob chamada repetida e substitui 'qualquer volume' por limite mensurável"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Pronto, a história está refinada; já escreva o openapi.yaml com todos os endpoints e o schema do banco.",
+      "expected_output": "Mantém o escopo no refinamento (Definition of Ready) e encaminha contrato REST para api-rest-design e artefatos formais para openspec-propose, sem desenhar a solução dentro da história",
+      "files": [],
+      "expectations": [
+        "Não escreve openapi.yaml dentro do refinamento",
+        "Encaminha o contrato REST para api-rest-design",
+        "Aponta openspec-propose para os artefatos formais",
+        "Não transforma a história na própria solução"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Chegou uma demanda vaga do negócio, ajude a transformar em história pronta para desenvolvimento.",
+      "Critique esta história de usuário com INVEST e escreva os critérios de aceite.",
+      "Vamos preparar o refinamento de amanhã: o que falta nesta demanda antes de abrir a change?"
+    ],
+    "should_not_trigger": [
+      "Desenhe o contrato OpenAPI do endpoint de reprocessamento com paginação por cursor.",
+      "Escolha entre monolito e microsserviços para este módulo e escreva o ADR.",
+      "Revise o código Java deste PR por severidade."
+    ]
+  }
+}

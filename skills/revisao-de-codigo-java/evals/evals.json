@@ -1,0 +1,41 @@
+{
+  "skill_name": "revisao-de-codigo-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "O build passou com testes pulados; aprove a resiliência",
+      "expected_output": "Veredicto PENDENTE; lista as provas necessárias (concorrência, falha, recuperação) e o comando para executá-las",
+      "files": [],
+      "expectations": [
+        "Emite veredicto PENDENTE",
+        "Lista as provas necessárias: concorrência, falha e recuperação",
+        "Informa o comando para executar as provas",
+        "Não aprova com -DskipTests"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Revise este service: usa Optional.get() sem checar, engole a exceção sem causa e nomeou uma classe de PedidoUtil.",
+      "expected_output": "Relatório agrupado por severidade com arquivo:linha: Optional.get() sem checagem e exceção sem causa como Crítico; nome genérico Util como Menor; termina reconhecendo o que está bom",
+      "files": [],
+      "expectations": [
+        "Classifica Optional.get() sem checagem e exceção sem causa como Crítico",
+        "Classifica nome genérico PedidoUtil como Menor",
+        "Cada achado traz arquivo:linha e o porquê",
+        "Reconhece pontos positivos ao final da revisão"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Revise este diff do PR e agrupe os achados por severidade.",
+      "Acabei de gerar essa classe Java, faça a autorrevisão com o checklist.",
+      "Este consumer tem fila sem limite e ack antes do efeito, isso reprova a revisão?"
+    ],
+    "should_not_trigger": [
+      "Refatore este método aplicando Extract Method e removendo o magic number.",
+      "Explique qual padrão GoF cabe neste problema de criação de objetos.",
+      "Faça um pentest e varredura de CVEs de dependências no projeto."
+    ]
+  }
+}

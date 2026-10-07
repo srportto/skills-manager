@@ -10,7 +10,9 @@ import org.springframework.context.annotation.Configuration;
  * Contribuidores de saúde com semântica explícita (os grupos são definidos em configuração):
  * <ul>
  *   <li>liveness = só o estado do processo; nenhum serviço externo.</li>
- *   <li>readiness = estado + dependências <b>necessárias</b> para atender (ex.: banco).</li>
+ *   <li>readiness = estado desta réplica; dependência <b>compartilhada</b> por todas as réplicas (ex.: banco)
+ *       fica fora, porque a queda dela tiraria o Service inteiro do ar; a aplicação degrada explicitamente
+ *       (503 + Retry-After) e o estado do banco vai para o grupo "dependencias" (alerta).</li>
  *   <li>operacional = sinais de saturação (backlog) para alerta; não tira réplicas da rotação, porque
  *       remover réplicas saturadas concentraria a carga nas restantes.</li>
  * </ul>

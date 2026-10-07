@@ -21,4 +21,4 @@ Políticas de seleção, identidade, agenda, permissões e rollback pertencem à
 O teste [ExperimentoCoordenadorLentoExternoIT](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ExperimentoCoordenadorLentoExternoIT.java)
 usa Testcontainers e Toxiproxy Java para injetar latência no Valkey, medir o limite local degradado, remover a falha e verificar recuperação. O teste roda no perfil `integracao` e requer Docker.
 
-Para desenhar hipótese, baseline, condição de abort e recuperação, consulte [experiment-design](experiment-design.md). Para instalar ou operar Litmus, Chaos Mesh, FIS ou outra ferramenta no cluster/conta, encaminhe a topologia a `cloud-architect` ou `engenheiro-devops`.
+Para desenhar hipótese, baseline, condição de abort e recuperação, consulte [experiment-design](experiment-design.md). Para instalar ou operar Litmus, Chaos Mesh, FIS ou outra ferramenta no cluster/conta, encaminhe a topologia a `arquiteto-cloud` ou `engenheiro-devops`.
