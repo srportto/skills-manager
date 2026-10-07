@@ -31,16 +31,18 @@ exigem idempotência e reconciliação.
 Cada salto recebe só o que **resta** do orçamento do cliente, menos uma margem; tentativas de retry contam
 dentro do mesmo orçamento. Exemplo: cliente com 2 s.
 
-| Salto | Orçamento restante na entrada | Timeout deste salto | Tentativas | Observação |
+| Salto | Orçamento restante na entrada | Timeout deste salto | Tentativas | Pior caso do salto e margem |
 |---|---|---|---|---|
 | Cliente → gateway | 2.000 ms | 2.000 ms (total) | 1 | Dono do deadline; sem retry |
-| Gateway → serviço | 1.950 ms | 1.900 ms | 1 | Sem retry: a camada dona do retry é o serviço; margem de 50 ms |
-| Serviço → banco | 1.850 ms | 800 ms por consulta | 1 | Efeito não repetido às cegas; libera a conexão antes de qualquer espera |
-| Serviço → dependência externa (**dona do retry**) | 1.000 ms (após a consulta de 800 ms) | 300 ms por tentativa | até 3 | Aritmética: 3 × 300 ms + esperas de backoff (50 ms + 100 ms, com full jitter, teto 200 ms) = 1.050 ms; como o restante é 1.000 ms, a 3ª tentativa só ocorre se couber (`OrcamentoTempo`), senão encerra antes de dormir |
+| Gateway → serviço | 1.950 ms (2.000 − 50 ms de rede/processamento) | 1.900 ms | 1 | 1.900 ms; margem 50 ms; sem retry (o dono é o serviço) |
+| Serviço → banco | 1.850 ms (1.900 − 50 ms propagados ao serviço) | 600 ms por consulta | 1 | 600 ms; restam 1.850 − 600 = 1.250 ms; efeito não repetido às cegas |
+| Serviço → dependência externa (**dona do retry**) | 1.250 ms | 250 ms por tentativa | até 3 | 3 × 250 ms + backoff máximo (50 ms + 100 ms, teto 200 ms, full jitter nunca passa do teto) = 900 ms; margem 1.250 − 900 = 350 ms |
 
-Aritmética do pior caso do serviço: 800 ms (banco) + 900 ms (3 tentativas de 300 ms) + 150 ms (backoff máximo
-sem jitter) = 1.850 ms ≤ 1.850 ms de restante na entrada do serviço. Cada timeout individual é menor que o
-restante de sua entrada e a soma de timeouts + esperas não passa do orçamento.
+Orçamento de entrada do serviço: o gateway entra com 1.950 ms, usa timeout de 1.900 ms e repassa ao serviço
+1.850 ms (1.900 − 50 ms de margem de propagação). Aritmética do pior caso do serviço: 600 ms (banco) + 900 ms
+(externa) = 1.500 ms ≤ 1.850 ms, margem de 350 ms. O jitter só reduz as esperas (nunca excede o teto usado no
+pior caso), então a margem positiva vale com jitter máximo. A 3ª tentativa continua condicionada a
+`OrcamentoTempo.restante()` (se faltar tempo, encerra antes de dormir).
 
 Regras: (1) timeout de cada salto **menor** que o restante da entrada; (2) tentativas e esperas de backoff
 descontam do mesmo orçamento — se a espera consumir o restante, encerre antes de dormir; (3) backoff exponencial

@@ -33,7 +33,7 @@ for (String id : vencidos) {
 
 ```java
 // DEPOIS (recomendado): ZREM + XADD no mesmo script Lua (veja lua-atomicidade.md); não há janela entre os dois
-Long movidos = redisTemplate.execute(scriptVarredura, List.of(chaveAgenda, chaveStream),
+Long movidos = redisTemplate.execute(script, List.of(chaveAgenda, chaveStream),
     String.valueOf(agora), "100"); // lote limitado; só move quem ganhou o ZREM
 ```
 
