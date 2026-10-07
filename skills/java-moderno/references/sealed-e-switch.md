@@ -164,3 +164,78 @@ e confere os dois erros acima.
   mais simples.
 - Padrões primitivos (`case int i when i > 10`) ainda são preview no Java 25 (JEP 507) e não fazem parte do
   catálogo.
+
+## 6. Antes/depois (migrado do SKILL.md)
+
+Comparativo clássico vs moderno que antes ficava no corpo do SKILL.md; o modelo de Pagamento é o mesmo do módulo executável.
+
+### Sealed classes/interfaces
+
+Hierarquia fechada em tempo de compilação: só as classes/interfaces listadas em `permits` podem
+implementar o tipo selado. Modela domínios finitos e conhecidos (tipos de pagamento, estados).
+
+```java
+// Java classico: interface aberta - qualquer classe pode implementar, sem o compilador avisar
+public interface Pagamento {
+    BigDecimal valor();
+}
+public class Pix implements Pagamento { /* ... */ }
+public class Cartao implements Pagamento { /* ... */ }
+// nada impede outra classe implements Pagamento aparecer depois, longe deste arquivo
+
+// Java moderno: hierarquia fechada - so os records aninhados implementam Pagamento
+// (permits implicito: todos no mesmo arquivo; records sao final e fecham a hierarquia)
+public sealed interface Pagamento {
+    BigDecimal valor();
+
+    record Pix(String chave, BigDecimal valor) implements Pagamento {}
+    record Cartao(Bandeira bandeira, int parcelas, BigDecimal valor) implements Pagamento {}
+    record Boleto(String linhaDigitavel, BigDecimal valor) implements Pagamento {}
+
+    enum Bandeira { VISA, MASTERCARD, ELO }
+}
+```
+
+Fonte executável, com validação nos construtores compactos:
+[Pagamento](../../../examples/java/linguagem/src/main/java/br/com/srportto/exemplos/Pagamento.java).
+
+**Quando usar:** hierarquia de domínio finita e conhecida (tipos de pagamento, estados de um fluxo) —
+casa direto com switch exaustivo (item 3), que quebra o build se um tipo novo não for tratado.
+**Quando evitar:** hierarquia que precisa ser extensível por módulos/plugins externos que o autor do
+tipo selado não controla.
+
+
+### Switch expressions
+
+`switch` que produz um valor, com `->` (sem fallthrough — cada ramo é isolado) e `yield` quando o
+ramo precisa de mais de uma instrução antes do valor final.
+
+```java
+// Java classico: switch statement exige break em cada case para evitar fallthrough (nao mostrado)
+
+// Java moderno: switch expression com "->", sem fallthrough, atribui o valor direto.
+// Enum tratado por completo dispensa "default": um valor novo no enum quebra o build aqui.
+String descricao = switch (status) {
+    case ATIVO -> "Em vigor";
+    case CANCELADO -> "Cancelado";
+};
+
+// Rotulos multiplos num so case; yield quando o ramo precisa de mais de uma instrucao
+Duration prazo = switch (canal) {
+    case APP, WEB -> Duration.ofDays(1);
+    case LOJA -> Duration.ofDays(3);
+    case TELEFONE -> {
+        Duration analiseManual = Duration.ofDays(2);
+        yield analiseManual.plus(Duration.ofDays(3));
+    }
+};
+```
+
+Com `default` sobre um enum, um valor novo passa sem aviso — prefira listar todos os casos. Fonte executável:
+`Tarifacao.prazoEstorno` em [Tarifacao](../../../examples/java/linguagem/src/main/java/br/com/srportto/exemplos/Tarifacao.java);
+tabela completa (`case null`, guarda `when`, `_`, constantes qualificadas, o que ainda é preview) em
+[sealed-e-switch](sealed-e-switch.md).
+
+**Quando usar:** sempre que o `switch` produz um valor a ser atribuído/retornado.
+**Quando evitar:** quando cada ramo só executa um efeito colateral distinto (sem produzir valor) — um
+`switch` statement com `->` (ainda sem fallthrough) já resolve, sem precisar de `yield`.
