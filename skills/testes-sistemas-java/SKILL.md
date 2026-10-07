@@ -3,7 +3,7 @@ name: testes-sistemas-java
 description: "Definir e executar evidências de comportamento em sistemas Java: concorrência, idempotência, contratos, arquitetura, falhas e carga. Use quando implementar ou revisar esses comportamentos; não exigir testes que apenas repitam texto ou estrutura de documentação."
 metadata:
   version: "1.0.0"
-  related-skills: [resiliencia-controle-fluxo-java, revisao-de-codigo-java, mensageria-sqs-kafka]
+  related-skills: [arquitetura-limpa-java, resiliencia-controle-fluxo-java, revisao-de-codigo-java, mensageria-sqs-kafka]
 ---
 
 # Testes de sistemas Java
@@ -25,6 +25,7 @@ Receba comportamento esperado, risco, fronteira e ambiente. Antes de escrever te
 - [Concorrência e resiliência](references/concorrencia-resiliencia.md): demanda, limites, cancelamento, retry e idempotência.
 - [Contratos e arquitetura](references/contratos-arquitetura.md): compatibilidade, fronteiras e validação do catálogo.
 - [Integração e carga](references/integracao-carga.md): containers, falhas, carga e recuperação.
+- [Testes de slice Spring](references/testes-slice-spring.md): ler ao escolher o tipo de teste Spring (`@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`) ou montar integração com Testcontainers; AWS local usa Floci.
 
 ## Saída e responsáveis
 

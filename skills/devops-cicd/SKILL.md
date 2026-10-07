@@ -11,7 +11,7 @@ metadata:
   role: devops
   scope: application-deploy
   output-format: code
-  related-skills: monitoramento-java, cloud-architect, seguranca-aplicacao-java, java-architecture
+  related-skills: monitoramento-java, cloud-architect, seguranca-aplicacao-java
 ---
 
 # DevOps & CI/CD (Java/Maven, Docker, Kubernetes)

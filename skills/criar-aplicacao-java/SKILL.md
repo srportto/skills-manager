@@ -11,7 +11,7 @@ metadata:
   role: builder
   scope: application-generation
   output-format: code
-  related-skills: arquitetura-limpa-java, mensageria-sqs-kafka, persistencia-jpa, java-moderno, java-architecture
+  related-skills: arquitetura-limpa-java, mensageria-sqs-kafka, persistencia-jpa, java-moderno
 ---
 
 # Criar Aplicação Java (Spring Boot, hexagonal clássica)

@@ -57,7 +57,7 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | Skill | Responsabilidade | Agents principais |
 |---|---|---|
 | `api-rest-design` | Contrato REST, OpenAPI 3.1, paginação, RFC 9457, 429/503 e idempotência | `projetista-api` |
-| `arquitetura-limpa-java` | Camadas hexagonais, DDD tático/estratégico, fronteiras | `java-revisor`, `java-construtor` |
+| `arquitetura-limpa-java` | Camadas hexagonais (e clássicas), módulos Spring, DDD tático/estratégico, fronteiras | `java-revisor`, `java-construtor` |
 | `banco-de-dados-performance` | SQL/SGBD: EXPLAIN, índices, tuning, conexões, replicação | `especialista-banco-dados` |
 | `chaos-engineer` | Experimentos de falha, game days, abort e recuperação | `engenheiro-chaos` |
 | `cloud-architect` | Topologia de nuvem, DNS/LB/CDN, IAM, DR, FinOps | `cloud-architect` |
@@ -65,7 +65,6 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | `design-system-architecture` | System design, capacidade/SLO, consistência, protocolos, ADR, estudos de caso | `arquiteto-sistemas` |
 | `devops-cicd` | Pipeline, Dockerfile, manifests K8s, probes e drenagem | `engenheiro-devops` |
 | `gerar-diagramas` | Diagramas Mermaid versionados | sessão principal |
-| `java-architecture` | Arquitetura interna Spring clássica e escolha de módulos | sessão principal |
 | `java-moderno` | Features do Java 25 (records, sealed, virtual threads...) | `java-construtor`, `java-revisor` |
 | `mensageria-sqs-kafka` | Ack/offset, DLQ, idempotência, outbox, controle de consumo e replay | `java-construtor`, `java-revisor` |
 | `monitoramento-java` | Métricas, tracing, SLO/saturação, alertas, health groups | `especialista-monitoramento` |
@@ -147,7 +146,7 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 | Tarefa | Skill principal | Skills complementares |
 |---|---|---|
 | Criar aplicação nova do zero | `criar-aplicacao-java` | `arquitetura-limpa-java`, `mensageria-sqs-kafka`, `persistencia-jpa` |
-| Dúvida sobre em qual camada colocar código | `arquitetura-limpa-java` | `java-architecture` |
+| Dúvida sobre em qual camada colocar código | `arquitetura-limpa-java` | `criar-aplicacao-java` |
 | Desenhar sistema distribuído, estimar capacidade, escrever ADR | `design-system-architecture` | `resiliencia-controle-fluxo-java`, `arquitetura-limpa-java` |
 | Proteger fluxo contra sobrecarga/falha (fila, retry, breaker, bulkhead) | `resiliencia-controle-fluxo-java` | `testes-sistemas-java`, `monitoramento-java` |
 | Provar concorrência, idempotência, falha ou carga | `testes-sistemas-java` | `resiliencia-controle-fluxo-java` |
@@ -202,6 +201,7 @@ Skills e agents que mudaram de nome ou foram fundidos; use o destino indicado.
 | Nome antigo | Destino | Observação |
 |---|---|---|
 | `refactoring-remove-parameter` | `qualidade-codigo-java` | `references/refatoracoes-fowler.md#remove-parameter` |
+| `java-architecture` | `arquitetura-limpa-java` + `testes-sistemas-java` | camadas clássicas em `references/camadas-classicas.md`, módulos Spring em `references/modulos-spring.md`; testes de slice e Testcontainers em `testes-sistemas-java/references/testes-slice-spring.md` |
 
 ## Validação do catálogo
 

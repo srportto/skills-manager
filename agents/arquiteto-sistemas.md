@@ -1,12 +1,12 @@
 ---
 name: arquiteto-sistemas
-description: "Use quando precisar DESENHAR ou REVISAR a arquitetura de alto nível de um sistema distribuído — requisitos e capacidade (taxa, pico, SLO, orçamento de conexões e deadline), monolito modular vs microsserviços, consistência de dados, contrato de proteção contra sobrecarga e falhas, ADRs e matriz de falhas. Fronteira clara: para a arquitetura INTERNA de uma aplicação (camadas, hexagonal vs clássica), use `arquitetura-limpa-java` ou `java-architecture`. Para topologia cloud (VPC, IAM, DR), use `cloud-architect`."
+description: "Use quando precisar DESENHAR ou REVISAR a arquitetura de alto nível de um sistema distribuído — requisitos e capacidade (taxa, pico, SLO, orçamento de conexões e deadline), monolito modular vs microsserviços, consistência de dados, contrato de proteção contra sobrecarga e falhas, ADRs e matriz de falhas. Fronteira clara: para a arquitetura INTERNA de uma aplicação (camadas, hexagonal vs clássica), use `arquitetura-limpa-java`. Para topologia cloud (VPC, IAM, DR), use `cloud-architect`."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 effort: medium
 permissionMode: plan
 maxTurns: 20
-skills: [design-system-architecture, resiliencia-controle-fluxo-java, arquitetura-limpa-java, java-architecture, gerar-diagramas, monitoramento-java, cloud-architect]
+skills: [design-system-architecture, resiliencia-controle-fluxo-java, arquitetura-limpa-java, gerar-diagramas, monitoramento-java, cloud-architect]
 memory: project
 background: true
 isolation: worktree
@@ -31,7 +31,7 @@ Sem variante informada, use `design` — a menos que o pedido seja claramente um
 
 Leia `design-system-architecture` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e só as
 referências do assunto: capacidade/SLO, consistência, rede/tráfego, protocolos, ADR. Proteções:
-`resiliencia-controle-fluxo-java`. Interior da aplicação: `arquitetura-limpa-java`/`java-architecture`.
+`resiliencia-controle-fluxo-java`. Interior da aplicação: `arquitetura-limpa-java`.
 Observabilidade e SLO: `monitoramento-java`. Diagramas: `gerar-diagramas`. Topologia cloud: `cloud-architect`.
 
 ## Entradas

@@ -1,6 +1,6 @@
 ---
 name: especialista-monitoramento
-description: "Use quando precisar OBSERVAR aplicação Java/Spring Boot em produção — SLI/SLO e alertas por consumo do orçamento de erro, métricas de saturação (fila, ativos, pool, lag, rejeições), Micrometer + Prometheus com cardinalidade controlada, tracing OpenTelemetry (W3C), logs estruturados, health groups, dashboards RED/USE, runbooks e incidentes. NÃO use para o padrão de formatação de logs (padrao-de-logs-java) nem para definir a arquitetura do serviço (arquitetura-limpa-java / java-architecture)."
+description: "Use quando precisar OBSERVAR aplicação Java/Spring Boot em produção — SLI/SLO e alertas por consumo do orçamento de erro, métricas de saturação (fila, ativos, pool, lag, rejeições), Micrometer + Prometheus com cardinalidade controlada, tracing OpenTelemetry (W3C), logs estruturados, health groups, dashboards RED/USE, runbooks e incidentes. NÃO use para o padrão de formatação de logs (padrao-de-logs-java) nem para definir a arquitetura do serviço (arquitetura-limpa-java)."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 effort: medium

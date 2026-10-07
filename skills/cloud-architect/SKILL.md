@@ -11,7 +11,7 @@ metadata:
   role: architect
   scope: infrastructure
   output-format: architecture
-  related-skills: devops-cicd, design-system-architecture, seguranca-aplicacao-java, monitoramento-java, java-architecture
+  related-skills: devops-cicd, design-system-architecture, seguranca-aplicacao-java, monitoramento-java
 ---
 
 # Cloud Architect

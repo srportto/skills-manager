@@ -11,7 +11,7 @@ metadata:
   role: documenter
   scope: diagram-format
   output-format: diagram
-  related-skills: design-system-architecture, arquitetura-limpa-java, java-architecture
+  related-skills: design-system-architecture, arquitetura-limpa-java
 ---
 
 # Gerar Diagramas
@@ -83,6 +83,6 @@ define o padrão para o que é escrito daqui pra frente.
 |---|---|
 | Gráfico de dados, KPI, dashboard | skill global `dataviz` |
 | Diagrama dentro de um Artifact (página web) | skills globais `artifact-design`/`artifact-capabilities` |
-| Arquitetura interna de uma app Java nova/existente (decisão, não diagrama) | skill `java-architecture` |
+| Arquitetura interna de uma app Java nova/existente (decisão, não diagrama) | skill `arquitetura-limpa-java` (`references/camadas-classicas.md`) |
 | Camada correta para uma classe (hexagonal) | skill `arquitetura-limpa-java` |
 | Criar uma proposta/change OpenSpec do zero (o design.md nasce junto) | skill `openspec-propose` |

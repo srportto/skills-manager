@@ -11,7 +11,7 @@ metadata:
   role: specialist
   scope: observability
   output-format: code
-  related-skills: padrao-de-logs-java, arquitetura-limpa-java, devops-cicd, java-architecture
+  related-skills: padrao-de-logs-java, arquitetura-limpa-java, devops-cicd
 ---
 
 # Monitoramento de Aplicações Java

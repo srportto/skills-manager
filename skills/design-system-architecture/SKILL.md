@@ -1,6 +1,6 @@
 ---
 name: design-system-architecture
-description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — requisitos e capacidade (SLO, Lei de Little, orçamento de conexões/deadline), monolito modular vs microsserviços, consistência (CAP/PACELC, replicação, sharding), tráfego (DNS, LB, CDN), protocolos, ADRs e matriz de falhas. Distinta de `arquitetura-limpa-java` (camadas internas) e `java-architecture` (stack Spring). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
+description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — requisitos e capacidade (SLO, Lei de Little, orçamento de conexões/deadline), monolito modular vs microsserviços, consistência (CAP/PACELC, replicação, sharding), tráfego (DNS, LB, CDN), protocolos, ADRs e matriz de falhas. Distinta de `arquitetura-limpa-java` (camadas internas) (a stack Spring está em `references/modulos-spring.md`). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
@@ -10,7 +10,7 @@ metadata:
   role: architect
   scope: system-design
   output-format: document
-  related-skills: arquitetura-limpa-java, java-architecture, api-rest-design, resiliencia-controle-fluxo-java, mensageria-sqs-kafka, cloud-architect, gerar-diagramas
+  related-skills: arquitetura-limpa-java, api-rest-design, resiliencia-controle-fluxo-java, mensageria-sqs-kafka, cloud-architect, gerar-diagramas
 ---
 
 # Design de Arquitetura de Sistemas
@@ -21,7 +21,7 @@ requisitos e capacidade mensuráveis até decisões registradas (ADR), proteçõ
 **Quando NÃO usar:**
 
 - Camada de um código dentro da aplicação hexagonal → `arquitetura-limpa-java`.
-- Stack Spring Boot 4 e camadas clássicas → `java-architecture`.
+- Stack Spring Boot 4 e camadas clássicas → `arquitetura-limpa-java` (`references/camadas-classicas.md`, `references/modulos-spring.md`).
 - Contrato HTTP (OpenAPI, RFC 9457, 429/503) → `api-rest-design`.
 - Topologia cloud concreta (VPC, IAM, DR, FinOps) → `cloud-architect`.
 - Implementação de backpressure, retry, breaker, bulkhead → `resiliencia-controle-fluxo-java` (esta skill

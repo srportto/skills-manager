@@ -393,5 +393,5 @@ depois; se o trecho nao tem teste, escreva a prova primeiro (`testes-sistemas-ja
 | Revisar diff/PR com checklist de severidade | agent `java-revisor` | `revisao-de-codigo-java` |
 | Remocao de parametro focada (passo-a-passo) | sessao principal | esta skill (`references/refatoracoes-fowler.md#remove-parameter`) |
 | Limpar imports nao usados | sessao principal | `remover-imports-nao-usados` |
-| Centralizar configuracao dispersa (Shotgun Surgery) | session/engenheiro-devops | `java-architecture` |
+| Centralizar configuracao dispersa (Shotgun Surgery) | session/engenheiro-devops | `arquitetura-limpa-java` (`references/modulos-spring.md`) |
 | Decidir onde mora um value object novo | session/java-construtor | `arquitetura-limpa-java` |

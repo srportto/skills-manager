@@ -11,7 +11,7 @@ metadata:
   role: specialist
   scope: application-security
   output-format: code
-  related-skills: padrao-de-logs-java, arquitetura-limpa-java, revisao-de-codigo-java, java-architecture
+  related-skills: padrao-de-logs-java, arquitetura-limpa-java, revisao-de-codigo-java
 ---
 
 # Segurança de Aplicação Java

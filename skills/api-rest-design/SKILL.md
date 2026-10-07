@@ -11,7 +11,7 @@ metadata:
   role: architect
   scope: api-contract
   output-format: document
-  related-skills: arquitetura-limpa-java, java-architecture, revisao-de-codigo-java, seguranca-aplicacao-java
+  related-skills: arquitetura-limpa-java, revisao-de-codigo-java, seguranca-aplicacao-java
 ---
 
 # API REST Design (Java/Spring Boot)
