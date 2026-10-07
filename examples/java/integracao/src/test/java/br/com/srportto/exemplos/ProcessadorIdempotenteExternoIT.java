@@ -3,6 +3,7 @@ package br.com.srportto.exemplos;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import javax.sql.DataSource;
@@ -33,6 +34,7 @@ class ProcessadorIdempotenteExternoIT {
         POSTGRES.stop();
     }
 
+    @DisplayName("ProcessadorIdempotenteExterno: Duplicatas concorrentes em conexoes distintas devem gerar um unico pedido")
     @Test
     void duplicatasConcorrentesEmConexoesDistintasDevemGerarUmUnicoPedido() throws Exception {
         int concorrentes = 16;

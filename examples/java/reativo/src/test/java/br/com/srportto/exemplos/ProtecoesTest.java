@@ -1,12 +1,14 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import java.util.concurrent.atomic.AtomicInteger;
 import io.github.resilience4j.circuitbreaker.*;
 import io.github.resilience4j.bulkhead.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProtecoesTest {
+    @DisplayName("Protecoes: Breaker deve abrir recusar e fechar com sonda saudavel")
     @Test void breakerDeveAbrirRecusarEFecharComSondaSaudavel() {
         var config = CircuitBreakerConfig.custom().slidingWindowSize(2).minimumNumberOfCalls(2)
                 .failureRateThreshold(50).permittedNumberOfCallsInHalfOpenState(1).build();
@@ -26,6 +28,7 @@ class ProtecoesTest {
         assertEquals(CircuitBreaker.State.CLOSED, breaker.getState());
     }
 
+    @DisplayName("Protecoes: Bulkheads devem isolar relatorios de checkout")
     @Test void bulkheadsDevemIsolarRelatoriosDeCheckout() {
         var config = BulkheadConfig.custom().maxConcurrentCalls(1).build();
         var relatorios = Bulkhead.of("relatorios", config);

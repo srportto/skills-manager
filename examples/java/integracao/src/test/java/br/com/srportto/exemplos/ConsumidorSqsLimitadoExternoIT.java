@@ -3,6 +3,7 @@ package br.com.srportto.exemplos;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.localstack.LocalStackContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -51,6 +52,7 @@ class ConsumidorSqsLimitadoExternoIT {
         LOCALSTACK.stop();
     }
 
+    @DisplayName("ConsumidorSqsLimitadoExterno: Mensagem que sempre falha deve ir para dlq e as demais sao apagadas")
     @Test
     void mensagemQueSempreFalhaDeveIrParaDlqEAsDemaisSaoApagadas() throws Exception {
         sqs.sendMessage(r -> r.queueUrl(fila).messageBody("ok-1"));

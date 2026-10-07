@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EncerramentoControladoTest {
+    @DisplayName("EncerramentoControlado: Deve recusar trabalho novo e drenar o trabalho em andamento")
     @Test
     void deveRecusarTrabalhoNovoEDrenarOTrabalhoEmAndamento() throws Exception {
         var concluidas = new AtomicInteger();
@@ -35,6 +37,7 @@ class EncerramentoControladoTest {
         }
     }
 
+    @DisplayName("EncerramentoControlado: Trabalho que excede o prazo deve ser relatado como pendente nao perdido em silencio")
     @Test
     void trabalhoQueExcedeOPrazoDeveSerRelatadoComoPendenteNaoPerdidoEmSilencio() throws Exception {
         var iniciou = new CountDownLatch(1);

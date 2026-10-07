@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class PublicadorOutboxTest {
     private final DataSource ds = ProcessadorIdempotenteTest.banco();
 
+    @DisplayName("PublicadorOutbox: Falha na publicacao deve preservar evento para nova tentativa")
     @Test
     void falhaNaPublicacaoDevePreservarEventoParaNovaTentativa() throws Exception {
         var processador = new ProcessadorIdempotente(ds);
@@ -30,6 +32,7 @@ class PublicadorOutboxTest {
         assertEquals(0, outbox.publicar(10, () -> true, eventos::add));
     }
 
+    @DisplayName("PublicadorOutbox: Eventos devem sair na ordem de criacao")
     @Test
     void eventosDevemSairNaOrdemDeCriacao() throws Exception {
         var processador = new ProcessadorIdempotente(ds);
@@ -42,6 +45,7 @@ class PublicadorOutboxTest {
         assertEquals(criados, publicados);
     }
 
+    @DisplayName("PublicadorOutbox: Falha no meio do lote nao deve perder nem reenviar os ja confirmados")
     @Test
     void falhaNoMeioDoLoteNaoDevePerderNemReenviarOsJaConfirmados() throws Exception {
         var processador = new ProcessadorIdempotente(ds);
@@ -59,10 +63,26 @@ class PublicadorOutboxTest {
         assertEquals(List.of(primeiro, segundo), enviados);
     }
 
+    @DisplayName("PublicadorOutbox: Lote deve ser limitado")
     @Test
     void loteDeveSerLimitado() {
         var outbox = new PublicadorOutbox(ds);
         assertThrows(IllegalArgumentException.class, () -> outbox.publicar(0, () -> true, evento -> {}));
         assertThrows(IllegalArgumentException.class, () -> outbox.publicar(1001, () -> true, evento -> {}));
+    }
+
+    @DisplayName("PublicadorOutbox para no limite da quota e preserva os eventos anteriores")
+    @Test
+    void quotaEsgotadaDevePararSemDesfazerPublicacoesAnteriores() throws Exception {
+        var processador = new ProcessadorIdempotente(ds);
+        processador.preparar();
+        String primeiro = processador.processar("tenant", "quota-a", 1);
+        processador.processar("tenant", "quota-b", 2);
+        var chamadas = new java.util.concurrent.atomic.AtomicInteger();
+        var publicados = new ArrayList<String>();
+
+        assertEquals(1, new PublicadorOutbox(ds).publicar(10,
+                () -> chamadas.incrementAndGet() == 1, publicados::add));
+        assertEquals(List.of(primeiro), publicados);
     }
 }

@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -63,12 +64,14 @@ class ChamadaComDeadlineTest {
         return URI.create("http://127.0.0.1:" + servidor.getAddress().getPort() + caminho);
     }
 
+    @DisplayName("ChamadaComDeadline: Deve responder dentro do deadline")
     @Test
     void deveResponderDentroDoDeadline() throws Exception {
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
         assertEquals("ok", chamada.obter(uri("/rapida"), new OrcamentoTempo(Duration.ofSeconds(2), System::nanoTime)));
     }
 
+    @DisplayName("ChamadaComDeadline: Dependencia lenta nao deve reter o chamador alem do deadline")
     @Test
     void dependenciaLentaNaoDeveReterOChamadorAlemDoDeadline() throws Exception {
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
@@ -81,6 +84,7 @@ class ChamadaComDeadlineTest {
         assertFalse(lentaTerminou.await(0, TimeUnit.MILLISECONDS));
     }
 
+    @DisplayName("ChamadaComDeadline: Nao deve chamar quando o orcamento ja esgotou")
     @Test
     void naoDeveChamarQuandoOOrcamentoJaEsgotou() {
         var tempo = new AtomicLong();

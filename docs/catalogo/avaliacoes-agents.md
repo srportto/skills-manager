@@ -41,9 +41,20 @@ contextualizada, com limites/escopo explícitos e forma de verificar.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | baseline | — | 1 | pendente | | | | | | | | | | | | |
 | baseline | — | 2 | pendente | | | | | | | | | | | | |
-| atual | — | 1 | pendente | | | | | | | | | | | | |
-| atual | — | 2 | pendente | | | | | | | | | | | | |
+| atual | 2026-10-06 | 1 | 2 | — | 2 | — | 1 | — | 1 | 1 | — | — | — | — | 7/10 |
+| atual | 2026-10-06 | 2 | 2 | — | 2 | — | 1 | — | 1 | 1 | — | — | — | — | 7/10 |
 
-**Pendente:** a execução exige invocar os agents em sessões independentes, o que depende de autorização e
-orçamento de quem mantém o catálogo. Enquanto não houver execução registrada, nenhuma afirmação de
-conformidade comportamental é feita — apenas a conformidade estrutural de `validation/java`.
+**Resumo da amostra atual:** 14/20 pontos (70%); média 1,4/2 por caso e execução; zero notas 0. Foram rodados
+dois pares independentes para A01, A03, A05, A07 e A08, atendendo ao mínimo de cinco casos definido no aceite
+da fase 2. A amostra não alcança a meta de 90% nem nota 2 em todos os casos: A05, A07 e A08 receberam nota 1
+nas duas execuções. A02, A04 e A06, além de A09–A12, continuam sem avaliação.
+
+**Limite do ensaio:** as respostas foram geradas em sessões independentes com os papéis correspondentes, mas
+não foi possível instalar o catálogo em workspaces limpos dedicados. Trate os resultados como amostra
+comportamental do catálogo disponível nesta sessão, não como certificação reproduzível de instalação.
+
+**Plano de correção:** melhorar os agentes `java-construtor`, `java-revisor` e `projetista-api` para explicitar,
+respectivamente, single-flight e rejeição/degradação no fallback de cache; veredicto PENDENTE, provas e comando
+quando testes foram pulados; e atomicidade e comportamento de falha do limitador distribuído. Depois, repetir
+A05, A07 e A08 em duas sessões limpas e rodar A02, A04 e A06 para completar A01–A08. A conformidade estrutural
+de `validation/java` não substitui essa medição.

@@ -3,6 +3,7 @@ package br.com.srportto.exemplos;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.containers.GenericContainer;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.StreamEntryID;
@@ -31,6 +32,7 @@ class RecuperacaoPendenciasExternoIT {
         VALKEY.stop();
     }
 
+    @DisplayName("RecuperacaoPendenciasExterno: Pendencias de consumidor morto devem ser reivindicadas processadas uma vez e confirmadas")
     @Test
     void pendenciasDeConsumidorMortoDevemSerReivindicadasProcessadasUmaVezEConfirmadas() throws Exception {
         String stream = "agenda:vencidos";

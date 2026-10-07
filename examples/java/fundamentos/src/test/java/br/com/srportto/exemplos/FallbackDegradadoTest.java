@@ -2,6 +2,7 @@ package br.com.srportto.exemplos;
 
 import br.com.srportto.exemplos.FallbackDegradado.Origem;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,6 +22,7 @@ class FallbackDegradadoTest {
         }, Duration.ofSeconds(30), maximoEntradas, tempo::get);
     }
 
+    @DisplayName("FallbackDegradado: Deve usar primaria quando disponivel")
     @Test
     void deveUsarPrimariaQuandoDisponivel() throws Exception {
         var resposta = fallback(10).obter("vitrine");
@@ -29,6 +31,7 @@ class FallbackDegradadoTest {
         assertEquals(Duration.ZERO, resposta.idade());
     }
 
+    @DisplayName("FallbackDegradado: Deve devolver valor anterior com idade visivel dentro do limite de frescor")
     @Test
     void deveDevolverValorAnteriorComIdadeVisivelDentroDoLimiteDeFrescor() throws Exception {
         var fallback = fallback(10);
@@ -42,6 +45,7 @@ class FallbackDegradadoTest {
         assertEquals(Duration.ofSeconds(20), resposta.idade());
     }
 
+    @DisplayName("FallbackDegradado: Nao deve inventar valor nem servir dado alem do frescor maximo")
     @Test
     void naoDeveInventarValorNemServirDadoAlemDoFrescorMaximo() throws Exception {
         var fallback = fallback(10);
@@ -53,6 +57,7 @@ class FallbackDegradadoTest {
         assertThrows(FallbackDegradado.Indisponivel.class, () -> fallback.obter("vitrine"));
     }
 
+    @DisplayName("FallbackDegradado: Memoria do fallback deve ser limitada")
     @Test
     void memoriaDoFallbackDeveSerLimitada() throws Exception {
         var fallback = fallback(2);

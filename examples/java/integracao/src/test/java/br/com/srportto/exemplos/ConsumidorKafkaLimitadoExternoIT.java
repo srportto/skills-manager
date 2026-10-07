@@ -13,6 +13,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
@@ -97,6 +98,7 @@ class ConsumidorKafkaLimitadoExternoIT {
         });
     }
 
+    @DisplayName("ConsumidorKafkaLimitadoExterno: Dois consumidores com rebalance e falha antes do ack nao perdem nem duplicam efeitos")
     @Test
     void doisConsumidoresComRebalanceEFalhaAntesDoAckNaoPerdemNemDuplicamEfeitos() throws Exception {
         var falharUmaVez = ConcurrentHashMap.<String>newKeySet();

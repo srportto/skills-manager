@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
@@ -11,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OrcamentoTempoTest {
+    @DisplayName("OrcamentoTempo: Deve descontar tempo decorrido e nunca ficar negativo")
     @Test
     void deveDescontarTempoDecorridoENuncaFicarNegativo() {
         var tempo = new AtomicLong(1_000);
@@ -25,6 +27,7 @@ class OrcamentoTempoTest {
         assertThrows(TimeoutException.class, orcamento::exigirDisponivel);
     }
 
+    @DisplayName("OrcamentoTempo: Deve recusar prazo invalido e relogio que regride")
     @Test
     void deveRecusarPrazoInvalidoERelogioQueRegride() {
         assertThrows(IllegalArgumentException.class, () -> new OrcamentoTempo(Duration.ZERO, () -> 0L));

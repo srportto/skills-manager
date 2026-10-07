@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -16,6 +17,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CacheProtegidoTest {
+    @DisplayName("CacheProtegido não consulta a origem quando encontra o valor no cache")
+    @Test
+    void hitNoCacheNaoDeveConsultarOrigem() throws Exception {
+        var chamadas = new AtomicInteger();
+        var cache = new CacheProtegido<String>(chave -> "cacheado", (chave, valor) -> {},
+                chave -> { chamadas.incrementAndGet(); return "origem"; }, 1, 4);
+        assertEquals("cacheado", cache.obter("a"));
+        assertEquals(0, chamadas.get());
+    }
+
+    @DisplayName("CacheProtegido carrega na origem e grava o valor quando ocorre um miss")
+    @Test
+    void missDeveCarregarNaOrigemEGravarNoCache() throws Exception {
+        var armazenamento = new ConcurrentHashMap<String, String>();
+        var cache = new CacheProtegido<String>(armazenamento::get, armazenamento::put,
+                chave -> "carregado", 1, 4);
+        assertEquals("carregado", cache.obter("a"));
+        assertEquals("carregado", armazenamento.get("a"));
+    }
+
+    @DisplayName("CacheProtegido retorna o valor da origem quando gravar no cache falha")
+    @Test
+    void falhaAoGravarCacheNaoDeveDescartarValorDaOrigem() throws Exception {
+        var cache = new CacheProtegido<String>(chave -> null,
+                (chave, valor) -> { throw new IllegalStateException("cache indisponível"); },
+                chave -> "valor válido", 1, 4);
+        assertEquals("valor válido", cache.obter("a"));
+    }
+
+    @DisplayName("CacheProtegido não grava no cache quando a origem retorna nulo")
+    @Test
+    void origemNulaNaoDeveGravarNoCache() throws Exception {
+        var gravacoes = new AtomicInteger();
+        var cache = new CacheProtegido<String>(chave -> null,
+                (chave, valor) -> gravacoes.incrementAndGet(), chave -> null, 1, 4);
+        assertEquals(null, cache.obter("ausente"));
+        assertEquals(0, gravacoes.get());
+    }
+
+    @DisplayName("CacheProtegido: Cache indisponivel deve manter limite do banco")
     @Test
     void cacheIndisponivelDeveManterLimiteDoBanco() throws Exception {
         var chamadas = new AtomicInteger();
@@ -43,6 +84,7 @@ class CacheProtegidoTest {
         }
     }
 
+    @DisplayName("CacheProtegido: Chave quente deve ter uma unica recomputacao concorrente")
     @Test
     void chaveQuenteDeveTerUmaUnicaRecomputacaoConcorrente() throws Exception {
         var armazenamento = new ConcurrentHashMap<String, String>();

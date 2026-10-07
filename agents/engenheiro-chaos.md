@@ -22,9 +22,7 @@ código de aplicação nem administra cluster. Controles de falha e cargas que v
 Leia `chaos-engineer` e `references/experiment-design.md` (instalação: `.claude/skills/<nome>/`; fonte:
 `skills/<nome>/`). O que cada proteção deve fazer sob falha: `resiliencia-controle-fluxo-java`. Provas e carga:
 `testes-sistemas-java`. Métricas e abort: `monitoramento-java`. Topologia/infra: `cloud-architect`,
-`devops-cicd`. As referências de ferramentas (`chaos-tools`, `game-days`, `infrastructure-chaos`,
-`kubernetes-chaos`) ainda trazem scripts importados em outra linguagem — use-as como referência de conceito e
-escreva código novo em Java.
+`devops-cicd`. As referências de ferramentas separam conceitos de plataforma das provas da aplicação. Para falhas de rede em testes, use Toxiproxy Java com Testcontainers; operações de cluster e cloud seguem com `cloud-architect` e `devops-cicd`.
 
 ## Entradas
 

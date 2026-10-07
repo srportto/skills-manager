@@ -2,10 +2,13 @@ package br.com.srportto.exemplos;
 
 import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.UnifiedJedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 import redis.clients.jedis.params.XAutoClaimParams;
 import redis.clients.jedis.params.XReadGroupParams;
 import redis.clients.jedis.resps.StreamEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,22 +22,34 @@ import java.util.Objects;
  * mesma entrada pode ser entregue de novo após a reivindicação.
  */
 public final class RecuperacaoPendencias {
+    private static final Logger log = LoggerFactory.getLogger(RecuperacaoPendencias.class);
+
     @FunctionalInterface
     public interface Efeito { void aplicar(Map<String, String> campos) throws Exception; }
+
+    @FunctionalInterface
+    public interface MetricasFalhas { void falhaInterna(); }
 
     private final UnifiedJedis redis;
     private final String stream;
     private final String grupo;
     private final long ociosidadeMinimaMs;
     private final int lote;
+    private final MetricasFalhas metricasFalhas;
 
     public RecuperacaoPendencias(UnifiedJedis redis, String stream, String grupo, Duration ociosidadeMinima, int lote) {
+        this(redis, stream, grupo, ociosidadeMinima, lote, () -> {});
+    }
+
+    public RecuperacaoPendencias(UnifiedJedis redis, String stream, String grupo, Duration ociosidadeMinima,
+                                int lote, MetricasFalhas metricasFalhas) {
         if (lote <= 0) throw new IllegalArgumentException("Lote deve ser positivo");
         this.redis = Objects.requireNonNull(redis);
         this.stream = Objects.requireNonNull(stream);
         this.grupo = Objects.requireNonNull(grupo);
         this.ociosidadeMinimaMs = ociosidadeMinima.toMillis();
         this.lote = lote;
+        this.metricasFalhas = Objects.requireNonNull(metricasFalhas);
     }
 
     public void prepararGrupo() {
@@ -72,8 +87,13 @@ public final class RecuperacaoPendencias {
             } catch (InterruptedException erro) {
                 Thread.currentThread().interrupt();
                 return confirmadas;
+            } catch (JedisConnectionException | JedisDataException falha) {
+                log.warn("Falha recuperável ao processar entrada do stream {}; entrada mantida pendente", stream, falha);
+            } catch (RuntimeException falha) {
+                log.error("Falha interna ao processar entrada do stream {}; entrada mantida pendente", stream, falha);
+                metricasFalhas.falhaInterna();
             } catch (Exception falha) {
-                // Sem XACK: a entrada continua pendente e será reivindicada depois da ociosidade mínima.
+                log.warn("Falha recuperável no efeito do stream {}; entrada mantida pendente", stream, falha);
             }
         }
         return confirmadas;

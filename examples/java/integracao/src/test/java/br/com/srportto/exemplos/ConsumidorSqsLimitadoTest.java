@@ -2,6 +2,7 @@ package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityResponse;
@@ -115,6 +116,7 @@ class ConsumidorSqsLimitadoTest {
         if (consumidor != null) consumidor.close();
     }
 
+    @DisplayName("ConsumidorSqsLimitado: Deve limitar mensagens em voo e apagar so depois do efeito")
     @Test
     void deveLimitarMensagensEmVooEApagarSoDepoisDoEfeito() throws Exception {
         var liberar = new CountDownLatch(1);
@@ -141,6 +143,7 @@ class ConsumidorSqsLimitadoTest {
         assertEquals(2, maximo.get());
     }
 
+    @DisplayName("ConsumidorSqsLimitado: Falha transitoria nao deve apagar e deve voltar a ficar visivel")
     @Test
     void falhaTransitoriaNaoDeveApagarEDeveVoltarAFicarVisivel() {
         var tentativas = new AtomicInteger();
@@ -155,6 +158,7 @@ class ConsumidorSqsLimitadoTest {
         assertTrue(fila.extensoes.contains(0), fila.extensoes::toString);
     }
 
+    @DisplayName("ConsumidorSqsLimitado: Processamento longo deve estender a visibilidade e evitar entrega duplicada")
     @Test
     void processamentoLongoDeveEstenderAVisibilidadeEEvitarEntregaDuplicada() {
         var processamentos = Collections.synchronizedList(new ArrayList<String>());

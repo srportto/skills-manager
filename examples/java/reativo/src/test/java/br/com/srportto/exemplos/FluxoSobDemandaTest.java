@@ -1,12 +1,14 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import reactor.test.StepVerifier;
 import java.time.Duration;
 import java.util.concurrent.atomic.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FluxoSobDemandaTest {
+    @DisplayName("FluxoSobDemanda: Deve emitir somente demanda e cancelar origem")
     @Test void deveEmitirSomenteDemandaECancelarOrigem() {
         var emitidos = new AtomicInteger();
         var cancelado = new AtomicBoolean();
@@ -19,6 +21,7 @@ class FluxoSobDemandaTest {
         assertEquals(3, emitidos.get());
     }
 
+    @DisplayName("FluxoSobDemanda: Fonte temporizada deve usar buffer limitado e contar descartes com tempo virtual")
     @Test void fonteTemporizadaDeveUsarBufferLimitadoEContarDescartesComTempoVirtual() {
         var descartados = new AtomicInteger();
         // O publisher temporizado é criado dentro do supplier para usar o relógio virtual.
@@ -31,6 +34,7 @@ class FluxoSobDemandaTest {
                 .thenCancel().verify(Duration.ofSeconds(2));
     }
 
+    @DisplayName("FluxoSobDemanda: Deve propagar erro de overflow de fonte nao regulavel")
     @Test void devePropagarErroDeOverflowDeFonteNaoRegulavel() {
         StepVerifier.create(FluxoSobDemanda.fonteNaoRegulavel(), 0)
                 .expectError(IllegalStateException.class).verify(Duration.ofSeconds(2));

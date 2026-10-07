@@ -67,9 +67,9 @@ public final class MetricasProtecao {
     }
 
     /** O nome da fila deve ser constante do código (cardinalidade fixa), nunca dado de requisição. */
-    public void observarFila(String nome, FilaLimitada<?> fila) {
-        Gauge.builder("app.fila.itens", fila, FilaLimitada::tamanho).tag("fila", nome).register(registro);
-        Gauge.builder("app.fila.bytes", fila, FilaLimitada::bytes).baseUnit("bytes").tag("fila", nome).register(registro);
-        Gauge.builder("app.fila.capacidade.itens", fila, FilaLimitada::capacidade).tag("fila", nome).register(registro);
+    public void observarFila(String nome, FilaObservavel fila) {
+        Gauge.builder("app.fila.itens", fila, FilaObservavel::tamanho).tag("fila", nome).register(registro);
+        Gauge.builder("app.fila.bytes", fila, FilaObservavel::bytes).baseUnit("bytes").tag("fila", nome).register(registro);
+        Gauge.builder("app.fila.capacidade.itens", fila, FilaObservavel::capacidade).tag("fila", nome).register(registro);
     }
 }

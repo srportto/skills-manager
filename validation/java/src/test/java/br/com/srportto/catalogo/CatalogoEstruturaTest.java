@@ -1,6 +1,7 @@
 package br.com.srportto.catalogo;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -36,6 +37,7 @@ class CatalogoEstruturaTest {
         return encontrados;
     }
 
+    @DisplayName("CatalogoEstrutura: Deve resolver as skills declaradas pelos agents")
     @Test void deveResolverAsSkillsDeclaradasPelosAgents() throws Exception {
         var existentes = skills();
         try (var arquivos = Files.list(RAIZ.resolve("agents"))) {
@@ -49,6 +51,7 @@ class CatalogoEstruturaTest {
         }
     }
 
+    @DisplayName("CatalogoEstrutura: Related skills devem referenciar identificadores existentes")
     @Test void relatedSkillsDevemReferenciarIdentificadoresExistentes() throws Exception {
         var existentes = skills();
         var erros = new ArrayList<String>();
@@ -65,6 +68,7 @@ class CatalogoEstruturaTest {
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
 
+    @DisplayName("CatalogoEstrutura: Agents devem seguir o contrato de entradas entregas e fronteiras")
     @Test void agentsDevemSeguirOContratoDeEntradasEntregasEFronteiras() throws Exception {
         var erros = new ArrayList<String>();
         for (Path arquivo : Catalogo.agents()) {
@@ -80,6 +84,7 @@ class CatalogoEstruturaTest {
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
 
+    @DisplayName("CatalogoEstrutura: Frontmatter nao deve ser seguido de delimitador duplicado")
     @Test void frontmatterNaoDeveSerSeguidoDeDelimitadorDuplicado() throws Exception {
         var erros = new ArrayList<String>();
         for (Path arquivo : skills().values()) {
@@ -92,6 +97,7 @@ class CatalogoEstruturaTest {
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
 
+    @DisplayName("CatalogoEstrutura: Deve disponibilizar as referencias transversais do plano")
     @Test void deveDisponibilizarAsReferenciasTransversaisDoPlano() throws Exception {
         var existentes = skills();
         assertTrue(existentes.containsKey("resiliencia-controle-fluxo-java"), "Referência de resiliência ausente");

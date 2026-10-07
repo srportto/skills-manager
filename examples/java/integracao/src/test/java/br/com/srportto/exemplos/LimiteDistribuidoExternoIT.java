@@ -3,6 +3,7 @@ package br.com.srportto.exemplos;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.containers.GenericContainer;
 import redis.clients.jedis.JedisPooled;
 
@@ -37,6 +38,7 @@ class LimiteDistribuidoExternoIT {
         return new LimiteDistribuido(LimiteDistribuido.redis(redis), maximo, janela, 1, 1.0, 1_000, System::nanoTime);
     }
 
+    @DisplayName("LimiteDistribuidoExterno: Requisicoes concorrentes de varias replicas nao devem ultrapassar a quota")
     @Test
     void requisicoesConcorrentesDeVariasReplicasNaoDevemUltrapassarAQuota() throws Exception {
         int replicas = 4;
@@ -63,6 +65,7 @@ class LimiteDistribuidoExternoIT {
         assertTrue(redis.pttl(LimiteDistribuido.chave("tenant-concorrente")) > 0, "a janela precisa ter expiração");
     }
 
+    @DisplayName("LimiteDistribuidoExterno: Chave sem expiracao deixada por falha parcial deve ser corrigida na proxima chamada")
     @Test
     void chaveSemExpiracaoDeixadaPorFalhaParcialDeveSerCorrigidaNaProximaChamada() throws Exception {
         // Simula o defeito do INCR + EXPIRE em duas chamadas: o processo caiu entre elas e a chave ficou sem TTL.

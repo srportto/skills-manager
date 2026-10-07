@@ -1,6 +1,7 @@
 package br.com.srportto.catalogo;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,7 @@ class ReferenciasCatalogoTest {
         return erros.size() + " problema(s):\n" + String.join("\n", erros);
     }
 
+    @DisplayName("ReferenciasCatalogo: Links locais devem resolver na fonte do catalogo")
     @Test
     void linksLocaisDevemResolverNaFonteDoCatalogo() {
         var erros = new ArrayList<String>();
@@ -38,6 +40,7 @@ class ReferenciasCatalogoTest {
         assertTrue(erros.isEmpty(), () -> falhas(erros));
     }
 
+    @DisplayName("ReferenciasCatalogo: Requisitos nao devem depender da pasta docs ignorada")
     @Test
     void requisitosNaoDevemDependerDaPastaDocsIgnorada() {
         var erros = new ArrayList<String>();
@@ -51,6 +54,7 @@ class ReferenciasCatalogoTest {
         assertTrue(erros.isEmpty(), () -> falhas(erros));
     }
 
+    @DisplayName("ReferenciasCatalogo: Caminhos de skill citados devem existir")
     @Test
     void caminhosDeSkillCitadosDevemExistir() {
         Set<String> existentes = Catalogo.diretorios("skills").stream()
@@ -69,6 +73,7 @@ class ReferenciasCatalogoTest {
         assertTrue(erros.isEmpty(), () -> falhas(erros));
     }
 
+    @DisplayName("ReferenciasCatalogo: Indice deve listar inventario sem contagem desatualizada")
     @Test
     void indiceDeveListarInventarioSemContagemDesatualizada() {
         Path indice = Catalogo.RAIZ.resolve("skills/README.md");
@@ -98,6 +103,7 @@ class ReferenciasCatalogoTest {
         assertTrue(erros.isEmpty(), () -> falhas(erros));
     }
 
+    @DisplayName("ReferenciasCatalogo: Matriz de cobertura deve rastrear todos os modulos")
     @Test
     void matrizDeCoberturaDeveRastrearTodosOsModulos() {
         Path matriz = Catalogo.RAIZ.resolve("docs/catalogo/matriz-cobertura.md");

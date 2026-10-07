@@ -45,9 +45,9 @@ execuções — sem resultado novo, a linha antiga continua valendo só para a v
 
 | Comando | Resultado (2026-10-06) |
 |---|---|
-| `mvn -f validation/java/pom.xml verify` | 14 testes, 0 falhas |
-| `mvn -f examples/java/pom.xml verify` | 79 testes (fundamentos 35, reativo 5, integracao 39), 0 falhas |
-| `mvn -f examples/java/pom.xml -Pintegracao verify` | 79 unitários + 7 `ExternoIT` (Kafka+PostgreSQL, SQS/LocalStack, Valkey ×2, PostgreSQL, Toxiproxy), 0 falhas |
+| `mvn -f validation/java/pom.xml verify` | 20 testes, 0 falhas (inclui 6 casos do detector de recursos externos) |
+| `mvn -f examples/java/pom.xml verify` | 96 testes (fundamentos 36, reativo 5, integração 55), 0 falhas |
+| `mvn -f examples/java/pom.xml -Pintegracao verify` | 96 unitários + 7 `ExternoIT` (Kafka+PostgreSQL, SQS/LocalStack, Valkey ×2, PostgreSQL, Toxiproxy), 0 falhas |
 | `mvn -f examples/java/pom.xml -Pcarga verify` | 1 `CargaIT`, 0 falhas — tabela abaixo |
 
 ### Ensaio de carga do checkout (laboratório)
@@ -67,7 +67,9 @@ cedo e medida, latência limitada dos aceitos, recuperação), não a capacidade
 
 ## Pendências conhecidas
 
-- Avaliação comportamental dos agents (A01–A12): não executada — ver [avaliações](avaliacoes-agents.md).
-- Referências `chaos-tools`, `game-days`, `infrastructure-chaos` e `kubernetes-chaos` mantêm scripts importados em
-  Python (baseline rastreado em `validation/java`).
-- Workflow `.github/workflows/validar-catalogo.yml` criado mas ainda não executado no GitHub Actions.
+- Avaliação comportamental: A01, A03, A05, A07 e A08 executadas duas vezes cada; A02, A04, A06 e A09–A12
+  pendentes. A amostra obteve 70% e pede correções em A05, A07 e A08 — ver [avaliações](avaliacoes-agents.md).
+- Referências `chaos-tools`, `game-days`, `infrastructure-chaos` e `kubernetes-chaos` agora tratam ferramentas
+  como conceitos e apontam para o exemplo Java `ExperimentoCoordenadorLentoExternoIT`.
+- Workflow `.github/workflows/validar-catalogo.yml` ainda sem execução no GitHub Actions; o ambiente desta
+  sessão não disponibiliza `gh` para abrir PR e inspecionar os jobs remotos.
