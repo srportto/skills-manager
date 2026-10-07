@@ -33,7 +33,8 @@ public class RoteadorLeituraEscrita extends AbstractRoutingDataSource {
 class DataSourceConfig {
 
     @Bean
-    DataSource dataSource(DataSource primario, DataSource replica) {
+    DataSource dataSource(@Qualifier("primario") DataSource primario,
+                          @Qualifier("replica") DataSource replica) {
         var roteador = new RoteadorLeituraEscrita();
         roteador.setTargetDataSources(Map.of("primario", primario, "replica", replica));
         roteador.setDefaultTargetDataSource(primario);

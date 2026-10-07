@@ -48,8 +48,8 @@ CREATE INDEX idx_orders_status   ON orders (status);
 ```
 
 ```sql
--- DEPOIS - um composto: igualdade primeiro (customer_id, status), depois a coluna do ORDER BY;
--- o parcial mantém o índice pequeno (só pedidos pendentes)
+-- DEPOIS - um composto: igualdade primeiro (customer_id), depois a coluna do ORDER BY (created_at DESC);
+-- o filtro status = 'pending' vira predicado do índice parcial, que fica pequeno (só pedidos pendentes)
 CREATE INDEX CONCURRENTLY idx_orders_customer_pending
     ON orders (customer_id, created_at DESC)
     WHERE status = 'pending';

@@ -121,7 +121,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             select new br.com.srportto.pedidos.infrastructure.persistence.PedidoResumo(p.id, count(i))
             from Pedido p left join p.itens i
             group by p.id
-            """)
+            """,
+            // countQuery explícita: o count derivado de um "group by" devolveria uma linha por grupo
+            countQuery = "select count(p) from Pedido p")
     Page<PedidoResumo> resumir(Pageable pageable);
 }
 ```

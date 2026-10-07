@@ -55,7 +55,7 @@ Execution Time: 96.510 ms
 
 ```sql
 CREATE INDEX CONCURRENTLY idx_orders_customer ON orders (customer_id) INCLUDE (total_amount);
-ANALYZE orders;
+VACUUM (ANALYZE) orders;  -- VACUUM atualiza o visibility map; só ANALYZE não zera os Heap Fetches
 ```
 
 ```
