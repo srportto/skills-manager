@@ -21,3 +21,33 @@ Prova: número emitido não excede demanda; cancelamento chega à origem; overfl
 
 Fonte: [Reactive Streams](https://www.reactive-streams.org/) e [testes Reactor](https://projectreactor.io/docs/core/release/reference/testing.html).
 
+
+## Antes/depois (Java 25)
+
+```java
+// ANTES: fila ilimitada e executor sem teto; produtor rápido esgota o heap e ninguém é avisado
+var executor = Executors.newFixedThreadPool(4);          // LinkedBlockingQueue sem limite por trás
+pedidos.forEach(p -> executor.submit(() -> processar(p)));
+Flux.interval(Duration.ofMillis(1)).onBackpressureBuffer().subscribe(this::processar); // buffer sem capacidade
+```
+
+```java
+// DEPOIS: fila limitada com rejeição explícita e demanda controlada
+var fila = new FilaLimitada<Pedido>(500);
+switch (fila.oferecer(pedido)) {
+    case ACEITO -> metricas.aceito();
+    case REJEITADO_POR_CAPACIDADE -> throw new SobrecargaException(Duration.ofSeconds(1)); // 429/503 + Retry-After
+}
+
+Flux.range(1, 1_000).limitRate(32).subscribe(this::processar);          // pede em lotes, não ilimitado
+Flux.interval(Duration.ofMillis(1))
+    .onBackpressureBuffer(100, descartado -> metricas.descartado(), BufferOverflowStrategy.DROP_LATEST);
+```
+
+Provas que executam essas regras:
+
+- [FilaLimitadaTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/FilaLimitadaTest.java): rejeita o excedente e
+  aceita de novo após liberar capacidade; limita por itens e por bytes.
+- [FluxoSobDemandaTest](../../../examples/java/reativo/src/test/java/br/com/srportto/exemplos/FluxoSobDemandaTest.java): não emite além da
+  demanda, propaga cancelamento, usa buffer limitado com descarte contado e expõe overflow de fonte não regulável.
+- [ProtecoesTest](../../../examples/java/reativo/src/test/java/br/com/srportto/exemplos/ProtecoesTest.java): isolamento por bulkhead.

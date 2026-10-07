@@ -25,3 +25,42 @@ Teste transitório seguido de sucesso; falha permanente uma vez; interrupção; 
 deriva o timeout da requisição do orçamento restante e não inicia I/O sem tempo disponível. O teste prova
 que o chamador é liberado no prazo **e** que o servidor continua processando — por isso efeitos remotos
 exigem idempotência e reconciliação.
+
+## Orçamento de deadline por salto
+
+Cada salto recebe só o que **resta** do orçamento do cliente, menos uma margem; tentativas de retry contam
+dentro do mesmo orçamento. Exemplo: cliente com 2 s.
+
+| Salto | Orçamento restante na entrada | Timeout deste salto | Tentativas | Observação |
+|---|---|---|---|---|
+| Cliente → gateway | 2.000 ms | 2.000 ms (total) | 1 (sem retry no cliente) | Dono do deadline |
+| Gateway → serviço | ~1.900 ms | 1.800 ms | até 2, só se sobrar orçamento | Margem de 100 ms para a resposta |
+| Serviço → banco | ~1.500 ms | 800 ms por consulta | 1 (efeito não repetido às cegas) | Timeout < restante; libera conexão antes do backoff |
+| Serviço → dependência externa | ~1.500 ms | 600 ms | até 2 (backoff 50 ms → 100 ms, teto 200 ms, full jitter) | Soma de timeouts + esperas ≤ restante |
+
+Regras: (1) timeout de cada salto **menor** que o restante da entrada; (2) tentativas e esperas de backoff
+descontam do mesmo orçamento — se a espera consumir o restante, encerre antes de dormir; (3) backoff exponencial
+com **teto** e **jitter**; (4) uma só camada é dona do retry (se o gateway já repete, o serviço não repete);
+(5) repasse o deadline restante ao salto seguinte (prazo restante, não relógio de parede).
+
+```java
+// ANTES: sem timeout e retry em cada camada: pior caso 2 s × 3 × 3 = 18 s
+var resposta = http.send(requisicao, BodyHandlers.ofString()); // timeout padrão: infinito
+```
+
+```java
+// DEPOIS: orçamento único; cada salto deriva o timeout do restante e a política conta tentativas dentro dele
+var orcamento = new OrcamentoTempo(Duration.ofSeconds(2), System::nanoTime);
+var retry = new PoliticaRetry(3, Duration.ofMillis(50), Duration.ofMillis(200),
+        ThreadLocalRandom.current()::nextDouble, d -> Thread.sleep(d), () -> quotaRetry.tryAcquire());
+String corpo = retry.executar(
+        () -> chamadaComDeadline.obter(URI.create("http://servico/itens"), orcamento),
+        e -> e instanceof IOException,   // só falha transitória elegível
+        orcamento);
+```
+
+Provas: [PoliticaRetryTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/PoliticaRetryTest.java) (backoff
+exponencial com jitter, teto respeitado, não dorme se a espera consome o deadline, sem retry de erro permanente,
+interrupção não vira retry), [OrcamentoTempoTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/OrcamentoTempoTest.java)
+e [ChamadaComDeadlineTest](../../../examples/java/fundamentos/src/test/java/br/com/srportto/exemplos/ChamadaComDeadlineTest.java) (dependência
+lenta não retém o chamador além do prazo; não chama com orçamento esgotado).
