@@ -16,12 +16,15 @@ metadata:
 
 # Persistência JPA
 
-## Visão geral
-
 Referência de bolso para os problemas de JPA/Hibernate mais comuns: N+1, `LazyInitializationException`,
 transações mal posicionadas, atualização concorrente perdida e listagens lentas sem paginação. Use
 sempre que houver dúvida de performance ou comportamento de persistência, ou ao revisar código que
 acessa `Repository`/`@Entity`.
+
+## Quando usar / Quando NÃO usar
+
+**Use** para dúvida de performance ou comportamento de persistência e ao revisar código que toca
+`Repository`/`@Entity`.
 
 **Quando NÃO usar:** para dúvida sobre em qual camada uma classe deve viver (ex.: onde fica o
 repository), use `arquitetura-limpa-java`. Para gerar o esqueleto de uma aplicação nova com banco de
@@ -29,7 +32,15 @@ dados (overlay `rest-crud-banco`), use `criar-aplicacao-java`. Para revisão de 
 persistência), use `revisao-de-codigo-java`. Para tuning de banco (índices, `EXPLAIN ANALYZE`,
 configuração do SGBD), use `banco-de-dados-performance`.
 
-## Tabela problema → solução
+## Entradas
+
+- Trecho de código (`@Entity`, `Repository`, use case) ou o sintoma observado (log de SQL, exceção, latência).
+- Versão do banco/dialeto (PostgreSQL ou MySQL) quando a dúvida envolver lock, timeout ou isolamento.
+- Contexto de implantação: várias réplicas da aplicação? réplica de leitura? rolling deploy?
+
+## Decisão
+
+Tabela problema → solução:
 
 | Problema | Sintoma | Solução |
 |---|---|---|
@@ -40,331 +51,68 @@ configuração do SGBD), use `banco-de-dados-performance`.
 | Listagem lenta | Página carrega tudo de uma vez, sem limite | `Pageable` + projeção (retornar só os campos necessários) |
 | Insert em lote lento | Uma query de `INSERT` por registro | `hibernate.jdbc.batch_size` + `saveAll` |
 
-## N+1 em detalhe
+Onde ler o detalhe de cada linha: veja o [guia de references](#guia-de-references).
 
-> O problema de performance mais comum em JPA/Hibernate.
+## Passo a passo (checklist)
 
-```java
-// infrastructure/persistence/Pedido.java
-@Entity
-@Table(name = "pedidos")
-@Getter
-@Setter
-@NoArgsConstructor
-public class Pedido {
+- [ ] Reproduza com o SQL visível (`hibernate.SQL: DEBUG`) e **conte** as queries antes de mudar.
+- [ ] Identifique o sintoma na tabela acima e abra a reference correspondente.
+- [ ] Aplique **uma** correção por vez (fetch, projeção, transação, lock).
+- [ ] Confirme que `@Transactional` está no use case e que não há auto-invocação.
+- [ ] Se há escrita concorrente: escolha otimista (`@Version`), pessimista ou UPDATE condicional atômico.
+- [ ] Se há mudança de schema: aplique expand/contract; índices pesados seguem `banco-de-dados-performance`.
+- [ ] Reconte as queries / reexecute o teste de concorrência e registre antes/depois.
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+## Saída
 
-    @OneToMany(mappedBy = "pedido", fetch = FetchType.LAZY)
-    private List<ItemPedido> itens;
-}
-```
+Código ajustado (entidade, repository, use case) com a mudança de queries medida (antes/depois), ou parecer
+de revisão apontando o anti-padrão, a severidade e a correção da reference correspondente.
 
-```java
-// ERRADO - N+1: 1 query para buscar os pedidos + 1 query por pedido para buscar os itens
-List<Pedido> pedidos = pedidoRepository.findAll();   // 1 query
-for (Pedido pedido : pedidos) {
-    pedido.getItens().size();                        // 1 query POR pedido (lazy)
-}
-// 50 pedidos = 51 queries
-```
+## Validação
 
-Para confirmar a suspeita, habilite `hibernate.SQL: DEBUG` (ou `show-sql: true`) e conte as queries no
-log.
+- Número de queries por requisição caiu e é estável (não cresce com o tamanho da lista).
+- Nenhuma `LazyInitializationException` com `spring.jpa.open-in-view: false`.
+- Teste de concorrência (duas transações) prova o comportamento de lock/`@Version`/unique constraint;
+  referência executável: [`ProcessadorIdempotenteExternoIT`](../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ProcessadorIdempotenteExternoIT.java).
+- Migration compatível com a versão anterior da aplicação (rollback de app funciona com o schema expandido).
 
-**Solução 1 — `JOIN FETCH` (JPQL)**: uma única query traz pedidos e itens juntos. Use quando a
-associação sempre é necessária para o caso de uso da consulta.
+## Gotchas
 
-```java
-// infrastructure/persistence/PedidoRepository.java
-public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+- `@Transactional` em chamada interna (`this.metodo()`) é ignorado em silêncio — extraia para outro bean.
+- `try/catch` em volta de `save(...)` não pega `OptimisticLockingFailureException`: o flush acontece no
+  commit; use `saveAndFlush` ou trate no handler central (409).
+- `existsBy...` seguido de `save(...)` é check-then-act: quem arbitra é a unique constraint criada na migration.
+- `@Data` em entidade, `FetchType.EAGER` em coleção e `findAll()` sem `Pageable` são os três vilões clássicos.
+- `JOIN FETCH` de coleção com `Pageable` pagina em memória.
+- Leitura de réplica não serve para decisão de negócio nem para read-your-writes.
+- Pool de conexões e timeouts de aquisição: fonte única em
+  [orcamento-conexoes](../banco-de-dados-performance/references/orcamento-conexoes.md).
 
-    @Query("SELECT p FROM Pedido p JOIN FETCH p.itens")
-    List<Pedido> buscarTodosComItens();
-}
-```
+## Guia de references
 
-**Solução 2 — `@EntityGraph`**: reaproveita o método padrão do `JpaRepository` (`findAll`) sem escrever
-JPQL. Prefira quando a mesma query base precisa às vezes carregar a associação e às vezes não (múltiplos
-métodos `@EntityGraph` sobre o mesmo `findById`, por exemplo).
+| Arquivo | Quando ler |
+|---|---|
+| [references/n-mais-um.md](references/n-mais-um.md) | N+1, `JOIN FETCH`/`@EntityGraph`/projeção, `EAGER`, `findAll()` sem paginação, `open-in-view` |
+| [references/transacoes.md](references/transacoes.md) | Onde fica `@Transactional`, `readOnly`, auto-invocação, transação curta sem I/O |
+| [references/entidades-projecoes.md](references/entidades-projecoes.md) | Convenções de entidade/repository, DTO record, idempotência por unique constraint, `ddl-auto` |
+| [references/locking.md](references/locking.md) | `@Version`, lock pessimista, deadlock, UPDATE condicional, isolamento e timeouts |
+| [references/migrations-expand-contract.md](references/migrations-expand-contract.md) | Mudança de schema em rolling deploy, rollback |
+| [references/replica-leitura.md](references/replica-leitura.md) | Réplica com atraso, read-your-writes, roteamento |
+| [../banco-de-dados-performance/references/orcamento-conexoes.md](../banco-de-dados-performance/references/orcamento-conexoes.md) | Fonte única de pool/HikariCP/proxy de conexões (não duplicada aqui) |
+| [../banco-de-dados-performance/assets/diagnostico-postgresql.sql](../banco-de-dados-performance/assets/diagnostico-postgresql.sql) | Locks bloqueantes, lag de réplica, dead tuples em produção |
 
-```java
-// infrastructure/persistence/PedidoRepository.java
-public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+Código executável relacionado (em `examples/java`):
+[`ProcessadorIdempotente`](../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/ProcessadorIdempotente.java)
+(unique constraint + transação do efeito),
+[`ProcessadorIdempotenteExternoIT`](../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ProcessadorIdempotenteExternoIT.java)
+(concorrência em PostgreSQL real). Padrão completo de outbox e replay:
+[idempotência, outbox e replay](../mensageria-sqs-kafka/references/idempotencia-outbox-replay-java.md).
 
-    @EntityGraph(attributePaths = "itens")
-    List<Pedido> findAll();
-}
-```
+## Quem aplica o quê
 
-## Transações
-
-`@Transactional` vive em `application/usecase/` — **nunca** nos driving adapters de
-`infrastructure/` (controller, listener SQS) nem no `domain/`. O controller apenas chama a `port/in`;
-é o use case quem delimita a fronteira transacional.
-
-Padrão adotado neste projeto (`ProdutoService`, overlay `rest-crud-banco`): `readOnly = true` na
-classe inteira, e `@Transactional` (leitura/escrita) sobrescrito nos métodos que gravam. Isso desliga o
-dirty checking do Hibernate nos métodos de leitura (menos overhead) e deixa explícito, por método,
-quais alteram dado:
-
-```java
-// application/usecase/ProdutoService.java
-@Service
-@Transactional(readOnly = true)
-public class ProdutoService {
-
-    private final ProdutoRepository repository;
-
-    public ProdutoService(ProdutoRepository repository) {
-        this.repository = repository;
-    }
-
-    @Transactional
-    public Produto criar(Produto produto) {
-        produto.validar();
-        return repository.save(produto);
-    }
-
-    public Produto buscarPorId(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new BusinessException("Produto nao encontrado: " + id));
-    }
-
-    public List<Produto> listar() {
-        return repository.findAll();
-    }
-
-    @Transactional
-    public void excluir(Long id) {
-        repository.delete(buscarPorId(id));
-    }
-}
-```
-
-### Pitfall: auto-invocação não passa pelo proxy
-
-`@Transactional` funciona via proxy do Spring. Uma chamada interna (`this.metodo(...)`) não passa pelo
-proxy, então a anotação é **ignorada silenciosamente**:
-
-```java
-// ERRADO - chamada interna (this.criar) nao passa pelo proxy Spring; @Transactional de criar() e ignorado
-@Service
-@Transactional(readOnly = true)
-public class ProdutoService {
-
-    public void processarLote(List<Produto> produtos) {
-        produtos.forEach(this::criar); // this.criar() -> sem transacao real aqui
-    }
-
-    @Transactional
-    public Produto criar(Produto produto) {
-        produto.validar();
-        return repository.save(produto);
-    }
-}
-```
-
-```java
-// CORRETO - extrai o metodo transacional para outro bean, chamado de fora (passa pelo proxy)
-@Service
-public class ProcessadorLoteService {
-
-    private final ProdutoService produtoService;
-
-    public ProcessadorLoteService(ProdutoService produtoService) {
-        this.produtoService = produtoService;
-    }
-
-    public void processarLote(List<Produto> produtos) {
-        produtos.forEach(produtoService::criar); // chamada externa, passa pelo proxy
-    }
-}
-```
-
-## Convenções do projeto
-
-- **Entidade JPA em `infrastructure/persistence/`** — nunca no `domain/`, que permanece livre de
-  `jakarta.persistence.*`. Use Lombok `@Getter @Setter @NoArgsConstructor`, nunca `@Data` em entidade
-  JPA (`@Data` gera `equals`/`hashCode` a partir de todos os campos, o que quebra com proxies do
-  Hibernate e coleções lazy).
-- **`JpaRepository` em `infrastructure/persistence/`**, package-private, sem implementação manual —
-  quem o expõe para fora é o adapter que implementa a `port/out` (`PedidoRepository` do `domain`).
-  O use case injeta a porta, nunca o `JpaRepository`. Camadas descritas em detalhe na skill
-  `arquitetura-limpa-java`.
-- **Idempotência persistente via unique constraint, na transação do efeito**: a restrição única (criada
-  pela migration, não só por `@Column(unique = true)`) é quem arbitra duplicatas. `existsByIdPedido(...)`
-  seguido de `save(...)` é **check-then-act**: duas instâncias passam pela checagem ao mesmo tempo e uma
-  delas falha (ou duplica, se não houver restrição). Grave o registro de idempotência e o efeito na mesma
-  transação e trate a violação:
-
-  ```java
-  // application — o caso de uso abre a transação; a restrição única decide quem venceu.
-  @Transactional
-  public PedidoId criar(CriarPedido comando) {
-      try {
-          idempotencia.saveAndFlush(new IdempotenciaEntity(comando.tenant(), comando.chave(), comando.hashPayload()));
-          var pedido = pedidos.save(PedidoEntity.de(comando));
-          outbox.save(OutboxEntity.pedidoCriado(pedido));
-          return pedido.id();
-      } catch (DataIntegrityViolationException duplicata) {
-          // A transação atual está marcada para rollback: leia o resultado anterior em transação nova
-          // (outro bean/método REQUIRES_NEW) e compare o hash do payload — diferente é conflito (422/409).
-          throw new RequisicaoRepetida(comando.tenant(), comando.chave());
-      }
-  }
-  ```
-
-  Padrão completo, outbox e provas executáveis: `mensageria-sqs-kafka`
-  ([idempotência, outbox e replay](../mensageria-sqs-kafka/references/idempotencia-outbox-replay-java.md)).
-- **DTO record nas bordas via MapStruct**: a entidade JPA nunca atravessa `infrastructure/web/`;
-  `ProdutoMapper`
-  (`@Mapper(componentModel = "spring")`) converte `Produto` para os records `CriarProdutoRequest`/
-  `ProdutoResponse` definidos no controller.
-- **`ddl-auto`**: `update` só em desenvolvimento (`application-fragmento.yaml` do overlay
-  `rest-crud-banco`); em produção use `validate` — o schema é gerenciado por migration (Flyway/Liquibase),
-  não pelo Hibernate.
-
-## Locking otimista
-
-Para evitar *lost update* (duas transações leem o mesmo registro e a segunda grava por cima da
-primeira sem saber que ele mudou), adicione `@Version` na entidade:
-
-```java
-// infrastructure/persistence/Produto.java
-@Entity
-@Table(name = "produtos")
-@Getter
-@Setter
-@NoArgsConstructor
-public class Produto {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Version
-    private Long versao;
-
-    private String nome;
-    private BigDecimal preco;
-
-    public void validar() {
-        if (preco == null || preco.signum() <= 0) {
-            throw new BusinessException("Preco do produto deve ser maior que zero");
-        }
-    }
-}
-```
-
-O Hibernate incrementa `versao` a cada `UPDATE` e compara o valor lido com o valor atual no banco; se
-divergirem, lança `OptimisticLockingFailureException`. **Atenção ao momento:** a verificação acontece no
-*flush*, que normalmente ocorre no commit — **depois** do `return` do método `@Transactional`. Um `try/catch`
-em volta de `save(...)` dentro da transação não pega o conflito. Duas opções corretas:
-
-```java
-// Opção 1 — forçar o flush dentro do try (o conflito aparece aqui)
-@Transactional
-public Produto atualizar(Produto produto) {
-    try {
-        return repository.saveAndFlush(produto);
-    } catch (OptimisticLockingFailureException conflito) {
-        throw new ConflitoDeConcorrencia("Produto foi alterado por outro processo", conflito);
-    }
-}
-
-// Opção 2 — traduzir fora da transação, no handler central de erros (infrastructure/web)
-@ExceptionHandler(OptimisticLockingFailureException.class)
-ProblemDetail conflito(OptimisticLockingFailureException erro) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Recurso alterado por outra requisição; releia e tente de novo.");
-}
-```
-
-Conflito de concorrência é **409** (ver `api-rest-design`); o cliente relê e decide. Repetir automaticamente
-só é seguro se a operação for recalculada a partir do estado novo (releitura + reaplicação), com tentativas
-limitadas.
-
-## Locking pessimista, isolamento e timeouts
-
-Use lock pessimista quando o conflito é frequente e repetir é caro (ex.: reservar a última unidade de estoque):
-
-```java
-// infrastructure/persistence — SELECT ... FOR UPDATE com espera limitada (sem timeout, espera indefinida)
-@Lock(LockModeType.PESSIMISTIC_WRITE)
-@QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "2000"))
-@Query("select e from EstoqueEntity e where e.sku = :sku")
-Optional<EstoqueEntity> travarPorSku(@Param("sku") String sku);
-```
-
-- O suporte ao hint de timeout varia por banco/dialeto (o PostgreSQL não tem `FOR UPDATE WAIT n`; lá, garanta o
-  limite com `lock_timeout` por papel ou `SET LOCAL lock_timeout` na transação). Confira o SQL gerado e teste
-  a espera com duas transações concorrentes.
-- Trave sempre na **mesma ordem** (ex.: por id crescente) para evitar deadlock; o banco aborta uma das
-  transações em deadlock — trate como conflito transitório com retry limitado.
-- Transação curta: nada de chamada HTTP, fila ou espera de backoff com lock/conexão seguros.
-- Atualização condicional atômica dispensa lock explícito em muitos casos:
-  `update estoque set quantidade = quantidade - :qtd where sku = :sku and quantidade >= :qtd` (linhas afetadas
-  = 0 → sem estoque).
-- `@Transactional(timeout = 5)` (segundos) e `statement_timeout`/`setQueryTimeout` limitam a duração; o
-  nível de isolamento padrão (READ COMMITTED no PostgreSQL, REPEATABLE READ no MySQL/InnoDB) muda quais
-  anomalias são possíveis — documente quando depender de um nível específico.
-
-## Migrations: expand/contract e rollback
-
-Mudança de schema com aplicação rodando em várias versões ao mesmo tempo (rolling deploy):
-
-1. **Expand** — adicionar coluna/tabela **compatível** (nullable ou com default), sem remover nada.
-2. **Migrar** — aplicação nova escreve nos dois formatos; backfill em lotes pequenos, com pausa e medição de lag.
-3. **Contract** — remover o formato antigo só depois que nenhuma versão antiga roda (e após janela de rollback).
-
-Rollback de aplicação precisa funcionar com o schema já expandido; rollback de schema destrutivo (drop) não
-existe na prática — por isso o drop vem por último. Índices em tabelas grandes seguem
-`banco-de-dados-performance` (`CONCURRENTLY` no PostgreSQL, Online DDL no MySQL; migration não transacional).
-
-## Leitura em réplica com atraso
-
-Réplicas de leitura têm atraso (segundos, às vezes minutos sob carga). Consequências:
-
-- **Read-your-writes** quebra: o usuário cria o pedido (primário) e a listagem (réplica) não mostra. Leia do
-  primário logo após escrever (por sessão/tempo), ou devolva o recurso criado na própria resposta.
-- Decisão de negócio (saldo, estoque, idempotência) **sempre** no primário.
-- Roteamento: `AbstractRoutingDataSource` com `@Transactional(readOnly = true)` → réplica é comum; meça o lag
-  (`pg_stat_replication`, `Seconds_Behind_Source`) e tire a réplica do roteamento quando passar do tolerado.
-
-## Erros comuns
-
-| Anti-padrão | Por que é errado | Correção |
+| Situação | Quem | Skill |
 |---|---|---|
-| `FetchType.EAGER` em coleção | Carrega TODOS os itens em TODA consulta da entidade dona, mesmo quando não precisa | `FetchType.LAZY` por padrão; carregar explicitamente via `JOIN FETCH`/`@EntityGraph` quando o caso de uso exigir |
-| `findAll()` sem paginação | Carrega a tabela inteira em memória; piora a cada registro novo | `Pageable` — `JpaRepository` já oferece `findAll(Pageable)` de graça |
-| Entidade `@Entity` retornada pelo controller | Serializar a entidade acopla o contrato de API ao schema do banco | Mapper converte para DTO record antes de sair pela borda |
-
-```java
-// ERRADO - EAGER em colecao carrega TODOS os itens em TODA consulta de Pedido, mesmo quando nao precisa
-@OneToMany(mappedBy = "pedido", fetch = FetchType.EAGER)
-private List<ItemPedido> itens;
-
-// CORRETO - LAZY por padrao; carrega a colecao explicitamente so quando o caso de uso precisa
-@OneToMany(mappedBy = "pedido", fetch = FetchType.LAZY)
-private List<ItemPedido> itens;
-```
-
-### `open-in-view` ligado
-
-Por padrão, o Spring Boot mantém a sessão do Hibernate aberta durante toda a requisição HTTP
-(`spring.jpa.open-in-view: true` é o default). Isso evita `LazyInitializationException` de forma
-implícita, mas esconde o problema: a query real dispara durante a serialização da resposta, fora de
-qualquer `@Transactional` visível, e prende a conexão de banco pelo tempo inteiro da requisição
-(inclusive chamadas HTTP externas feitas depois). Recomendação:
-
-```yaml
-spring:
-  jpa:
-    open-in-view: false
-```
-
-Com `open-in-view: false`, qualquer acesso lazy fora da transação falha explicitamente com
-`LazyInitializationException` no lugar certo (o service), forçando a resolver com `JOIN FETCH`,
-`@EntityGraph` ou projeção DTO — nunca reabrindo a sessão.
+| Diagnosticar N+1, lock, transação | agent `especialista-banco-dados` ou sessão principal | esta skill |
+| Gerar repository/entidade novos | agent `java-construtor` | esta skill + `arquitetura-limpa-java` |
+| Revisar código que toca `Repository`/`@Entity` | agent `java-revisor` | esta skill + `revisao-de-codigo-java` |
+| Índice, `EXPLAIN ANALYZE`, tuning do SGBD | agent `especialista-banco-dados` | `banco-de-dados-performance` |
