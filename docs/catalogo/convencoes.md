@@ -33,6 +33,20 @@ Exemplos novos/revisados da trilha de engenharia usam Java 25, sem preview, com 
 
 Graphify, OpenSpec e `python-pro` são ferramentas auxiliares preservadas, fora da trilha Java. Não apagar nem reescrever seus scripts por causa da preferência de linguagem da aplicação. Não introduzir Python no fluxo do `java-construtor`.
 
+## Fluxo OpenSpec
+
+Os comandos `/opsx:*` só delegam às skills `openspec-*` (fonte única do fluxo). Essas skills, geradas pelo OpenSpec
+1.4.1, recebem ganchos curtos que carregam [openspec-catalogo-java](../../skills/openspec-catalogo-java/SKILL.md),
+onde fica o mapa fase → skills → agent → prova. No projeto alvo, use `openspec init --tools none` e o
+`openspec/config.yaml` modelo da skill: as `rules` chegam pelo CLI e sobrevivem a uma regeneração das skills.
+Ao atualizar o OpenSpec, reaplique os ganchos; `OpenSpecIntegracaoTest` falha se algum sumir.
+
+## AWS local
+
+Serviços AWS em desenvolvimento e testes usam o **Floci** (`floci/floci`, porta 4566, credenciais `test`/`test`):
+`docker run` ou compose localmente e `FlociContainer` (`io.floci:testcontainers-floci`) nos testes de integração.
+Versões fixadas em [compatibilidade](compatibilidade.md).
+
 ## Decisão de proteção
 
 Registre operação/dependência, taxa média/pico, tamanho de item, concorrência, fila por itens/bytes, espera/deadline, erro elegível, política de retry, efeito idempotente, destino de rejeição, escopo local/global e recuperação. Cada número deve ter unidade e justificativa. Documente métrica, teste e limite de validade da solução.

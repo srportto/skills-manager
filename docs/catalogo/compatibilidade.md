@@ -27,7 +27,8 @@ execuções — sem resultado novo, a linha antiga continua valendo só para a v
 | Jedis | 7.0.0 | BOM do Boot |
 | H2 | 2.4.240 | BOM do Boot |
 | PostgreSQL JDBC | 42.7.11 | BOM do Boot |
-| Testcontainers (core, postgresql, kafka, localstack, toxiproxy) | 2.0.5 | fixada |
+| Testcontainers (core, postgresql, kafka, toxiproxy) | 2.0.5 | fixada |
+| testcontainers-floci | 2.16.1 | fixada (usa Testcontainers 2.0.5) |
 | toxiproxy-java | 2.1.11 | transitiva do Testcontainers |
 | SnakeYAML (validação do catálogo) | 2.5 | fixada |
 
@@ -37,7 +38,7 @@ execuções — sem resultado novo, a linha antiga continua valendo só para a v
 |---|---|---|
 | PostgreSQL | `postgres:18-alpine` | |
 | Kafka | `confluentinc/cp-kafka:7.7.1` | `ConfluentKafkaContainer` |
-| SQS | `localstack/localstack:4.4` | `latest` (2026.7) exige licença: falha com "License activation failed" (exit 55) |
+| SQS (AWS) | `floci/floci:2.2.0` | alternativa `2.2.0-compat` se a CPU não suportar a imagem nativa |
 | Valkey | `valkey/valkey:8` | |
 | Toxiproxy | `ghcr.io/shopify/toxiproxy:2.12.0` | |
 
@@ -45,9 +46,9 @@ execuções — sem resultado novo, a linha antiga continua valendo só para a v
 
 | Comando | Resultado (2026-10-06) |
 |---|---|
-| `mvn -f validation/java/pom.xml verify` | 20 testes, 0 falhas (inclui 6 casos do detector de recursos externos) |
-| `mvn -f examples/java/pom.xml verify` | 96 testes (fundamentos 36, reativo 5, integração 55), 0 falhas |
-| `mvn -f examples/java/pom.xml -Pintegracao verify` | 96 unitários + 7 `ExternoIT` (Kafka+PostgreSQL, SQS/LocalStack, Valkey ×2, PostgreSQL, Toxiproxy), 0 falhas |
+| `mvn -f validation/java/pom.xml verify` | 28 testes, 0 falhas (inclui integração OpenSpec, guarda Floci e cobertura de java-moderno) |
+| `mvn -f examples/java/pom.xml verify` | 113 testes (fundamentos 37, linguagem 11, reativo 5, integração 60), 0 falhas |
+| `mvn -f examples/java/pom.xml -Pintegracao verify` | 113 unitários + 7 `ExternoIT` (Kafka+PostgreSQL, SQS/Floci, Valkey ×2, PostgreSQL, Toxiproxy); `ExperimentoCoordenadorLentoExternoIT` é intermitente (2 falhas em 5 rodadas, sempre 7 permitidos contra o limite de 6) — ver pendências |
 | `mvn -f examples/java/pom.xml -Pcarga verify` | 1 `CargaIT`, 0 falhas — tabela abaixo |
 
 ### Ensaio de carga do checkout (laboratório)
@@ -57,9 +58,9 @@ Parâmetros: capacidade de admissão 8 simultâneas, latência simulada do pagam
 
 | Fase | Oferta | Oferecidas | Aceitas | Rejeitadas (503) | Erros | p50 aceitas | p99 aceitas |
 |---|---|---|---|---|---|---|---|
-| baseline | 50 rps × 2 s | 100 | 100 | 0 | 0 | 23 ms | 141 ms (aquecimento da JVM) |
+| baseline | 50 rps × 2 s | 100 | 100 | 0 | 0 | 23 ms | 132 ms (aquecimento da JVM) |
 | rampa | 150 rps × 2 s | 300 | 300 | 0 | 0 | 22 ms | 24 ms |
-| pico | 1.000 rps × 3 s | 3.000 | 1.115 (~372/s) | 1.885 | 0 | 22 ms | 24 ms |
+| pico | 1.000 rps × 3 s | 3.000 | 1.111 (~370/s) | 1.889 | 0 | 22 ms | 24 ms |
 | retorno | 50 rps × 2 s | 100 | 100 | 0 | 0 | 21 ms | 23 ms |
 
 Pedidos gravados = aceitas (nenhum efeito duplicado). **Não é SLO de produção**: prova os invariantes (rejeição
@@ -73,3 +74,7 @@ cedo e medida, latência limitada dos aceitos, recuperação), não a capacidade
   como conceitos e apontam para o exemplo Java `ExperimentoCoordenadorLentoExternoIT`.
 - Workflow `.github/workflows/validar-catalogo.yml` ainda sem execução no GitHub Actions; o ambiente desta
   sessão não disponibiliza `gh` para abrir PR e inspecionar os jobs remotos.
+- `ExperimentoCoordenadorLentoExternoIT` é intermitente: a asserção "no máximo 6 permitidos degradados" depende
+  do tempo da rodada (burst 5 + reposição de 1 ficha/s enquanto cada decisão espera o coordenador lento). Em
+  2026-10-06/07 falhou 2 de 5 rodadas com 7 permitidos. Correção pendente: relógio controlado no limite local ou
+  limite derivado da duração medida da rodada.
