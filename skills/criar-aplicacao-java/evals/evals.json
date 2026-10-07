@@ -9,6 +9,8 @@
       "expectations": [
         "Propõe solução simples com MVC e JDBC ou JPA",
         "Define limites básicos de payload, paginação e timeout",
+        "O limite de payload vale para corpo JSON (filtro por Content-Length e leitura limitada, app.http.limite-corpo), não max-http-form-post-size",
+        "Se houver PUT com @Version, a atualização carrega a entidade e confere a versão enviada pelo cliente",
         "Não impõe infraestrutura distribuída (broker, WebFlux, breaker, microsserviços) sem motivo"
       ]
     },

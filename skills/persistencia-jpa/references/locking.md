@@ -59,6 +59,39 @@ Conflito de concorrência é **409** (ver `api-rest-design`); o cliente relê e 
 só é seguro se a operação for recalculada a partir do estado novo (releitura + reaplicação), com tentativas
 limitadas.
 
+### Atualização (PUT) com `@Version`
+
+`@Version` só protege o PUT se a versão que o **cliente leu** chegar até a comparação. O cliente devolve essa
+versão no corpo (`versao`) ou em `If-Match` (ETag). A atualização **carrega a entidade gerenciada**, confere a
+versão, copia os campos editáveis e deixa o dirty checking gerar `UPDATE ... WHERE id = ? AND versao = ?`.
+
+```java
+// ANTES - monta uma entidade nova a partir do DTO e chama save
+repository.save(mapper.paraEntidade(new Produto(id, nome, preco)));
+// Long versao == null → Spring Data trata como nova → persist de entidade com id: o PUT falha.
+// long versao == 0    → merge com versão 0 → todo PUT depois do primeiro dá conflito.
+// Nenhum dos dois compara com a versão que o cliente leu: o lost update continua possível.
+```
+
+```java
+// DEPOIS - carrega, confere a versão recebida, altera a entidade gerenciada
+@Transactional
+public Produto atualizar(Long id, long versaoLida, AtualizarProduto comando) {
+    Produto produto = repository.findById(id).orElseThrow(() -> new ProdutoNaoEncontrado(id));   // 404
+    if (produto.getVersao() != versaoLida) {           // alguém gravou depois da leitura do cliente
+        throw new ConflitoDeConcorrencia("Produto alterado por outra requisição; releia e tente de novo.");
+    }
+    produto.setNome(comando.nome());                    // só campos editáveis; nunca id nem versao
+    produto.setPreco(comando.preco());
+    return repository.saveAndFlush(produto);            // UPDATE com versao no WHERE; devolve a versão nova
+}
+```
+
+A comparação explícita pega o conflito entre a leitura do cliente e a requisição. O `WHERE versao = ?` do flush
+pega a corrida entre o `findById` e o commit (`OptimisticLockingFailureException`). Os dois viram **409**; com
+`If-Match`, a divergência pode ser **412**. `saveAndFlush` devolve a versão já incrementada, que vai na resposta
+(ou no `ETag`) para o próximo PUT. Criação continua com `save` de entidade com `id` e `versao` nulos (`persist`).
+
 ## Locking pessimista, isolamento e timeouts
 
 Use lock pessimista quando o conflito é frequente e repetir é caro (ex.: reservar a última unidade de estoque):

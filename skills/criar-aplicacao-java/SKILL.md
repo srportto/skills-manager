@@ -55,9 +55,10 @@ Tabela completa de parâmetros (pasta destino, porta, profile, container web Tom
   uma porta — é o exemplo vivo do padrão dentro do próprio esqueleto
 - Rota `GET /disponibilidade` → `200 OK`, corpo `{"aplicacao":"<nome>","status":"DISPONIVEL"}`
 - Tratamento de erros (`BusinessException` → 422, `ApplicationException` → 500, validação de bean)
-- Actuator com probes: `/actuator/health/liveness` (só o processo) e `/actuator/health/readiness` (estado +
-  dependências necessárias da variante) — semântica em `monitoramento-java`; `/disponibilidade` é smoke test
-- Limites básicos de borda: tamanho máximo de requisição e timeouts explícitos em todo cliente gerado
+- Actuator com probes: `/actuator/health/liveness` (só o processo) e `/actuator/health/readiness` (estado
+  desta réplica; dependência compartilhada fica fora) — semântica em `monitoramento-java`; `/disponibilidade` é smoke test
+- Limites básicos de borda: corpo da requisição (JSON incluso) limitado por `LimiteCorpoRequisicaoFilter`
+  (`app.http.limite-corpo`, padrão 1MB → 413), tamanho de header e timeouts explícitos em todo cliente gerado
 - Logs estruturados em JSON, graceful shutdown e `Dockerfile` multi-stage Java 25 (padrão de `devops-cicd`)
 - Teste de contexto (`@SpringBootTest`) que sobe sem infra externa
 
@@ -73,7 +74,7 @@ br.com.srportto.<nome>/
 ├── application/
 │   └── usecase/               ← ConsultarDisponibilidadeService (implementa a port/in; bean em infrastructure/config)
 └── infrastructure/
-    ├── web/                   ← DisponibilidadeController, DTOs, ApiExceptionHandler
+    ├── web/                   ← DisponibilidadeController, DTOs, ApiExceptionHandler, LimiteCorpoRequisicaoFilter
     └── config/                ← @Configuration
 ```
 
@@ -86,7 +87,7 @@ br.com.srportto.<nome>/
 | Variante | Reference | O que adiciona sobre o esqueleto |
 |---|---|---|
 | **base pura** / REST | [variante-rest.md](references/variante-rest.md) | Casos de uso e controllers de negócio; opcionalmente `starter-validation`; nenhuma infra. |
-| **rest-crud-banco** | [variante-crud-banco.md](references/variante-crud-banco.md) | JPA + driver + MapStruct, `port/out` de repositório, pool/paginação, `db` na readiness. |
+| **rest-crud-banco** | [variante-crud-banco.md](references/variante-crud-banco.md) | JPA + driver + MapStruct, `port/out` de repositório, pool/paginação, `db` no grupo `dependencias` (fora da readiness), PUT com versão. |
 | **sqs-listener** / **sqs-para-banco** | [variante-sqs-listener.md](references/variante-sqs-listener.md) | Cliente SQS, listener + interceptor central de erro, fila com DLQ + `RedrivePolicy`; idempotência (persistente em `sqs-para-banco`). |
 | **kafka-consumer** | [variante-kafka-consumer.md](references/variante-kafka-consumer.md) | Starter Kafka, `@KafkaListener`, `DefaultErrorHandler` + DLT, commit após efeito. |
 | **sqs-para-kafka** / **rest-para-kafka** | [variante-ponte-sqs-kafka.md](references/variante-ponte-sqs-kafka.md) | Producer atrás de `port/out` (`acks=all`, idempotente, deadline); delete SQS / resposta 200 só após confirmação do Kafka. |
@@ -183,7 +184,7 @@ separada por tipo (compilação, unitários, integração executada ou pendente 
 |---|---|
 | [parametros.md](references/parametros.md) | Definir nome, variante, pasta, porta, profile, carga e container web (Tomcat/Jetty) |
 | [variante-rest.md](references/variante-rest.md) | Base pura ou REST sem infra: controllers, DTOs, erros, limites |
-| [variante-crud-banco.md](references/variante-crud-banco.md) | REST com banco: JPA, `port/out`, pool, paginação, readiness com `db` |
+| [variante-crud-banco.md](references/variante-crud-banco.md) | REST com banco: JPA, `port/out`, pool, paginação, `db` fora da readiness, update com `@Version` |
 | [variante-sqs-listener.md](references/variante-sqs-listener.md) | Consumir SQS (`sqs-listener`, `sqs-para-banco`): DLQ, interceptor, idempotência |
 | [variante-kafka-consumer.md](references/variante-kafka-consumer.md) | Consumir Kafka: `@KafkaListener`, `DefaultErrorHandler`, DLT |
 | [variante-ponte-sqs-kafka.md](references/variante-ponte-sqs-kafka.md) | Publicar no Kafka (`sqs-para-kafka`, `rest-para-kafka`): producer, confirmação, outbox |

@@ -21,7 +21,8 @@
       "expectations": [
         "Introduz @Version para locking otimista",
         "Explica que o flush acontece no commit e o try/catch em volta de save() não pega a exceção",
-        "Trata OptimisticLockingFailureException em handler central devolvendo 409"
+        "Trata OptimisticLockingFailureException em handler central devolvendo 409",
+        "Na atualização, carrega a entidade gerenciada e confere a versão enviada pelo cliente (corpo ou If-Match), sem save de entidade nova montada a partir do DTO"
       ]
     }
   ],

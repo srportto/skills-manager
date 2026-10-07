@@ -1,7 +1,10 @@
 # Variante: rest-crud-banco
 
 Leia este arquivo quando o pedido for **REST com persistência relacional** (CRUD). É a única variante da base
-que passa a exigir um banco no ar — por isso o `readiness` ganha `db` e o contexto de teste precisa de um banco.
+que passa a exigir um banco no ar — por isso o contexto de teste precisa de um banco. O banco é o mesmo para
+todas as réplicas, então **não** entra na readiness: ele vai para o grupo `dependencias` (alerta) e a aplicação
+degrada explicitamente (503 + `Retry-After`), conforme `monitoramento-java`
+([alertas-dashboards-probes](../../monitoramento-java/references/alertas-dashboards-probes.md#health--readiness-probes)).
 
 ## O que adicionar sobre `assets/esqueleto`
 
@@ -56,8 +59,8 @@ management:
   endpoint:
     health:
       group:
-        readiness:
-          include: readinessState,db  # só o banco entra na readiness; liveness continua só o processo
+        dependencias:
+          include: db                 # diagnóstico + alerta; readiness e liveness continuam sem o banco
 ```
 
 ## Componentes (da definição da skill)
@@ -70,7 +73,7 @@ management:
 
 | Variante | Proteções obrigatórias | Prova mínima gerada |
 |---|---|---|
-| rest-crud-banco | Pool dentro do orçamento (`maximum-pool-size`, `connection-timeout`), timeout de consulta/transação, paginação | Teste de repositório + teste do limite de página |
+| rest-crud-banco | Pool dentro do orçamento (`maximum-pool-size`, `connection-timeout`), timeout de consulta/transação, paginação, limite de payload (herdado do esqueleto, `app.http.limite-corpo`), PUT com versão conferida (`@Version`) | Teste de repositório + teste do limite de página + PUT com versão antiga → 409 e dois PUTs seguidos com a versão devolvida → 200 |
 
 ## Antes / depois: porta de saída e listagem paginada
 
@@ -87,7 +90,8 @@ class ListarPedidos {
 // DEPOIS: o domínio declara a porta; o adapter conhece JPA e impõe o teto de página
 // domain/port/out
 public interface PedidoRepositoryPort {
-    Pedido salvar(Pedido pedido);
+    Pedido criar(Pedido pedido);
+    Pedido atualizar(Pedido pedido);   // pedido.versao() = versão que o cliente leu (corpo do PUT ou If-Match)
     List<Pedido> listar(int pagina, int tamanho);
 }
 
@@ -104,8 +108,20 @@ class PedidoRepositoryAdapter implements PedidoRepositoryPort {
     }
 
     @Override
-    public Pedido salvar(Pedido pedido) {
-        return mapper.paraDominio(jpa.save(mapper.paraEntidade(pedido)));
+    public Pedido criar(Pedido pedido) {
+        return mapper.paraDominio(jpa.save(mapper.paraEntidade(pedido)));   // id e versao nulos: persist
+    }
+
+    @Override
+    @Transactional
+    public Pedido atualizar(Pedido pedido) {
+        PedidoEntity entidade = jpa.findById(pedido.id())
+                .orElseThrow(() -> new PedidoNaoEncontradoException(pedido.id()));   // → 404
+        if (!entidade.getVersao().equals(pedido.versao())) {
+            throw new ConflitoDeVersaoException(pedido.id());                     // → 409 no ApiExceptionHandler
+        }
+        mapper.copiarEditaveis(pedido, entidade);   // @MappingTarget; ignora id e versao
+        return mapper.paraDominio(jpa.saveAndFlush(entidade));   // UPDATE ... WHERE versao = ?; devolve a versão nova
     }
 
     @Override
@@ -117,6 +133,14 @@ class PedidoRepositoryAdapter implements PedidoRepositoryPort {
 ```
 
 O caso de uso depende só de `PedidoRepositoryPort`; `domain` continua sem `jakarta.persistence`.
+
+Atualização **nunca** faz `save(mapper.paraEntidade(...))`. Com `@Version Long versao` nulo, isso vira `persist`
+de entidade com id e o PUT falha. Com `long versao = 0`, todo PUT depois do primeiro dá conflito. Nos dois casos,
+a versão lida pelo cliente não é comparada. O mapper de atualização é
+`void copiarEditaveis(Pedido origem, @MappingTarget PedidoEntity destino)`, com
+`@Mapping(target = "id", ignore = true)` e `@Mapping(target = "versao", ignore = true)`. A resposta do PUT devolve
+a versão nova. Regra completa e conflito no flush:
+[locking](../../persistencia-jpa/references/locking.md#atualização-put-com-version).
 
 ## Fontes únicas e exemplos executáveis
 

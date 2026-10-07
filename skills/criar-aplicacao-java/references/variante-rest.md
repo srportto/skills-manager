@@ -12,7 +12,7 @@ acrescentar quando houver endpoints de negócio.
 | Pacotes | `domain/port/in/<Caso>UseCase`, `application/usecase/<Caso>Service`, `infrastructure/web/<Recurso>Controller` + DTOs (`record`) no mesmo pacote `web`. |
 | Config | Bean do caso de uso em `infrastructure/config/BeansConfig` (o esqueleto já mostra o padrão). |
 | Erros | `ApiExceptionHandler` do esqueleto já mapeia `BusinessException` → 422, `ApplicationException` → 500 e validação de bean → 400 (Problem Details). Contrato de erro/paginação: `../../api-rest-design/SKILL.md`. |
-| Limites | Tamanho de campo com `@Size`; paginação com tamanho máximo; timeout explícito em todo cliente HTTP gerado. |
+| Limites | **Corpo:** o esqueleto já limita o tamanho de todo corpo, JSON incluso, com `LimiteCorpoRequisicaoFilter` (`app.http.limite-corpo: 1MB`; ajuste ao maior payload legítimo da API). Acima do limite, responde 413 em Problem Details antes do controller, com ou sem `Content-Length`. `server.tomcat.max-http-form-post-size` **não** limita JSON (só `x-www-form-urlencoded`), e `max-swallow-size` só controla o descarte de upload abortado. Não use nenhum dos dois como limite de payload. **Campos:** `@Size` em strings e listas (limita depois do parse, não o tamanho da requisição). **Paginação** com tamanho máximo. **Timeout** explícito em todo cliente HTTP gerado. |
 
 ## Componentes (da definição da skill)
 
@@ -24,7 +24,7 @@ acrescentar quando houver endpoints de negócio.
 
 | Variante | Proteções obrigatórias | Prova mínima gerada |
 |---|---|---|
-| base pura / REST | Limite de payload, paginação com tamanho máximo, timeouts em clientes | Teste de contrato (status/erro) |
+| base pura / REST | Limite de payload efetivo para JSON (`app.http.limite-corpo`, filtro do esqueleto), paginação com tamanho máximo, timeouts em clientes | Teste de contrato (status/erro); 413 com e sem `Content-Length` ([LimiteCorpoRequisicaoTest](../assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/LimiteCorpoRequisicaoTest.java)) |
 
 ## Antes / depois: controller fino atrás da porta de entrada
 
@@ -68,7 +68,9 @@ class PedidoController {
 
 - Esqueleto buildável: [`assets/esqueleto`](../assets/esqueleto/pom.xml); teste de contexto, `/disponibilidade` e probes em
   [EsqueletoApplicationTest](../assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/EsqueletoApplicationTest.java);
-  contrato de erro em [ApiExceptionHandlerTest](../assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/ApiExceptionHandlerTest.java).
+  contrato de erro em [ApiExceptionHandlerTest](../assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/ApiExceptionHandlerTest.java);
+  limite do corpo em [LimiteCorpoRequisicaoFilter](../assets/esqueleto/src/main/java/br/com/exemplo/esqueleto/infrastructure/web/LimiteCorpoRequisicaoFilter.java),
+  provado por [LimiteCorpoRequisicaoTest](../assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/LimiteCorpoRequisicaoTest.java).
 - REST com admissão limitada (503 + `Retry-After`), Problem Details e probes em
   [CheckoutApplication](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/CheckoutApplication.java), provado por
   [CheckoutApplicationTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/CheckoutApplicationTest.java).

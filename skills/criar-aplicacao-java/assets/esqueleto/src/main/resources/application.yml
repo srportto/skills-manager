@@ -12,7 +12,11 @@ server:
   shutdown: graceful
   max-http-request-header-size: 16KB  # limites básicos de borda; ajuste conforme a carga esperada
   tomcat:
-    max-http-form-post-size: 1MB      # só formulários; o limite do corpo JSON é por endpoint/gateway (variante-rest.md)
+    max-http-form-post-size: 1MB      # só formulários (x-www-form-urlencoded); NÃO limita corpo JSON
+
+app:
+  http:
+    limite-corpo: 1MB                 # limite real do corpo (JSON incluso): LimiteCorpoRequisicaoFilter → 413
 
 # Logs estruturados (JSON, uma linha por evento) — ver monitoramento-java/assets/application-observabilidade.yml
 logging:
@@ -35,4 +39,4 @@ management:
         liveness:
           include: livenessState    # só o processo; nunca banco, broker ou API externa
         readiness:
-          include: readinessState   # variantes acrescentam aqui só o que é necessário para atender (ex.: db)
+          include: readinessState   # só o que esta réplica pode perder; banco/broker compartilhados ficam fora (monitoramento-java)

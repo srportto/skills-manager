@@ -7,7 +7,7 @@ para todos.
 
 | Vetor | Controle na aplicação Java |
 |---|---|
-| Payload gigante | Limite de tamanho no servidor (`server.tomcat.max-http-form-post-size`, `spring.servlet.multipart.max-file-size`, validação de tamanho de listas/strings com Bean Validation) → 413 |
+| Payload gigante | Limite do **corpo** no servidor → 413: para JSON, filtro que recusa `Content-Length` acima do limite e conta os bytes do corpo sem tamanho declarado (o Tomcat do Spring Boot 4 não tem propriedade para isso); para upload, `spring.servlet.multipart.*`; listas/strings com Bean Validation (`@Size`) depois do parse. `server.tomcat.max-http-form-post-size` vale **só** para formulário |
 | Paginação abusiva | Tamanho máximo de página no servidor (não confiar no `size` do cliente); cursor para datasets grandes |
 | Consulta cara | Filtros só em colunas indexadas, timeout de consulta, limite de profundidade/complexidade (GraphQL), proibir `LIKE '%x%'` sem índice próprio em endpoint público |
 | Quota por cliente/tenant | Identidade **autenticada** (sub/tenant do token) como chave; 429 + `Retry-After`; quota distribuída atômica entre réplicas (`spring-data-redis`) |
@@ -45,17 +45,34 @@ Page<PedidoResponse> listar(@RequestParam(defaultValue = "20") @Min(1) int size,
 }
 ```
 
+Limite de payload por tipo de corpo (Spring Boot 4, Tomcat):
+
+| Corpo | Mecanismo que limita de fato | O que **não** limita |
+|---|---|---|
+| JSON/XML (`@RequestBody`) | Filtro `LimiteCorpoRequisicaoFilter` do esqueleto `criar-aplicacao-java`, configurado em `app.http.limite-corpo`. Recusa `Content-Length` acima do limite e conta o corpo chunked → 413. Ou limite equivalente no gateway/ingress, **além** do filtro | `server.tomcat.max-http-form-post-size` (só `x-www-form-urlencoded`), `server.tomcat.max-swallow-size` (só o descarte de upload abortado), `@Size` (atua depois do parse) |
+| Formulário `x-www-form-urlencoded` | `server.tomcat.max-http-form-post-size` | — |
+| Multipart (upload) | `spring.servlet.multipart.max-file-size` / `max-request-size` | — |
+
 ```yaml
-# Limites de payload no servidor (devolvem 413 antes de chegar ao controller)
 server:
   tomcat:
-    max-http-form-post-size: 1MB
+    max-http-form-post-size: 1MB   # só formulário
 spring:
   servlet:
     multipart:
       max-file-size: 5MB
       max-request-size: 10MB
+app:
+  http:
+    limite-corpo: 1MB              # JSON: LimiteCorpoRequisicaoFilter → 413
 ```
+
+Implementação e prova (fonte única):
+[LimiteCorpoRequisicaoFilter](../../criar-aplicacao-java/assets/esqueleto/src/main/java/br/com/exemplo/esqueleto/infrastructure/web/LimiteCorpoRequisicaoFilter.java)
+e [LimiteCorpoRequisicaoTest](../../criar-aplicacao-java/assets/esqueleto/src/test/java/br/com/exemplo/esqueleto/LimiteCorpoRequisicaoTest.java).
+O teste cobre `Content-Length` acima do limite, corpo chunked acima do limite e corpo dentro do limite com e sem
+tamanho declarado. Antes de afirmar que uma propriedade de servidor limita o corpo, confira a descrição dela nos
+metadados do Spring Boot (`spring-configuration-metadata.json`).
 
 ## Onde implementar o limitador
 

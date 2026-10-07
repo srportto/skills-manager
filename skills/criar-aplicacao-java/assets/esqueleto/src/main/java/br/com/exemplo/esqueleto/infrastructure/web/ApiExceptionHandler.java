@@ -20,6 +20,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, erro.getMessage());
     }
 
+    @ExceptionHandler(CorpoExcedidoException.class)
+    public ProblemDetail corpoExcedido(CorpoExcedidoException erro) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, erro.getMessage());
+    }
+
     @ExceptionHandler(ApplicationException.class)
     public ProblemDetail aplicacao(ApplicationException erro) {
         // detalhe genérico de propósito: a causa vai para o log, nunca para o cliente
