@@ -77,7 +77,13 @@ define o padrão para o que é escrito daqui pra frente.
    topo do próprio `CLAUDE.md`) — se for, replique a mesma edição lá e confirme com
    `diff` que os dois arquivos continuam idênticos ao final.
 
-## Skills e agents relacionados
+## Guia de references
+
+| Arquivo | Quando ler |
+|---|---|
+| [references/exemplos-mermaid.md](references/exemplos-mermaid.md) | Ao escrever um diagrama novo e precisar de um modelo válido de container (flowchart com subgraphs), sequência, estado ou ER, no domínio de checkout |
+
+## Quem aplica o quê
 
 | Situação | Use |
 |---|---|
