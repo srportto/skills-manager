@@ -147,6 +147,7 @@ class SaudeAplicacaoTest {
     @DisplayName("SaudeAplicacao: Banco compartilhado fora degrada a rota sem derrubar liveness nem readiness")
     @Test
     void bancoCompartilhadoForaDeveDegradarRotaSemDerrubarProbes() throws Exception {
+        assertEquals(200, status("/actuator/health/liveness"));
         assertEquals(200, status("/actuator/health/readiness"));
         assertEquals(200, status("/pedidos/total"));
 

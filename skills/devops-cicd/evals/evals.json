@@ -9,6 +9,7 @@
       "expectations": [
         "Não acopla liveness a dependência externa",
         "Define liveness e readiness como probes separadas",
+        "Deixa o banco (dependência compartilhada por todas as réplicas) fora da readiness e exige degradação explícita na aplicação (503 + Retry-After nas rotas que dependem dele)",
         "Configura server.shutdown graceful com terminationGracePeriodSeconds maior que preStop + timeout-per-shutdown-phase",
         "Define limite de memória do container maior que o heap (MaxRAMPercentage)"
       ]

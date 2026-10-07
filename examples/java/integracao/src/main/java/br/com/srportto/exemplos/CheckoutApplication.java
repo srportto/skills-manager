@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTransientConnectionException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -114,6 +116,18 @@ public class CheckoutApplication {
                     "Checkout temporariamente sem capacidade; tente novamente.");
             problema.setProperty("motivo", rejeicao.motivo().name());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header(HttpHeaders.RETRY_AFTER, "1").body(problema);
+        }
+
+        /**
+         * Banco fora (o mesmo para todas as réplicas, por isso fora da readiness): degradação explícita com 503 +
+         * Retry-After em Problem Details. Timeout do pool (Hikari) e conexão recusada chegam como estas exceções.
+         */
+        @ExceptionHandler({SQLTransientConnectionException.class, SQLNonTransientConnectionException.class})
+        ResponseEntity<ProblemDetail> bancoIndisponivel(SQLException erro) {
+            var problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Checkout temporariamente indisponível; tente novamente.");
+            problema.setProperty("motivo", "DEPENDENCIA_INDISPONIVEL");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header(HttpHeaders.RETRY_AFTER, "5").body(problema);
         }
 
         @ExceptionHandler(ProcessadorIdempotente.ConflitoDeChave.class)
