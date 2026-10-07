@@ -1,0 +1,9 @@
+{
+  "type": "https://api.example.com/errors/order-not-found",
+  "title": "Order Not Found",
+  "status": 404,
+  "detail": "No order found with id: 550e8400-e29b-41d4-a716-446655440000",
+  "instance": "/api/v1/orders/550e8400-e29b-41d4-a716-446655440000",
+  "errorCode": "ORDER_NOT_FOUND",
+  "timestamp": "2026-04-13T10:00:00Z"
+}
