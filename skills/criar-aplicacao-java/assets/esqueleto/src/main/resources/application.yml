@@ -1,0 +1,38 @@
+# Esqueleto: roda sem banco, fila ou broker. Cada variante (references/variante-*.md) acrescenta o que precisa.
+spring:
+  application:
+    name: esqueleto-aplicacao   # RENOMEIE ao copiar; aparece no corpo de /disponibilidade
+  profiles:
+    default: local
+  lifecycle:
+    timeout-per-shutdown-phase: 30s   # graceful shutdown: termina requisições em voo antes de encerrar
+
+server:
+  port: 8080
+  shutdown: graceful
+  max-http-request-header-size: 16KB  # limites básicos de borda; ajuste conforme a carga esperada
+  tomcat:
+    max-http-form-post-size: 1MB      # só formulários; o limite do corpo JSON é por endpoint/gateway (variante-rest.md)
+
+# Logs estruturados (JSON, uma linha por evento) — ver monitoramento-java/assets/application-observabilidade.yml
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    root: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true        # liveness/readiness também fora do Kubernetes
+      group:
+        liveness:
+          include: livenessState    # só o processo; nunca banco, broker ou API externa
+        readiness:
+          include: readinessState   # variantes acrescentam aqui só o que é necessário para atender (ex.: db)
