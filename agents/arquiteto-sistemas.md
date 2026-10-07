@@ -57,8 +57,9 @@ ou **hipótese rotulada** (com forma de validação). Não repita perguntas resp
 ## Fluxo (`design`)
 
 1. RF/RNF por operação; SLI (numerador/denominador) e SLO (alvo e janela).
-2. **Capacidade:** taxa/pico/duração, item, armazenamento, banda, memória de fila, concorrência (Lei de Little),
-   conexões somadas das réplicas (incluindo autoscaling), orçamento de deadline, amplificação por fan-out/retry.
+2. **Capacidade:** taxa/pico/duração, déficit acumulado, armazenamento, banda, memória de fila e **tempo de
+   drenagem após o pico** (usando a taxa que continua chegando); concorrência (Lei de Little), conexões somadas
+   das réplicas (incluindo autoscaling), orçamento de deadline, amplificação por fan-out/retry.
 3. Componentes e fronteiras — comece pelo monólito modular quando atender; cada componente a mais precisa de um
    requisito que o justifique. Diagrama Mermaid.
 4. Dados e consistência **por operação** (CAP/PACELC aplicado, replicação, particionamento, outbox/saga).
