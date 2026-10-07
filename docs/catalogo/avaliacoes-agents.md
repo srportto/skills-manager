@@ -16,7 +16,7 @@ Complementa — não substitui — `validation/java` (estrutura) e `examples/jav
 dependência...); **1** direção correta sem limite, escopo ou prova suficientes; **2** decisão correta,
 contextualizada, com limites/escopo explícitos e forma de verificar.
 
-**Meta:** nenhum zero; ≥ 90% dos pontos (≥ 44/48 por execução); nota 2 em A01–A08 nas duas execuções.
+**Meta:** nenhum zero; ≥ 90% dos pontos por execução (≥ 22/24; 44/48 somando as duas); nota 2 em A01–A08 nas duas execuções.
 
 ## Casos
 

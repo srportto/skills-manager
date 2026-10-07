@@ -558,7 +558,7 @@ Entrada: $ARGUMENTS
 
 - [ ] **Step 1:** Baseline já existe em `.superpowers/sdd/2026-10-06-evolucao-skills-agents-java/baseline` — conferir se reflete `main` atual; senão, copiar `skills/` e `agents/` de `main` para `.superpowers/sdd/2026-10-07-references-fusoes/baseline`.
 - [ ] **Step 2:** Rodar `/catalogo:avaliar` (A01–A12, 2 execuções independentes cada) contra baseline e contra a branch; saídas em `docs/catalogo/avaliacoes/2026-10-07/`.
-- [ ] **Step 3:** Meta (de `avaliacoes-agents.md`): nenhum zero, ≥ 44/48 por execução, nota 2 em A01–A08. Regressão em qualquer caso → abrir a reference/descrição responsável e corrigir antes do merge.
+- [ ] **Step 3:** Meta (de `avaliacoes-agents.md`): nenhum zero, ≥ 90% dos pontos por execução (≥ 22/24; 44/48 somando as duas), nota 2 em A01–A08. Regressão em qualquer caso → abrir a reference/descrição responsável e corrigir antes do merge.
 - [ ] **Step 4:** (Opcional) `skill-creator` → otimização de `description` com os `trigger` dos `evals.json` nas skills cujo disparo falhou.
 - [ ] **Step 5:** Registrar resultados na tabela de `avaliacoes-agents.md`; commit `docs(avaliacoes): resultados pós-fatiamento e fusões`.
 

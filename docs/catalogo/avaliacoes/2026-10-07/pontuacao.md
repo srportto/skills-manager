@@ -34,12 +34,12 @@ Soma das duas execuções: **39/48 (81,25%)**. Nenhuma nota 0.
 |---|---|---|
 | Nenhum zero | 0 notas 0 | **Sim** |
 | ≥ 90% por execução (máx. 24 por execução, então ≥ 21,6, ou seja, 22/24) | Exec. 1: 21/24 (87,5%); Exec. 2: 18/24 (75,0%) | **Não** nas duas execuções |
-| "≥ 44/48" como escrito no protocolo (equivale a 90% das duas execuções somadas, 12 casos × 2 × 2) | 39/48 | **Não** |
+| ≥ 44/48 somando as duas execuções (90% de 12 casos × 2 execuções × 2 pontos) | 39/48 | **Não** |
 | Nota 2 em A01–A08 nas duas execuções | Faltaram A01 (1/1), A03-2, A06 (1/1) e A07-2 | **Não** |
 
-**Meta de 90%: não atingida em nenhuma execução.** Observação sobre o protocolo: "44/48 por execução" é
-inconsistente, porque cada execução vale no máximo 24 pontos. Os 44/48 correspondem às duas execuções somadas.
-Recomenda-se corrigir o texto para "≥ 22/24 por execução (≥ 44/48 no par)".
+**Meta de 90%: não atingida em nenhuma execução.** Meta do protocolo: "≥ 90% dos pontos por execução
+(≥ 22/24; 44/48 somando as duas)". O texto anterior ("≥ 44/48 por execução") era inconsistente, porque cada
+execução vale no máximo 24 pontos, e foi corrigido no protocolo.
 
 ## Comparação com 2026-10-06 (casos com nota anterior)
 
