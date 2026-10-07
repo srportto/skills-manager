@@ -55,6 +55,13 @@ Archive a completed change in the experimental workflow.
 
    **If no tasks file exists:** Proceed without task-related warning.
 
+3b. **Portão do catálogo Java** — se a change alterou código Java, exija veredicto APROVADO do `java-revisor`
+    (modo auditoria), conforme `openspec-catalogo-java`.
+    A change alterou código Java quando suas tarefas ou o diff tocam arquivos `.java`, `pom.xml` ou `build.gradle`.
+    Veredicto ausente conta como PENDENTE. PENDENTE ou REPROVADO bloqueia o archive, a menos que o usuário assuma o
+    risco explicitamente; registre essa decisão no resumo do archive.
+    Change só de documentação ou spec não passa por este portão.
+
 4. **Assess delta spec sync state**
 
    Use `artifactPaths.specs.existingOutputPaths` from status JSON to check for delta specs. If none exist, proceed without sync prompt.

@@ -81,6 +81,8 @@ Depending on what the user brings, you might:
 
 You have full context of the OpenSpec system. Use it naturally, don't force it.
 
+If the user mentioned a specific change name, read its artifacts for context.
+
 ### Check for context
 
 At the start, quickly check what exists:
@@ -130,6 +132,10 @@ If the user mentions a change or you detect one is relevant:
    - "This changes scope. Update the proposal?"
 
 4. **The user decides** - Offer and move on. Don't pressure. Don't auto-capture.
+
+**Lentes do catálogo Java:** para capacidade, trade-offs e desenho de sistema, use as skills e o agent da linha
+`explore` de `openspec-catalogo-java` (`arquiteto-sistemas`, `design-system-architecture`,
+`refinamento-de-historias`) — ainda em modo de pensamento, sem implementar.
 
 ---
 

@@ -21,11 +21,11 @@ final class Catalogo {
      */
     static final Map<String, String> AUXILIARES = Map.of(
             "graphify", "ferramenta importada com scripts próprios",
-            "openspec-apply-change", "fluxo OpenSpec importado",
-            "openspec-archive-change", "fluxo OpenSpec importado",
-            "openspec-explore", "fluxo OpenSpec importado",
-            "openspec-propose", "fluxo OpenSpec importado",
-            "openspec-sync-specs", "fluxo OpenSpec importado",
+            "openspec-apply-change", "fluxo OpenSpec 1.4.1 gerado, com ganchos do catálogo (OpenSpecIntegracaoTest)",
+            "openspec-archive-change", "fluxo OpenSpec 1.4.1 gerado, com ganchos do catálogo (OpenSpecIntegracaoTest)",
+            "openspec-explore", "fluxo OpenSpec 1.4.1 gerado, com ganchos do catálogo (OpenSpecIntegracaoTest)",
+            "openspec-propose", "fluxo OpenSpec 1.4.1 gerado, com ganchos do catálogo (OpenSpecIntegracaoTest)",
+            "openspec-sync-specs", "fluxo OpenSpec 1.4.1 gerado, com ganchos do catálogo (OpenSpecIntegracaoTest)",
             "python-pro", "skill Python preservada para serviços não Java",
             "remover-imports-nao-usados", "skill multi-linguagem por propósito",
             "terraform-engineer", "IaC; testes Terratest usam Go por exigência da ferramenta");
