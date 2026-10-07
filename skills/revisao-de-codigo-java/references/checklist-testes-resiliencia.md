@@ -53,6 +53,18 @@ contagem). Teste não executado é **pendência**, nunca aprovação; build com 
 aprovação de regra de negócio nem de resiliência. Se o código toca concorrência, mensageria ou limites, exija a
 prova correspondente (ver `testes-sistemas-java`) — "compila e o caminho feliz passa" não prova limite.
 
+Para resiliência, a evidência tem **três famílias**. O veredicto (PENDENTE inclusive) nomeia as três, cada uma
+com teste e comando:
+
+| Família | O que prova | Teste típico (`testes-sistemas-java`) | Comando |
+|---|---|---|---|
+| Concorrência | Limite respeitado sob disputa; permissão liberada após falha/cancelamento | Unitário com latch/barreira (`ControleConcorrenciaTest`) | `mvn clean verify` |
+| Falha | Dependência lenta/fora → timeout, retry limitado, rejeição/fallback honesto, ack/DLQ correto | Integração com falha injetada (Toxiproxy, Testcontainers) | `mvn -Pintegracao clean verify` |
+| Recuperação | Falha removida → volta a atender (breaker fecha), backlog/lag drena no prazo, replay/retry em taxa limitada sem segunda queda | O mesmo IT removendo a falha no meio (`ExperimentoCoordenadorLentoExternoIT`); carga com drenagem após o pico (`CheckoutSobCargaSimulationCargaIT`) | `mvn -Pintegracao clean verify`; `mvn -Pcarga verify` |
+
+Faltou recuperação, o veredicto não pode ser APROVADO: provar que o sistema aguenta a falha não prova que ele
+volta.
+
 ### 8.1. Resiliência, efeitos e limites
 
 | Achado | Severidade | Por quê |

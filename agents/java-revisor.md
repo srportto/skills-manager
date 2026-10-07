@@ -80,6 +80,18 @@ declarados. Não peça de novo o que veio no pedido.
 - Tabela de evidência: compilação, unitários, integração, carga — executado (com contagem) ou **pendente**.
 - **Veredicto (auditoria):** APROVADO; REPROVADO (1+ Crítico); **PENDENTE** quando faltar evidência executada
   para um risco relevante (ex.: build passou com testes pulados → PENDENTE, nunca APROVADO).
+- **PENDENTE de resiliência** sempre lista as **três** famílias de prova, cada uma com o teste que a demonstra e
+  o comando que a executa (`Skipped: 0` exigido). Faltando uma, o veredicto está incompleto:
+  1. **Concorrência:** o limite vale sob disputa (máximo ativo ≤ limite, permissão liberada após falha). Ex.:
+     `mvn clean verify` com latch/barreira.
+  2. **Falha:** dependência lenta/fora → timeout, retry limitado, rejeição/fallback, ack/DLQ corretos. Ex.:
+     `mvn -Pintegracao clean verify` (Testcontainers/Toxiproxy).
+  3. **Recuperação:** depois da falha ou do pico, o sistema volta sozinho — dependência restaurada volta a
+     atender (breaker em half-open fecha), backlog/lag drena dentro do prazo, replay/retry em taxa limitada sem
+     segunda queda. Ex.: o mesmo IT com a falha removida no meio do teste, ou `mvn -Pcarga verify` medindo a
+     drenagem após o pico.
+  Fonte da tabela risco → prova: `testes-sistemas-java` e
+  `revisao-de-codigo-java/references/checklist-testes-resiliencia.md` ("Evidência executada").
 
 ## Fronteiras e encaminhamentos
 
