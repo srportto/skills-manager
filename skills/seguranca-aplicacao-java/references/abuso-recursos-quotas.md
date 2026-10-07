@@ -49,9 +49,9 @@ Limite de payload por tipo de corpo (Spring Boot 4, Tomcat):
 
 | Corpo | Mecanismo que limita de fato | O que **não** limita |
 |---|---|---|
-| JSON/XML (`@RequestBody`) | Filtro `LimiteCorpoRequisicaoFilter` do esqueleto `criar-aplicacao-java`, configurado em `app.http.limite-corpo`. Recusa `Content-Length` acima do limite e conta o corpo chunked → 413. Ou limite equivalente no gateway/ingress, **além** do filtro | `server.tomcat.max-http-form-post-size` (só `x-www-form-urlencoded`), `server.tomcat.max-swallow-size` (só o descarte de upload abortado), `@Size` (atua depois do parse) |
+| JSON/XML (`@RequestBody`) | Filtro `LimiteCorpoRequisicaoFilter` do esqueleto `criar-aplicacao-java`, configurado em `app.http.limite-corpo`. Recusa `Content-Length` acima do limite e conta o corpo chunked → 413, inclusive quando o limite estoura no meio de um valor JSON. Ou limite equivalente no gateway/ingress, **além** do filtro | `server.tomcat.max-http-form-post-size` (só `x-www-form-urlencoded`), `server.tomcat.max-swallow-size` (só o descarte de upload abortado), `@Size` (atua depois do parse) |
 | Formulário `x-www-form-urlencoded` | `server.tomcat.max-http-form-post-size` | — |
-| Multipart (upload) | `spring.servlet.multipart.max-file-size` / `max-request-size` | — |
+| Multipart (upload) | `spring.servlet.multipart.max-file-size` / `max-request-size`. O filtro **ignora** `multipart/*`, então o upload pode ser maior que o limite de JSON | `app.http.limite-corpo` (não se aplica a multipart) |
 
 ```yaml
 server:
@@ -64,7 +64,7 @@ spring:
       max-request-size: 10MB
 app:
   http:
-    limite-corpo: 1MB              # JSON: LimiteCorpoRequisicaoFilter → 413
+    limite-corpo: 1MB              # JSON: LimiteCorpoRequisicaoFilter → 413 (multipart usa spring.servlet.multipart.*)
 ```
 
 Implementação e prova (fonte única):

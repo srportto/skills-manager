@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.util.unit.DataSize;
@@ -28,6 +29,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *   <li>corpo sem tamanho declarado (chunked) → bytes contados na leitura; ao passar do limite,
  *       {@link CorpoExcedidoException} vira 413 no {@link ApiExceptionHandler}.</li>
  * </ul>
+ * Upload {@code multipart/*} não passa por aqui: tem limite próprio em {@code spring.servlet.multipart.max-file-size}
+ * e {@code max-request-size}, que pode ser maior que o limite de JSON.
  */
 public class LimiteCorpoRequisicaoFilter extends OncePerRequestFilter {
 
@@ -38,6 +41,12 @@ public class LimiteCorpoRequisicaoFilter extends OncePerRequestFilter {
             throw new IllegalArgumentException("Limite do corpo deve ser positivo");
         }
         this.limiteBytes = limite.toBytes();
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest requisicao) {
+        String tipo = requisicao.getContentType();
+        return tipo != null && tipo.toLowerCase(Locale.ROOT).startsWith("multipart/");
     }
 
     @Override

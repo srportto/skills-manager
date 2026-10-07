@@ -116,9 +116,9 @@ class PedidoRepositoryAdapter implements PedidoRepositoryPort {
     @Transactional
     public Pedido atualizar(Pedido pedido) {
         PedidoEntity entidade = jpa.findById(pedido.id())
-                .orElseThrow(() -> new PedidoNaoEncontradoException(pedido.id()));   // → 404
+                .orElseThrow(() -> new PedidoNaoEncontradoException(pedido.id()));   // → 404 (handler a adicionar)
         if (!entidade.getVersao().equals(pedido.versao())) {
-            throw new ConflitoDeVersaoException(pedido.id());                     // → 409 no ApiExceptionHandler
+            throw new ConflitoDeVersaoException(pedido.id());                     // → 409 (handler a adicionar)
         }
         mapper.copiarEditaveis(pedido, entidade);   // @MappingTarget; ignora id e versao
         return mapper.paraDominio(jpa.saveAndFlush(entidade));   // UPDATE ... WHERE versao = ?; devolve a versão nova
@@ -139,7 +139,15 @@ de entidade com id e o PUT falha. Com `long versao = 0`, todo PUT depois do prim
 a versão lida pelo cliente não é comparada. O mapper de atualização é
 `void copiarEditaveis(Pedido origem, @MappingTarget PedidoEntity destino)`, com
 `@Mapping(target = "id", ignore = true)` e `@Mapping(target = "versao", ignore = true)`. A resposta do PUT devolve
-a versão nova. Regra completa e conflito no flush:
+a versão nova.
+
+O `ApiExceptionHandler` do esqueleto **não** mapeia essas exceções. Ao aplicar esta variante, acrescente:
+- `PedidoNaoEncontradoException` → 404;
+- `ConflitoDeVersaoException` → 409;
+- `OptimisticLockingFailureException` → 409. Essa vem do `UPDATE ... WHERE versao = ?` no flush, quando a corrida
+  acontece entre o `findById` e o commit.
+
+Sem esses handlers, as três caem no tratamento genérico e viram 500. Regra completa e conflito no flush:
 [locking](../../persistencia-jpa/references/locking.md#atualização-put-com-version).
 
 ## Fontes únicas e exemplos executáveis
