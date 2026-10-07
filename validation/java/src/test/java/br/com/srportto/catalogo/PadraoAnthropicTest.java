@@ -26,7 +26,6 @@ class PadraoAnthropicTest {
             "cloud-architect/references/gcp.md:sumario",
             "cloud-architect/references/cost.md:sumario",
             "cloud-architect/references/multi-cloud.md:sumario",
-            "qualidade-codigo-java/references/refatoracoes-java.md:sumario",
             "revisao-de-codigo-java/references/exemplos-revisao-java.md:sumario");
 
     static final int MAX_LINHAS_SKILL = 500;

@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 permissionMode: acceptEdits
 maxTurns: 20
-skills: [qualidade-codigo-java, refactoring-remove-parameter, remover-imports-nao-usados, padroes-de-projeto-java, testes-sistemas-java]
+skills: [qualidade-codigo-java, remover-imports-nao-usados, padroes-de-projeto-java, testes-sistemas-java]
 memory: project
 background: true
 isolation: worktree
@@ -19,8 +19,8 @@ transação, idempotência, cancelamento, timeouts e liberação de recursos em 
 
 ## Resolução das skills
 
-Leia `qualidade-codigo-java` e, para exemplos completos, `references/refatoracoes-java.md` (instalação:
-`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Remove Parameter: `refactoring-remove-parameter`. Limpeza de
+Leia `qualidade-codigo-java` e, para exemplos completos, `references/refatoracoes-fowler.md` (instalação:
+`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Remove Parameter: `qualidade-codigo-java` (`references/refatoracoes-fowler.md#remove-parameter`). Limpeza de
 imports: `remover-imports-nao-usados`. O que **não** refatorar (abstração especulativa): `padroes-de-projeto-java`.
 Testes de caracterização de concorrência, consumo e falha: `testes-sistemas-java`.
 

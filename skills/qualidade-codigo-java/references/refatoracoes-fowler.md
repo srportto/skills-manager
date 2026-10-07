@@ -2,6 +2,24 @@
 
 Exemplos longos movidos de `qualidade-codigo-java` (SKILL mantém o resumo). São **heurísticas de design**: aplique quando reduzem um problema concreto do código em mãos; não as trate como bug automático.
 
+## Sumário
+
+- [Tell, Don't Ask & No Getters/Setters (Object Calisthenics)](#tell-dont-ask--no-getterssetters-object-calisthenics)
+- [Primitive Obsession & Wrap All Primitives And Strings (Object Calisthenics)](#primitive-obsession--wrap-all-primitives-and-strings-object-calisthenics)
+- [First Class Collections (Object Calisthenics)](#first-class-collections-object-calisthenics)
+- [One Dot Per Line / Law of Demeter (Object Calisthenics)](#one-dot-per-line--law-of-demeter-object-calisthenics)
+- [No Classes With More Than Two Instance Variables (Object Calisthenics)](#no-classes-with-more-than-two-instance-variables-object-calisthenics)
+- [Replace Magic Number with Symbolic Constant (regra de negocio)](#replace-magic-number-with-symbolic-constant-regra-de-negocio)
+- [Guard Clauses & Don't Use Else (Object Calisthenics)](#guard-clauses--dont-use-else-object-calisthenics)
+- [Clean Code for AI (arquitetura para o agente)](#clean-code-for-ai-arquitetura-para-o-agente)
+- [Bloaters e Change Preventers (centralizacao de mudanca)](#bloaters-e-change-preventers-centralizacao-de-mudanca)
+- [Refactorings do Fowler - guia rapido](#refactorings-do-fowler---guia-rapido)
+- [Remove Parameter](#remove-parameter)
+- [Extract Method](#extract-method)
+- [Replace Conditional with Polymorphism](#replace-conditional-with-polymorphism)
+- [Introduce Parameter Object](#introduce-parameter-object)
+- [Replace Loop with Pipeline](#replace-loop-with-pipeline)
+
 ## Tell, Don't Ask & No Getters/Setters (Object Calisthenics)
 
 O codigo cliente **nao deve** perguntar o estado interno de um objeto para tomar uma decisao por
@@ -457,8 +475,19 @@ Cada refactoring resolve um **cheiro** (code smell) especifico - nao aplique por
 
 ## Remove Parameter
 
+Aplique o refactoring **Remove Parameter** do catálogo do Fowler quando um parâmetro de método
+está **não usado** ou é **redundante** (valor obtível de campo da classe, constante ou outra
+chamada de método).
+
 **Quando:** um parametro nunca e usado, ou seu valor pode ser obtido de outro lugar (campo da classe,
 constante, chamada de metodo).
+
+### Quando aplicar
+
+- **Parâmetro nunca referenciado** no corpo (verifique com Grep pelo nome, **incluindo** Javadoc,
+  anotações, generics e tipos em assinatura).
+- **Valor redundante com campo da classe** — o método pode usar o campo diretamente.
+- **Valor constante** — sempre passado com o mesmo valor; vira constante.
 
 **[Codigo Nao Aderente]:**
 ```java
@@ -479,8 +508,79 @@ public Backend selecionarBackend(long tableId, ConnectContext context) {
 }
 ```
 
-> Veja a skill dedicada `refactoring-remove-parameter` para a versao focada e passo-a-passo desse
-> refactoring.
+### Code Before / After
+
+**Antes:**
+
+```java
+public Backend selectBackendForGroupCommit(long tableId, ConnectContext context, boolean isCloud)
+        throws LoadException, DdlException {
+    if (!Env.getCurrentEnv().isMaster()) {
+        try {
+            long backendId = new MasterOpExecutor(context)
+                    .getGroupCommitLoadBeId(tableId, context.getCloudCluster(), isCloud);
+            return Env.getCurrentSystemInfo().getBackend(backendId);
+        } catch (Exception e) {
+            throw new LoadException(e.getMessage());
+        }
+    } else {
+        return Env.getCurrentSystemInfo()
+                .getBackend(selectBackendForGroupCommitInternal(tableId, context.getCloudCluster(), isCloud));
+    }
+}
+```
+
+**Depois:**
+
+```java
+public Backend selectBackendForGroupCommit(long tableId, ConnectContext context)
+        throws LoadException, DdlException {
+    if (!Env.getCurrentEnv().isMaster()) {
+        try {
+            long backendId = new MasterOpExecutor(context)
+                    .getGroupCommitLoadBeId(tableId, context.getCloudCluster());
+            return Env.getCurrentSystemInfo().getBackend(backendId);
+        } catch (Exception e) {
+            throw new LoadException(e.getMessage());
+        }
+    } else {
+        return Env.getCurrentSystemInfo()
+                .getBackend(selectBackendForGroupCommitInternal(tableId, context.getCloudCluster()));
+    }
+}
+```
+
+`isCloud` foi removido: não era usado dentro do método (era apenas repassado às chamadas internas
+que também não o utilizavam de fato).
+
+### Quando NÃO aplicar
+
+- **Parâmetro de interface/override** — exige remover também da interface e de **todos** os
+  callers, custo alto; pondere.
+- **Parâmetro reservado para extensão futura** — abstração especulativa, YAGNI; só remova com
+  certeza de que não será usado (ver `qualidade-codigo-java`, seção YAGNI).
+- **Parâmetro de callback/API pública** — parte de um contrato; remover quebra o cliente.
+
+### Task — passos internos
+
+Realize internamente, sem expor esses passos no output:
+
+1. Identifique, em cada método, parâmetros não usados ou redundantes (valor obtível de campo da
+   classe, constante ou outra chamada de método).
+2. Remova o parâmetro da assinatura **e de todas as chamadas internas** que o recebem.
+3. Garanta que o método continua funcionando após a remoção.
+4. Output **apenas o código refatorado** em um único bloco `java`.
+5. Não remova nenhuma funcionalidade do método original.
+6. Inclua um comentário de uma linha acima de cada método modificado, indicando o parâmetro
+   removido e por quê.
+
+### Validação
+
+Depois de aplicar o refactoring:
+
+- Rode o build (`mvn clean compile`) — confirmação mecânica de que nada quebrou.
+- Rode a suite de testes daquele módulo — se existirem.
+- Peça revisão ao agent `java-revisor` com o diff, referenciando esta skill.
 
 ## Extract Method
 

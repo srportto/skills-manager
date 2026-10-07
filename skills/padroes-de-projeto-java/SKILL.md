@@ -10,7 +10,7 @@ metadata:
   role: reference
   scope: code-design
   output-format: code
-  related-skills: qualidade-codigo-java, java-moderno, arquitetura-limpa-java, refactoring-remove-parameter
+  related-skills: qualidade-codigo-java, java-moderno, arquitetura-limpa-java
 ---
 
 # Padrões de Projeto Java (GoF)

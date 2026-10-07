@@ -73,7 +73,6 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | `padroes-de-projeto-java` | GoF e quando **não** aplicar | `java-revisor`, `refatorador-java` |
 | `persistencia-jpa` | JPA/Hibernate, transações, locking, idempotência transacional | `especialista-banco-dados`, `java-construtor` |
 | `qualidade-codigo-java` | Clean code e refactorings aplicados | `java-construtor`, `refatorador-java` |
-| `refactoring-remove-parameter` | Passo a passo do Remove Parameter | `refatorador-java` |
 | `refinamento-de-historias` | Demanda → história pronta (DoR, critérios observáveis, limites) | sessão principal |
 | `resiliencia-controle-fluxo-java` | Backpressure, admissão, rate limiting, deadline, retry, breaker, bulkhead, fallback | `arquiteto-sistemas`, `java-construtor`, `java-revisor` |
 | `revisao-de-codigo-java` | Checklist de revisão por severidade | `java-revisor`, `projetista-api` |
@@ -161,7 +160,7 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 | Implementar autenticação/autorização ou quotas | `seguranca-aplicacao-java` | `resiliencia-controle-fluxo-java` |
 | Refinar demanda/história bruta | `refinamento-de-historias` | `openspec-propose`, `api-rest-design`, `design-system-architecture` |
 | Revisar diff/PR | `revisao-de-codigo-java` | `testes-sistemas-java`, `arquitetura-limpa-java`, `persistencia-jpa` |
-| Aplicar refactoring | `qualidade-codigo-java` | `refactoring-remove-parameter` |
+| Aplicar refactoring | `qualidade-codigo-java` | `remover-imports-nao-usados` |
 | Escolher entre patterns | `padroes-de-projeto-java` | `qualidade-codigo-java` |
 | Migrar para features modernas Java | `java-moderno` | `revisao-de-codigo-java` |
 | Adicionar mensageria (SQS/Kafka) | `mensageria-sqs-kafka` | `criar-aplicacao-java`, `resiliencia-controle-fluxo-java` |
@@ -195,6 +194,14 @@ Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 `java-revisor` é a última linha de defesa antes de algo ser declarado pronto; os modos diferem em
 amplitude (`tempestivo` = diff pontual; `auditoria` = entrega completa com veredicto
 APROVADO/REPROVADO/PENDENTE quando faltar evidência executada).
+
+## Migração de nomes
+
+Skills e agents que mudaram de nome ou foram fundidos; use o destino indicado.
+
+| Nome antigo | Destino | Observação |
+|---|---|---|
+| `refactoring-remove-parameter` | `qualidade-codigo-java` | `references/refatoracoes-fowler.md#remove-parameter` |
 
 ## Validação do catálogo
 

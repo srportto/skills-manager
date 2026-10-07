@@ -12,7 +12,7 @@ metadata:
   role: reference
   scope: code-quality
   output-format: code
-  related-skills: revisao-de-codigo-java, padroes-de-projeto-java, refactoring-remove-parameter, java-moderno
+  related-skills: revisao-de-codigo-java, padroes-de-projeto-java, java-moderno
 ---
 
 # Qualidade de Codigo Java (clean code + refactoring + Object Calisthenics)
@@ -366,7 +366,7 @@ public void processarClientes(List<String> customerNames) { ... }
 ## Object Calisthenics, smells e refactorings do Fowler (resumo)
 
 Exemplos completos (Codigo Nao Aderente / Violacao / Refatoracao) em
-[refatoracoes e Object Calisthenics](references/refatoracoes-java.md). Sao **heuristicas de design**, nao bugs:
+[refatoracoes e Object Calisthenics](references/refatoracoes-fowler.md). Sao **heuristicas de design**, nao bugs:
 aplique quando reduzem um problema concreto (regra espalhada, valor invalido possivel, acoplamento que
 dificulta mudanca). Uma classe com tres atributos coesos nao precisa ser quebrada so para cumprir a regra.
 
@@ -391,7 +391,7 @@ depois; se o trecho nao tem teste, escreva a prova primeiro (`testes-sistemas-ja
 |---|---|---|
 | Aplicar refactoring em uma classe/metodo | sessao principal | esta skill |
 | Revisar diff/PR com checklist de severidade | agent `java-revisor` | `revisao-de-codigo-java` |
-| Remocao de parametro focada (passo-a-passo) | sessao principal | `refactoring-remove-parameter` |
+| Remocao de parametro focada (passo-a-passo) | sessao principal | esta skill (`references/refatoracoes-fowler.md#remove-parameter`) |
 | Limpar imports nao usados | sessao principal | `remover-imports-nao-usados` |
 | Centralizar configuracao dispersa (Shotgun Surgery) | session/engenheiro-devops | `java-architecture` |
 | Decidir onde mora um value object novo | session/java-construtor | `arquitetura-limpa-java` |
