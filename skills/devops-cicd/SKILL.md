@@ -31,7 +31,8 @@ Use para criar ou ajustar pipeline CI, Dockerfile e manifests Kubernetes de uma 
 ## Entradas
 
 Repositório e artefatos existentes (`.github/workflows/`, `Dockerfile`, `k8s/`), versão do JDK/Boot, porta da
-aplicação, dependências que entram na readiness, tempo de shutdown e limites de recursos.
+aplicação, dependências externas e como a aplicação degrada sem elas (dependência compartilhada fica fora da
+readiness), tempo de shutdown e limites de recursos.
 
 ## Decisão — variante e reference
 

@@ -37,13 +37,13 @@ Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fon
 | Variante `pipeline` | `devops-cicd` | `references/pipeline-ci.md` + asset `ci.yml` |
 | Variante `docker` | `devops-cicd` | `references/dockerfile-jvm.md` + assets `Dockerfile`, `.dockerignore` |
 | Variante `k8s` | `devops-cicd` | `references/kubernetes-manifests.md`, `references/probes-graceful-shutdown.md` + assets `k8s-deployment.yaml`, `k8s-service.yaml` |
-| Semântica de probes e health groups | `monitoramento-java` | `references/alertas-dashboards-probes.md` |
+| Semântica de probes e health groups; dependência fora ("dependency down") e degradação explícita | `monitoramento-java` | `references/alertas-dashboards-probes.md` (seção probes), `references/slo-saturacao-java.md` (§5 runbook) |
 | Varredura de CVEs e segredos | `seguranca-aplicacao-java` | `references/integridade-dependencias.md`, `references/configuracao-headers-cors.md` |
 
 ## Entradas
 
 Repositório e artefatos existentes (`.github/workflows/`, `Dockerfile`, `k8s/`), versão do JDK/Boot, porta e
-porta de management, dependências que entram na readiness, tempo de shutdown da aplicação, limites de recursos
+porta de management, dependências externas e como a aplicação degrada sem elas, tempo de shutdown da aplicação, limites de recursos
 e número máximo de réplicas (impacta o orçamento de conexões do banco).
 
 ## Foco
@@ -53,10 +53,18 @@ e número máximo de réplicas (impacta o orçamento de conexões do banco).
   `-DskipTests` no CI. Teste pulado aparece como pendente, nunca como verde.
 - **Imagem:** multi-stage, JRE, não-root, `HEALTHCHECK` na liveness do Actuator (nunca em algo que dependa de banco).
 - **Kubernetes:** `startupProbe` para a subida da JVM; `livenessProbe` → `/actuator/health/liveness` (só o
-  processo); `readinessProbe` → `/actuator/health/readiness` (dependências necessárias); `preStop` curto +
+  processo); `readinessProbe` → `/actuator/health/readiness` (só o que **esta réplica** pode perder); `preStop` curto +
   `server.shutdown: graceful` + `timeout-per-shutdown-phase` < `terminationGracePeriodSeconds`; `maxUnavailable: 0`;
   PodDisruptionBudget; `-XX:MaxRAMPercentage` com limite de memória acima do heap; teto do HPA coerente com o
   orçamento de conexões e quotas do downstream.
+- **Dependência fora ("dependency down"):** recuse liveness acoplada a ela (reinício em massa). Dependência
+  **compartilhada** por todas as réplicas (o mesmo banco/broker/API) também fica **fora da readiness**: na queda
+  dela, todas as réplicas sairiam do Service e o cliente receberia conexão recusada em vez de erro explícito.
+  Decida e entregue a **degradação explícita**: rotas que precisam dela respondem 503 + `Retry-After` em Problem
+  Details (falha rápida por `connection-timeout`/breaker), rotas que não precisam seguem 200, e o estado dela vai
+  para o grupo `dependencias` com alerta. Se a degradação exige código, encaminhe ao `java-construtor` e registre
+  como pendência; nunca troque por readiness. Prova: banco fora → liveness 200, readiness 200, rota dependente 503
+  + `Retry-After`.
 - `/disponibilidade` do esqueleto é smoke test, não probe.
 
 ## Fluxo

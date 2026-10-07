@@ -46,7 +46,7 @@ spec:
               port: 8080
             periodSeconds: 5
             failureThreshold: 24          # até 120 s para subir
-          readinessProbe:                 # readinessState + dependências necessárias (ex.: db)
+          readinessProbe:                 # só esta réplica; banco compartilhado fica fora (degradação na app)
             httpGet:
               path: /actuator/health/readiness
               port: 8080

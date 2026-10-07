@@ -33,6 +33,8 @@ management:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState,db
+          include: readinessState       # banco compartilhado fica fora (ver monitoramento-java, probes)
+        dependencias:
+          include: db                   # diagnóstico + alerta; não é probe
         operacional:
           include: backlog

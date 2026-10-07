@@ -32,7 +32,9 @@ management:
         liveness:
           include: livenessState          # nunca inclui banco, broker, cache ou API externa
         readiness:
-          include: readinessState,db      # só o que é necessário para atender
+          include: readinessState         # só esta réplica; banco compartilhado fica fora (degradação na app)
+        dependencias:
+          include: db                     # diagnóstico + alerta; não é probe
         operacional:
           include: backlog                # saturação: alerta/dashboard, fora das probes
 

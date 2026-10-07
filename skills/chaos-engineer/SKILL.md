@@ -59,7 +59,7 @@ recuperação — ver [experiment-design](references/experiment-design.md)):
 | Consumidor lento | Lag cresce no broker, memória estável, poll mantido, nenhuma mensagem perdida |
 | Dependência com latência > timeout | Deadline respeitado, sem acúmulo de threads/conexões, breaker abre e fecha |
 | Cache indisponível | Banco recebe no máximo o orçamento de recomputação |
-| Banco fora | Liveness UP, readiness DOWN, sem reinício em massa |
+| Banco fora | Liveness e readiness UP (sem reinício em massa nem Service vazio); rotas que usam o banco respondem 503 + `Retry-After` |
 | Retorno após a falha | Retries e replay em taxa limitada; sem segunda queda |
 
 Controle de falha em código Java (Testcontainers + Toxiproxy) — experimento executável:

@@ -34,7 +34,7 @@ spec:
               port: 8080
             periodSeconds: 5
             failureThreshold: 24        # até 120 s para subir
-          readinessProbe:               # readinessState + dependências necessárias (ex.: db)
+          readinessProbe:               # só esta réplica; banco compartilhado fica fora (degradação na app)
             httpGet:
               path: /actuator/health/readiness
               port: 8080
@@ -118,7 +118,7 @@ terminationGracePeriodSeconds: 30     # = timeout-per-shutdown-phase de 30s: SIG
 ```
 
 ```yaml
-# DEPOIS — liveness só do processo; readiness com dependências; orçamento 5 s + 25 s < 40 s
+# DEPOIS — liveness só do processo; readiness da réplica (sem dependência compartilhada); orçamento 5 s + 25 s < 40 s
 livenessProbe:
   httpGet: { path: /actuator/health/liveness, port: 8080 }
 readinessProbe:

@@ -12,7 +12,16 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.sql.DataSource;
 import java.net.URI;
@@ -25,12 +34,14 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Health groups reais (Actuator): liveness não depende de serviço externo; readiness considera só o que é
- * necessário para atender; saturação/backlog fica num grupo operacional (alerta), sem tirar pods do ar.
+ * Health groups reais (Actuator): liveness não depende de serviço externo; readiness não inclui o banco
+ * compartilhado (a queda dele tiraria todas as réplicas do Service), que degrada explicitamente na rota;
+ * saturação/backlog fica num grupo operacional (alerta), sem tirar pods do ar.
  */
 @SpringBootTest(classes = SaudeAplicacaoTest.App.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.config.name=saude-aplicacao-teste")
@@ -39,7 +50,7 @@ class SaudeAplicacaoTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import(SaudeAplicacao.class)
+    @Import({SaudeAplicacao.class, PedidosController.class})
     static class App {
         @Bean
         DataSource dataSource() {
@@ -58,6 +69,33 @@ class SaudeAplicacaoTest {
         @Bean
         FilaLimitada<String> filaPedidos() {
             return new FilaLimitada<>(4);
+        }
+    }
+
+    /** Rota que depende do banco degrada com 503 + Retry-After; rota sem banco continua atendendo. */
+    @RestController
+    static class PedidosController {
+        private final JdbcTemplate jdbc;
+
+        PedidosController(DataSource dataSource) {
+            this.jdbc = new JdbcTemplate(dataSource);
+        }
+
+        @GetMapping("/pedidos/total")
+        Integer total() {
+            return jdbc.queryForObject("select 1", Integer.class);
+        }
+
+        @GetMapping("/versao")
+        String versao() {
+            return "1";
+        }
+
+        @ExceptionHandler(DataAccessResourceFailureException.class)
+        ResponseEntity<ProblemDetail> bancoIndisponivel(DataAccessResourceFailureException erro) {
+            var problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Dependência indisponível; tente novamente em instantes.");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header(HttpHeaders.RETRY_AFTER, "5").body(problema);
         }
     }
 
@@ -91,9 +129,13 @@ class SaudeAplicacaoTest {
         assertEquals("não configurada", resultado.getDetails().get("fila"));
     }
 
-    private int status(String caminho) throws Exception {
+    private HttpResponse<String> get(String caminho) throws Exception {
         var pedido = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho)).GET().build();
-        return http.send(pedido, HttpResponse.BodyHandlers.discarding()).statusCode();
+        return http.send(pedido, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private int status(String caminho) throws Exception {
+        return get(caminho).statusCode();
     }
 
     @AfterEach
@@ -102,17 +144,26 @@ class SaudeAplicacaoTest {
         while (fila.retirar().isPresent()) { }
     }
 
-    @DisplayName("SaudeAplicacao: Dependencia fora nao deve derrubar liveness mas deve tirar da rotacao")
+    @DisplayName("SaudeAplicacao: Banco compartilhado fora degrada a rota sem derrubar liveness nem readiness")
     @Test
-    void dependenciaForaNaoDeveDerrubarLivenessMasDeveTirarDaRotacao() throws Exception {
-        assertEquals(200, status("/actuator/health/liveness"));
+    void bancoCompartilhadoForaDeveDegradarRotaSemDerrubarProbes() throws Exception {
         assertEquals(200, status("/actuator/health/readiness"));
+        assertEquals(200, status("/pedidos/total"));
 
         BANCO_FORA.set(true);
         // Liveness continua UP: reiniciar todos os pods não conserta o banco (evita falha em cascata).
         assertEquals(200, status("/actuator/health/liveness"));
-        // Readiness DOWN: sem banco a réplica não atende pedidos; sai do balanceador sem reiniciar.
-        assertEquals(503, status("/actuator/health/readiness"));
+        // Readiness continua UP: o banco é o mesmo para todas as réplicas; tirá-las esvaziaria o Service.
+        assertEquals(200, status("/actuator/health/readiness"));
+        // O estado do banco segue visível para alerta, fora das probes.
+        assertEquals(503, status("/actuator/health/dependencias"));
+        // Degradação explícita: a rota que precisa do banco responde 503 + Retry-After em Problem Details...
+        var degradada = get("/pedidos/total");
+        assertEquals(503, degradada.statusCode());
+        assertEquals("5", degradada.headers().firstValue("Retry-After").orElse(null));
+        assertTrue(degradada.body().contains("\"status\":503"), degradada.body());
+        // ...e a rota que não precisa dele continua atendendo.
+        assertEquals(200, status("/versao"));
     }
 
     @DisplayName("SaudeAplicacao: Backlog saturado deve alertar sem derrubar readiness")

@@ -34,8 +34,10 @@ spring:
 
 ## Probes — por que sempre configurar
 
-- `readinessProbe` — diz ao Service se a réplica pode receber tráfego; sem ele, tráfego vai para
-  réplicas ainda subindo ou com dependência necessária indisponível.
+- `readinessProbe` — diz ao Service se **esta réplica** pode receber tráfego; sem ele, tráfego vai para
+  réplicas ainda subindo ou em shutdown. Dependência **compartilhada** por todas as réplicas (o mesmo banco)
+  fica fora: na queda dela, todas sairiam do Service ao mesmo tempo. A aplicação degrada explicitamente
+  (503 + `Retry-After` nas rotas que precisam dela), conforme `monitoramento-java` (seção probes).
 - `livenessProbe` — diz ao kubelet se o processo travou; reinicia se falhar. **Nunca** inclua banco,
   broker ou API externa: uma queda da dependência reiniciaria todos os pods ao mesmo tempo.
 - `startupProbe` — cobre a subida da JVM sem precisar de `initialDelaySeconds` grande na liveness.
@@ -63,7 +65,7 @@ management:
 ```
 
 ```yaml
-# DEPOIS — liveness só do processo; o banco entra apenas na readiness
+# DEPOIS — liveness só do processo; banco compartilhado fora das probes (grupo de diagnóstico + alerta)
 management:
   endpoint:
     health:
@@ -73,13 +75,16 @@ management:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState, db
+          include: readinessState
+        dependencias:
+          include: db
 ```
 
 ## Provas executáveis
 
 - [SaudeAplicacaoTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/SaudeAplicacaoTest.java)
-  — liveness sobe e readiness cai quando a dependência falha, sem reinício em massa.
+  — banco fora: liveness e readiness seguem 200 (sem reinício em massa nem Service vazio), grupo
+  `dependencias` 503 e rota que usa o banco 503 + `Retry-After`.
 - [EncerramentoControlado](../../../examples/java/fundamentos/src/main/java/br/com/srportto/exemplos/EncerramentoControlado.java)
   — encerramento que espera o trabalho em voo dentro de um prazo.
 - Experimento de falha que valida a recuperação: [toxiproxy-java](../../chaos-engineer/references/toxiproxy-java.md).

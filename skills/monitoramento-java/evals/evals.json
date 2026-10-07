@@ -4,12 +4,13 @@
     {
       "id": 1,
       "prompt": "Dependency down; faça liveness falhar em todos os pods",
-      "expected_output": "Liveness não depende de serviço externo; readiness apenas se a dependência é necessária para atender; degradação explícita",
+      "expected_output": "Liveness não depende de serviço externo; readiness apenas se a dependência é necessária para atender esta réplica (dependência compartilhada por todas as réplicas fica fora, senão o Service esvazia); degradação explícita (503 + Retry-After/Problem Details nas rotas que precisam dela, demais rotas seguem)",
       "files": [],
       "expectations": [
         "Mantém a liveness independente de serviço externo",
-        "Usa readiness apenas se a dependência é necessária para atender",
-        "Define degradação explícita",
+        "Usa readiness apenas se a dependência é necessária para atender esta réplica",
+        "Não põe dependência compartilhada por todas as réplicas na readiness (tiraria o Service inteiro do ar)",
+        "Define degradação explícita: 503 + Retry-After/Problem Details nas rotas que precisam da dependência, demais rotas seguem",
         "Não acopla a liveness à dependência (reinício em massa dos pods)"
       ]
     },

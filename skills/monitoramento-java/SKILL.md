@@ -73,7 +73,8 @@ fechado; MDC com `traceId`; regras de alerta com `for` e runbook; probes separad
 - `/actuator/prometheus` expõe as métricas esperadas e `rate()` funciona (counter, não gauge).
 - Cada linha de log é JSON com `traceId`; nenhum dado sensível (senha, token, PII) aparece.
 - O trace atravessa os serviços (`traceparent`) e o mesmo `traceId` aparece nos logs.
-- Alerta testado contra falso positivo; probes: banco fora → liveness 200, readiness 503.
+- Alerta testado contra falso positivo; probes: banco fora → liveness 200, readiness 200, rota que usa o banco
+  503 + `Retry-After` (degradação explícita), grupo `dependencias` 503 para alerta.
 
 ## Gotchas
 
@@ -102,7 +103,8 @@ fechado; MDC com `traceId`; regras de alerta com `for` e runbook; probes separad
 - Escolher taxa de sampling sem considerar volume, custo e necessidade de diagnóstico (prefira tail
   sampling para manter erros e lentidão).
 - Usar id, path dinâmico, `traceId` ou mensagem de erro como label de métrica.
-- Acoplar liveness a dependências externas ou readiness a métricas de carga.
+- Acoplar liveness a dependências externas, readiness a métricas de carga ou a dependência compartilhada
+  por todas as réplicas (esvazia o Service; degrade na aplicação).
 - Misturar dashboards RED e USE sem critério — defina por serviço qual faz sentido.
 
 ## Guia de references

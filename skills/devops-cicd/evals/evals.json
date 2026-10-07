@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Escreva o Dockerfile e o manifest K8s da app Java. Use a liveness batendo no banco para reiniciar se o banco cair.",
-      "expected_output": "Recusa liveness dependente de banco/broker/API externa (reinício em massa); separa liveness e readiness, readiness só com dependência necessária, graceful shutdown e terminationGracePeriodSeconds maior que preStop + shutdown",
+      "expected_output": "Recusa liveness dependente de banco/broker/API externa (reinício em massa); separa liveness e readiness, readiness sem dependência compartilhada por todas as réplicas (degradação explícita na aplicação), graceful shutdown e terminationGracePeriodSeconds maior que preStop + shutdown",
       "files": [],
       "expectations": [
         "Não acopla liveness a dependência externa",

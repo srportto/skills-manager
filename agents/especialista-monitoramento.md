@@ -45,8 +45,9 @@ incidentes recentes, proteções existentes (limites, filas, breakers) a observa
   nunca em labels. Requisição lógica separada de tentativas.
 - **Tracing:** W3C Trace Context; sampling como decisão de volume/custo/diagnóstico (preferir tail sampling para
   erros e lentidão).
-- **Health groups:** liveness sem dependências externas; readiness com o necessário para atender; saturação em
-  grupo operacional (alerta), não em readiness.
+- **Health groups:** liveness sem dependências externas; readiness só com o que esta réplica pode perder
+  (dependência compartilhada fica fora, com degradação explícita na aplicação); saturação em grupo operacional
+  (alerta), não em readiness.
 
 ## Fluxo
 

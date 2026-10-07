@@ -39,8 +39,9 @@ de partir para hexagonal:
    rastreamento propagado via W3C Trace Context: ver `monitoramento-java`.
 
 5. **Health & readiness probe** — use os grupos do Actuator: `/actuator/health/liveness` (só o estado do
-   processo; falha **reinicia** o pod — nunca inclua banco/broker) e `/actuator/health/readiness` (estado +
-   dependências necessárias para atender; falha tira a réplica do balanceador, **não** reinicia). Semântica,
+   processo; falha **reinicia** o pod — nunca inclua banco/broker) e `/actuator/health/readiness` (estado
+   desta réplica; falha tira a réplica do balanceador, **não** reinicia; dependência compartilhada por todas as
+   réplicas fica fora e a aplicação degrada explicitamente). Semântica,
    configuração dos grupos e exemplo testado: `monitoramento-java` (seção probes); manifests: `devops-cicd`.
    ```yaml
    livenessProbe:

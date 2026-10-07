@@ -74,7 +74,7 @@ requisições na expressão ou SLO por tempo.
 | DLQ/DLT | mensagens e taxa de entrada | qualquer crescimento contínuo |
 | JVM | heap após GC, pausas, threads de plataforma | heap pós-GC > 85% |
 
-Saturação vira **alerta e load shedding**, não readiness (ver SKILL, probes).
+Saturação vira **alerta e load shedding**, não readiness (ver [probes](alertas-dashboards-probes.md#health--readiness-probes)).
 
 ## 4. Logs, traces e correlação
 
@@ -86,6 +86,12 @@ Saturação vira **alerta e load shedding**, não readiness (ver SKILL, probes).
 
 ## 5. Runbook mínimo (por alerta)
 
+A degradação citada no runbook é decidida **antes** do incidente, junto com as probes: para cada dependência
+compartilhada, o que a rota responde quando ela cai (503 + `Retry-After`/Problem Details, fallback honesto ou
+200 sem ela) e o teste que prova isso. A regra e o exemplo testado estão em
+[alertas-dashboards-probes](alertas-dashboards-probes.md#health--readiness-probes). Readiness não substitui
+essa decisão: com dependência compartilhada nela, o Service fica vazio.
+
 ```markdown
 ## CheckoutConsumoRapidoDoOrcamento
 - Impacto: clientes não conseguem finalizar pedidos (erro ou 503).
@@ -93,6 +99,9 @@ Saturação vira **alerta e load shedding**, não readiness (ver SKILL, probes).
 - Se rejeitada domina: carga acima da capacidade → escalar (respeitando orçamento do banco), ativar
   degradação de funcionalidades não críticas; NÃO aumentar limites às cegas.
 - Se erro domina: dependência? deploy recente? → rollback/feature flag.
+- Dependência compartilhada fora (banco, broker, API): a degradação já está no código — rotas que precisam
+  dela respondem 503 + `Retry-After` rápido; as demais seguem 200. Pods continuam ready e vivos (não reinicie
+  nem tire todos do Service); acompanhe o grupo `dependencias` e o estado do breaker.
 - Recuperação: confirmar drenagem (fila/lag caindo), retries/replay em taxa limitada, burn rate < 1.
 - Escalonamento: time de plantão do banco se pool/locks; dono da dependência se breaker aberto.
 ```
