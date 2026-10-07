@@ -18,6 +18,30 @@ Quota do cliente: 429 e Retry-After quando houver orientação útil. Saturaçã
 
 Token bucket permite burst limitado e reposição por tempo monotônico; leaky bucket regula ritmo, mas sua fila também é limitada. Teste fronteira, rollover temporal, tenant ruidoso e falha do coordenador.
 
+## Rate limiting distribuído
+
+Use uma identidade obtida da autenticação (por exemplo, `tenant` validado + nome da operação). Não derive a
+quota de um IP sem autenticação: endereços podem ser compartilhados por NAT, mudam em redes móveis e podem ser
+forjados quando um proxy não confiável preenche o cabeçalho. Normalize a identidade no servidor e mantenha o
+conjunto de chaves e seu TTL limitados.
+
+Para uma janela fixa no Redis/Valkey, execute `INCR` e `PEXPIRE` em um script Lua atômico; uma falha entre dois
+comandos deixaria contador sem TTL. O script também deve corrigir chave existente com `PTTL < 0`. Uma janela
+fixa pode admitir rajada na fronteira entre janelas, então escolha algoritmo e janela conforme o contrato da
+quota.
+
+Separe os orçamentos local e global. A quota global do coordenador limita o agregado normal entre réplicas; o
+balde local protege cada processo quando o coordenador falha. O limite degradado agregado pode chegar a
+`réplicas máximas × burst local`, portanto dimensione o burst local com o pior número de réplicas e deixe
+explícito que a decisão local não garante atomicidade global.
+
+Na falha do coordenador, não libere toda a capacidade (fail-open) nem bloqueie todo o serviço (fail-closed):
+use limite local conservador, com capacidade e taxa limitadas. Exponha falhas como `app.ratelimit.falhas_coordenador`
+sem tags de tenant, chave ou IP. O exemplo [LimiteDistribuido](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/LimiteDistribuido.java)
+expõe o contador local em `falhasCoordenador()`; sua integração com Micrometer deve manter cardinalidade fixa.
+Confira concorrência, expiração e recuperação em
+[LimiteDistribuidoExternoIT](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/LimiteDistribuidoExternoIT.java).
+
 ## Prova
 
 O [módulo fundamentos](../../../examples/java/fundamentos/pom.xml) mede máximo ativo e fila limitada; [carga](../../../examples/java/carga/pom.xml) registra aceitação/rejeição e recuperação. Esses ensaios são sintéticos; não extrapole throughput de uma máquina para produção.

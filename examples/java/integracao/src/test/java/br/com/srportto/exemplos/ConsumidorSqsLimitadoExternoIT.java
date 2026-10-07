@@ -3,7 +3,8 @@ package br.com.srportto.exemplos;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.localstack.LocalStackContainer;
+import org.junit.jupiter.api.DisplayName;
+import io.floci.testcontainers.FlociContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,23 +21,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SQS real (LocalStack): mensagem processada é apagada; mensagem que sempre falha vai para a DLQ pela
+ * SQS real (Floci): mensagem processada é apagada; mensagem que sempre falha vai para a DLQ pela
  * RedrivePolicy (maxReceiveCount=3), sem descarte silencioso e sem loop infinito.
  */
 class ConsumidorSqsLimitadoExternoIT {
-    static final LocalStackContainer LOCALSTACK = new LocalStackContainer(ServicosExternos.LOCALSTACK).withServices("sqs");
+    static final FlociContainer FLOCI = new FlociContainer(ServicosExternos.FLOCI);
     static SqsClient sqs;
     static String fila;
     static String dlq;
 
     @BeforeAll
     static void iniciar() {
-        LOCALSTACK.start();
+        FLOCI.start();
         sqs = SqsClient.builder()
-                .endpointOverride(LOCALSTACK.getEndpoint())
-                .region(Region.of(LOCALSTACK.getRegion()))
+                .endpointOverride(URI.create(FLOCI.getEndpoint()))
+                .region(Region.of(FLOCI.getRegion()))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(LOCALSTACK.getAccessKey(), LOCALSTACK.getSecretKey())))
+                        AwsBasicCredentials.create(FLOCI.getAccessKey(), FLOCI.getSecretKey())))
                 .build();
         // Regra do catálogo: a fila nasce com DLQ e RedrivePolicy.
         dlq = sqs.createQueue(r -> r.queueName("pedidos-dlq")).queueUrl();
@@ -48,9 +50,10 @@ class ConsumidorSqsLimitadoExternoIT {
     @AfterAll
     static void parar() {
         if (sqs != null) sqs.close();
-        LOCALSTACK.stop();
+        FLOCI.stop();
     }
 
+    @DisplayName("ConsumidorSqsLimitadoExterno: Mensagem que sempre falha deve ir para dlq e as demais sao apagadas")
     @Test
     void mensagemQueSempreFalhaDeveIrParaDlqEAsDemaisSaoApagadas() throws Exception {
         sqs.sendMessage(r -> r.queueUrl(fila).messageBody("ok-1"));

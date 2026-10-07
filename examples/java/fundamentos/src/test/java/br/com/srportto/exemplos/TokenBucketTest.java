@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TokenBucketTest {
+    @DisplayName("TokenBucket: Deve limitar burst e repor sem exceder teto")
     @Test
     void deveLimitarBurstEReporSemExcederTeto() {
         var tempo = new AtomicLong();
@@ -30,6 +32,7 @@ class TokenBucketTest {
         assertFalse(quota.tentar());
     }
 
+    @DisplayName("TokenBucket: Tenants com baldes separados nao devem interferir")
     @Test
     void tenantsComBaldesSeparadosNaoDevemInterferir() {
         var tempo = new AtomicLong();
@@ -40,6 +43,7 @@ class TokenBucketTest {
         assertTrue(tenantComportado.tentar());
     }
 
+    @DisplayName("TokenBucket: Deve recusar relogio que regride")
     @Test
     void deveRecusarRelogioQueRegride() {
         var tempo = new AtomicLong(10);

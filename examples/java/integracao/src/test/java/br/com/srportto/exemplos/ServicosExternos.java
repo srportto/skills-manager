@@ -10,7 +10,7 @@ import javax.sql.DataSource;
 final class ServicosExternos {
     static final DockerImageName POSTGRES = DockerImageName.parse("postgres:18-alpine");
     static final DockerImageName KAFKA = DockerImageName.parse("confluentinc/cp-kafka:7.7.1");
-    static final DockerImageName LOCALSTACK = DockerImageName.parse("localstack/localstack:4.4");
+    static final DockerImageName FLOCI = DockerImageName.parse("floci/floci:2.2.0");
 
     private ServicosExternos() {}
 

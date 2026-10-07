@@ -3,6 +3,7 @@ package br.com.srportto.exemplos;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -69,6 +70,7 @@ class CheckoutApplicationTest {
         return http.send(pedido, HttpResponse.BodyHandlers.ofString());
     }
 
+    @DisplayName("Checkout devolve 201 e o mesmo corpo quando a mesma Idempotency-Key repete o payload")
     @Test
     void repeticaoComMesmaChaveDeveDevolverOMesmoPedidoSemDuplicarEfeito() throws Exception {
         String chave = UUID.randomUUID().toString();
@@ -80,6 +82,7 @@ class CheckoutApplicationTest {
         assertEquals(primeira.body(), segunda.body());
     }
 
+    @DisplayName("CheckoutApplication: Mesma chave com payload diferente deve ser conflito")
     @Test
     void mesmaChaveComPayloadDiferenteDeveSerConflito() throws Exception {
         String chave = UUID.randomUUID().toString();
@@ -87,12 +90,14 @@ class CheckoutApplicationTest {
         assertEquals(409, enviar(pedido(chave, 9999)).statusCode());
     }
 
+    @DisplayName("CheckoutApplication: Sem chave de idempotencia ou com valor invalido deve ser recusado")
     @Test
     void semChaveDeIdempotenciaOuComValorInvalidoDeveSerRecusado() throws Exception {
         assertEquals(400, enviar(pedido(null, 1500)).statusCode());
         assertEquals(422, enviar(pedido(UUID.randomUUID().toString(), 0)).statusCode());
     }
 
+    @DisplayName("CheckoutApplication: Saturacao deve responder503 rapido com retry after e metrica de rejeicao")
     @Test
     void saturacaoDeveResponder503RapidoComRetryAfterEMetricaDeRejeicao() throws Exception {
         PagamentoDeTeste.BLOQUEIO.set(new CountDownLatch(1));
@@ -117,6 +122,7 @@ class CheckoutApplicationTest {
         assertEquals(201, b.get(10, TimeUnit.SECONDS).statusCode());
     }
 
+    @DisplayName("CheckoutApplication: Probes e smoke test devem responder")
     @Test
     void probesESmokeTestDevemResponder() throws Exception {
         for (String caminho : new String[]{"/disponibilidade", "/actuator/health/liveness", "/actuator/health/readiness"}) {

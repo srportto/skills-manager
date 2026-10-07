@@ -71,6 +71,12 @@ Implement tasks from an OpenSpec change.
 
 6. **Implement tasks (loop until done or blocked)**
 
+   **Catálogo Java:** para cada tarefa, escolha o agent pelo "Mapa de fases" de `openspec-catalogo-java`
+   (código de aplicação → `java-construtor`; refatoração → `refatorador-java`; SQL → `especialista-banco-dados`;
+   pipeline → `engenheiro-devops`; observabilidade → `especialista-monitoramento`). Delegue quando a sessão
+   permitir subagents; senão, carregue as skills do agent e implemente com TDD. Marque `[x]` só com o teste
+   executado e a saída lida — `-DskipTests` não é prova.
+
    For each pending task:
    - Show which task is being worked on
    - Make the code changes required

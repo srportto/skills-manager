@@ -5,6 +5,7 @@ import br.com.srportto.exemplos.CheckoutSobCargaSimulation.ResultadoFase;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -46,6 +47,7 @@ class CheckoutSobCargaSimulationCargaIT {
         if (checkout != null) checkout.close();
     }
 
+    @DisplayName("CheckoutSobCargaSimulationCarga: Sobrecarga deve ser rejeitada cedo sem duplicar efeitos e recuperar")
     @Test
     void sobrecargaDeveSerRejeitadaCedoSemDuplicarEfeitosERecuperar() throws Exception {
         String porta = checkout.getEnvironment().getProperty("local.server.port");

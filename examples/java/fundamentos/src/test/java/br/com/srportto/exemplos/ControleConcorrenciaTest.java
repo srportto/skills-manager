@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ControleConcorrenciaTest {
+    @DisplayName("ControleConcorrencia libera a permissão quando a operação síncrona lança exceção")
     @Test
     void deveLiberarCapacidadeDepoisDeFalha() throws Exception {
         var controle = new ControleConcorrencia(1);
@@ -28,6 +30,7 @@ class ControleConcorrenciaTest {
         assertEquals("recuperado", controle.executar(() -> "recuperado"));
     }
 
+    @DisplayName("ControleConcorrencia: Deve rejeitar enquanto unica permissao estiver ocupada")
     @Test
     void deveRejeitarEnquantoUnicaPermissaoEstiverOcupada() throws Exception {
         var controle = new ControleConcorrencia(1);
@@ -38,6 +41,7 @@ class ControleConcorrenciaTest {
         });
     }
 
+    @DisplayName("ControleConcorrencia: Deve limitar trabalho real com virtual threads")
     @Test
     void deveLimitarTrabalhoRealComVirtualThreads() throws Exception {
         var controle = new ControleConcorrencia(2);
@@ -72,6 +76,7 @@ class ControleConcorrenciaTest {
         assertEquals("ok", controle.executar(() -> "ok"));
     }
 
+    @DisplayName("ControleConcorrencia: Cancelar espera nao deve liberar operacao ainda ativa")
     @Test
     void cancelarEsperaNaoDeveLiberarOperacaoAindaAtiva() {
         var controle = new ControleConcorrencia(1);
@@ -87,6 +92,7 @@ class ControleConcorrenciaTest {
                 .toCompletableFuture().join());
     }
 
+    @DisplayName("ControleConcorrencia: Falha ao iniciar operacao assincrona deve liberar permissao")
     @Test
     void falhaAoIniciarOperacaoAssincronaDeveLiberarPermissao() {
         var controle = new ControleConcorrencia(1);

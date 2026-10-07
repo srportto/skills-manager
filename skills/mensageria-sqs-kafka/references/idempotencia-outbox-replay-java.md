@@ -50,8 +50,11 @@ sequenceDiagram
     end
 ```
 
-- **Janela commit → publicação:** se o relay cai depois de publicar e antes de marcar, o evento sai **de novo**
-  (at-least-once). Consumidores deduplicam por `eventId`.
+- **Entrega at-least-once:** se o relay cai depois de publicar e antes de marcar, o evento sai **de novo**.
+  O relay não conhece o efeito e não consegue deduplicá-lo; a deduplicação é responsabilidade do consumidor,
+  por `eventId`, `Idempotency-Key` ou chave de negócio persistida junto com o efeito. O exemplo
+  [ProcessadorIdempotente](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/ProcessadorIdempotente.java)
+  ilustra essa responsabilidade no consumidor.
 - **Ordem:** pela sequência de criação (coluna `seq`), nunca por UUID aleatório. Com vários relays concorrentes,
   ordem por agregado exige particionar o trabalho (ex.: `FOR UPDATE SKIP LOCKED` por agregado ou um relay por
   partição) — ou aceitar e documentar a desordem.

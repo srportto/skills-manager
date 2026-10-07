@@ -2,6 +2,7 @@ package br.com.srportto.exemplos;
 
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ class ProcessadorIdempotenteTest {
         return ds;
     }
 
+    @DisplayName("ProcessadorIdempotente: Duplicatas concorrentes e reinicio devem produzir um efeito")
     @Test
     void duplicatasConcorrentesEReinicioDevemProduzirUmEfeito() throws Exception {
         DataSource ds = banco();
@@ -47,6 +49,7 @@ class ProcessadorIdempotenteTest {
         assertEquals(1, processador.quantidadePedidos());
     }
 
+    @DisplayName("ProcessadorIdempotente: Mesma chave com payload diferente deve conflitar e escopo por tenant deve isolar")
     @Test
     void mesmaChaveComPayloadDiferenteDeveConflitarEEscopoPorTenantDeveIsolar() throws Exception {
         var processador = new ProcessadorIdempotente(banco());
@@ -57,6 +60,7 @@ class ProcessadorIdempotenteTest {
         assertEquals(2, processador.quantidadePedidos());
     }
 
+    @DisplayName("ProcessadorIdempotente: Entrada invalida nao deve gravar nada")
     @Test
     void entradaInvalidaNaoDeveGravarNada() throws Exception {
         var processador = new ProcessadorIdempotente(banco());

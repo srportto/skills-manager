@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.List;
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LeakyBucketTest {
     private static final long INTERVALO = Duration.ofMillis(100).toNanos();
 
+    @DisplayName("LeakyBucket: Deve liberar um item por intervalo sem rajada apos ociosidade")
     @Test
     void deveLiberarUmItemPorIntervaloSemRajadaAposOciosidade() {
         var tempo = new AtomicLong();
@@ -36,6 +38,7 @@ class LeakyBucketTest {
         assertEquals(List.of("d"), balde.liberar());
     }
 
+    @DisplayName("LeakyBucket: Deve rejeitar quando a fila de espera estiver cheia")
     @Test
     void deveRejeitarQuandoAFilaDeEsperaEstiverCheia() {
         var balde = new LeakyBucket<String>(2, Duration.ofMillis(100), () -> 0L);
@@ -45,6 +48,7 @@ class LeakyBucketTest {
         assertEquals(2, balde.pendentes());
     }
 
+    @DisplayName("LeakyBucket: Deve recusar configuracao invalida")
     @Test
     void deveRecusarConfiguracaoInvalida() {
         assertThrows(IllegalArgumentException.class, () -> new LeakyBucket<String>(0, Duration.ofMillis(1), () -> 0L));

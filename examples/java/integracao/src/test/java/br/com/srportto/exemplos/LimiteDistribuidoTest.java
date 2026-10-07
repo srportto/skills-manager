@@ -2,6 +2,7 @@ package br.com.srportto.exemplos;
 
 import br.com.srportto.exemplos.LimiteDistribuido.Decisao;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ class LimiteDistribuidoTest {
         return new LimiteDistribuido(coordenador, 3, Duration.ofSeconds(1), 1, 1.0, 1_000, tempo::get);
     }
 
+    @DisplayName("LimiteDistribuido: Deve aplicar quota global por identidade")
     @Test
     void deveAplicarQuotaGlobalPorIdentidade() {
         var limite = limite();
@@ -38,6 +40,7 @@ class LimiteDistribuidoTest {
         assertEquals(Decisao.PERMITIDO, limite.avaliar("cliente-b"));
     }
 
+    @DisplayName("LimiteDistribuido: Coordenador indisponivel deve cair para limite local conservador e nao liberar tudo")
     @Test
     void coordenadorIndisponivelDeveCairParaLimiteLocalConservadorENaoLiberarTudo() {
         var limite = limite();
@@ -49,6 +52,7 @@ class LimiteDistribuidoTest {
         assertEquals(3, limite.falhasCoordenador());
     }
 
+    @DisplayName("LimiteDistribuido: Limites locais degradados devem ter cardinalidade limitada")
     @Test
     void limitesLocaisDegradadosDevemTerCardinalidadeLimitada() {
         var limite = limite();

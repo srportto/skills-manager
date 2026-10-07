@@ -50,6 +50,10 @@ When ready to implement, run /opsx:apply
    - `artifacts`: list of all artifacts with their status and dependencies
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
+3b. **Catálogo Java** — carregue a skill `openspec-catalogo-java` e, para cada artefato, consulte as skills
+    indicadas no "Mapa de fases" (ex.: `design` → `design-system-architecture`). As `rules` do
+    `openspec/config.yaml` chegam pelo JSON de `openspec instructions`; aplique-as como restrição, sem copiá-las.
+
 4. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.

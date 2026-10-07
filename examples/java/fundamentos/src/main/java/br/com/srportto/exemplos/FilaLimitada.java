@@ -3,7 +3,7 @@ package br.com.srportto.exemplos;
 import java.util.*;
 import java.util.function.ToLongFunction;
 
-public final class FilaLimitada<T> {
+public final class FilaLimitada<T> implements FilaObservavel {
     public enum Admissao { ACEITO, REJEITADO_POR_CAPACIDADE }
     private record Item<T>(T valor, long bytes) {}
     private final ArrayDeque<Item<T>> fila = new ArrayDeque<>();

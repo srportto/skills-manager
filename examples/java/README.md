@@ -9,8 +9,9 @@ Maven multi-módulo. Cada classe de `src/main/java` tem prova de mesmo nome (`<C
 | Módulo | Classes | Dependências |
 |---|---|---|
 | `fundamentos` | `FilaLimitada`, `ControleConcorrencia`, `OrcamentoTempo`, `PoliticaRetry`, `TokenBucket`, `LeakyBucket`, `AdmissaoPorPrioridade`, `ChamadaComDeadline`, `FallbackDegradado`, `EncerramentoControlado` | somente JDK |
+| `linguagem` | `Pagamento`, `Tarifacao`, `ResultadoCobranca`, `Notificacao` (sealed e switch moderno) | somente JDK |
 | `reativo` | `FluxoSobDemanda` (+ `ProtecoesTest` com Resilience4j) | Reactor, Resilience4j |
-| `integracao` | `ProcessadorIdempotente`, `PublicadorOutbox`, `ReplayControlado`, `ConsumoControlado`, `ConsumidorKafkaLimitado`, `ConsumidorSqsLimitado`, `CacheProtegido`, `LimiteDistribuido`, `RecuperacaoPendencias`, `MetricasProtecao`, `SaudeAplicacao`, `CheckoutApplication` | Spring Boot 4, JDBC/H2, kafka-clients, AWS SDK SQS, Jedis, Micrometer; Testcontainers nos `ExternoIT` |
+| `integracao` | `ProcessadorIdempotente`, `PublicadorOutbox`, `ReplayControlado`, `ConsumoControlado`, `ConsumidorKafkaLimitado`, `ConsumidorSqsLimitado`, `CacheProtegido`, `LimiteDistribuido`, `RecuperacaoPendencias`, `MetricasProtecao`, `SaudeAplicacao`, `CheckoutApplication` | Spring Boot 4, JDBC/H2, kafka-clients, AWS SDK SQS, Jedis, Micrometer; Testcontainers (Floci para AWS) nos `ExternoIT` |
 | `carga` | `CheckoutSobCargaSimulation` | módulos acima |
 
 ## Comandos
@@ -26,7 +27,7 @@ O perfil `integracao` **falha** sem Docker: ausência de ambiente é pendência,
 | Prova externa (`-Pintegracao`) | Serviço real | O que demonstra |
 |---|---|---|
 | `ConsumidorKafkaLimitadoExternoIT` | Kafka + PostgreSQL | Dois consumidores, rebalance, falha antes do commit e reinício sem perda nem duplicata |
-| `ConsumidorSqsLimitadoExternoIT` | LocalStack (SQS) | Mensagem que sempre falha chega à DLQ pela RedrivePolicy; demais apagadas só após o efeito |
+| `ConsumidorSqsLimitadoExternoIT` | Floci (SQS) | Mensagem que sempre falha chega à DLQ pela RedrivePolicy; demais apagadas só após o efeito |
 | `ProcessadorIdempotenteExternoIT` | PostgreSQL | 16 conexões concorrentes com a mesma chave geram um único pedido |
 | `LimiteDistribuidoExternoIT` | Valkey | Quota exata entre réplicas; chave órfã sem TTL corrigida |
 | `RecuperacaoPendenciasExternoIT` | Valkey | XAUTOCLAIM recupera pendências de consumidor morto, sem roubar de consumidor vivo |

@@ -81,6 +81,12 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | `spring-data-redis` | Cache protegido, limite distribuído atômico, streams e recuperação | `java-construtor` |
 | `testes-sistemas-java` | Provas de concorrência, idempotência, contrato, falha e carga | `java-construtor`, `java-revisor` |
 
+### Fluxo spec-driven
+
+| Skill | Responsabilidade | Agents principais |
+|---|---|---|
+| `openspec-catalogo-java` | Encaixa skills e agents do catálogo nas fases do OpenSpec; `config.yaml` modelo | todos, por fase |
+
 ### Ferramentas auxiliares (fora da trilha de exemplos Java)
 
 Preservadas sem reescrita; a regra "todo exemplo de programação é Java" não se aplica a elas.
@@ -88,7 +94,7 @@ Preservadas sem reescrita; a regra "todo exemplo de programação é Java" não 
 | Skill | Motivo |
 |---|---|
 | `graphify` | Grafo de conhecimento; ferramenta importada com scripts próprios |
-| `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-propose`, `openspec-sync-specs` | Fluxo OpenSpec importado |
+| `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-propose`, `openspec-sync-specs` | Fluxo OpenSpec 1.4.1 gerado, com ganchos para `openspec-catalogo-java` |
 | `python-pro` | Python para serviços não Java (ex.: Lambdas); nunca usada pelo fluxo `java-construtor` |
 | `remover-imports-nao-usados` | Multi-linguagem por propósito |
 | `terraform-engineer` | IaC; Terratest usa Go por exigência da ferramenta |
@@ -118,7 +124,7 @@ falhas.
 skills/                      # uma pasta por skill (SKILL.md + references/ opcionais)
 agents/                      # um .md por agent
 docs/catalogo/               # convenções, matriz de cobertura, compatibilidade, avaliações de agents
-examples/java/               # exemplos Maven executáveis (fundamentos, reativo, integracao, carga)
+examples/java/               # exemplos Maven executáveis (fundamentos, linguagem, reativo, integracao, carga)
 validation/java/             # testes Java que validam estrutura, links e linguagem do catálogo
 ```
 

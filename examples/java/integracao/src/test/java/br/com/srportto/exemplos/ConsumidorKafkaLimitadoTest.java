@@ -6,6 +6,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -68,6 +69,7 @@ class ConsumidorKafkaLimitadoTest {
         if (consumidor != null) consumidor.close();
     }
 
+    @DisplayName("ConsumidorKafkaLimitado: Deve limitar trabalho em voo pausar particoes ocupadas e commitar so o concluido")
     @Test
     void deveLimitarTrabalhoEmVooPausarParticoesOcupadasECommitarSoOConcluido() throws Exception {
         var liberar = new CountDownLatch(1);
@@ -103,6 +105,7 @@ class ConsumidorKafkaLimitadoTest {
         cicloAte(() -> kafka.paused().isEmpty());
     }
 
+    @DisplayName("ConsumidorKafkaLimitado: Falha transitoria deve repetir a mesma mensagem em ordem e depois ir para quarentena")
     @Test
     void falhaTransitoriaDeveRepetirAMesmaMensagemEmOrdemEDepoisIrParaQuarentena() {
         var tentativasRuim = new AtomicInteger();
@@ -124,6 +127,7 @@ class ConsumidorKafkaLimitadoTest {
         assertEquals(List.of("bom"), ordem);
     }
 
+    @DisplayName("ConsumidorKafkaLimitado: Conclusao atrasada depois da revogacao nao deve pular mensagem quando a particao volta")
     @Test
     void conclusaoAtrasadaDepoisDaRevogacaoNaoDevePularMensagemQuandoAParticaoVolta() throws Exception {
         var liberar = new CountDownLatch(1);
@@ -155,6 +159,7 @@ class ConsumidorKafkaLimitadoTest {
         assertTrue(processados.containsAll(List.of("p0-0-reentrega", "p0-1")), processados::toString);
     }
 
+    @DisplayName("ConsumidorKafkaLimitado: Quarentena indisponivel nao deve commitar nem perder a mensagem")
     @Test
     void quarentenaIndisponivelNaoDeveCommitarNemPerderAMensagem() throws Exception {
         var dltDisponivel = new AtomicBoolean(false);

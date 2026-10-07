@@ -1,6 +1,7 @@
 package br.com.srportto.exemplos;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ class PoliticaRetryTest {
                 espera -> { esperas.add(espera); tempo.addAndGet(espera.toNanos()); }, () -> true);
     }
 
+    @DisplayName("PoliticaRetry: Deve repetir falha transitoria com backoff exponencial e jitter")
     @Test
     void deveRepetirFalhaTransitoriaComBackoffExponencialEJitter() throws Exception {
         var tentativas = new AtomicInteger();
@@ -38,6 +40,7 @@ class PoliticaRetryTest {
         assertEquals(List.of(Duration.ofMillis(5), Duration.ofMillis(10)), esperas);
     }
 
+    @DisplayName("PoliticaRetry: Teto do backoff deve ser respeitado")
     @Test
     void tetoDoBackoffDeveSerRespeitado() throws Exception {
         var tentativas = new AtomicInteger();
@@ -50,6 +53,7 @@ class PoliticaRetryTest {
         assertTrue(esperas.stream().allMatch(espera -> espera.compareTo(Duration.ofMillis(100)) < 0), esperas::toString);
     }
 
+    @DisplayName("PoliticaRetry: Nao deve dormir se a espera consumir o deadline")
     @Test
     void naoDeveDormirSeAEsperaConsumirODeadline() {
         var tentativas = new AtomicInteger();
@@ -61,6 +65,7 @@ class PoliticaRetryTest {
         assertEquals(List.of(), esperas);
     }
 
+    @DisplayName("PoliticaRetry: Nao deve repetir erro permanente nem sem quota agregada")
     @Test
     void naoDeveRepetirErroPermanenteNemSemQuotaAgregada() {
         var chamadas = new AtomicInteger();
@@ -80,6 +85,7 @@ class PoliticaRetryTest {
         assertEquals(1, chamadas.get());
     }
 
+    @DisplayName("PoliticaRetry: Interrupcao nao deve virar retry")
     @Test
     void interrupcaoNaoDeveVirarRetry() {
         try {

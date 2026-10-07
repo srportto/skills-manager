@@ -1,6 +1,7 @@
 package br.com.srportto.catalogo;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,11 +25,7 @@ class ExemplosJavaTest {
      * Baseline de conteúdo importado ainda não reescrito. Cada entrada deve continuar necessária:
      * ao converter o arquivo para Java, o teste exige remover a exceção.
      */
-    private static final Map<String, String> EXCECOES_LEGADO = Map.of(
-            "skills/chaos-engineer/references/chaos-tools.md", "importado; reescrever em Java ao tocar (T09)",
-            "skills/chaos-engineer/references/game-days.md", "importado; reescrever em Java ao tocar (T09)",
-            "skills/chaos-engineer/references/infrastructure-chaos.md", "importado; reescrever em Java ao tocar (T09)",
-            "skills/chaos-engineer/references/kubernetes-chaos.md", "importado; reescrever em Java ao tocar (T09)");
+    private static final Map<String, String> EXCECOES_LEGADO = Map.of();
 
     private static final Pattern ABERTURA = Pattern.compile("(?m)^\\s*(?:```|~~~)\\s*([A-Za-z0-9_+#-]+)");
     private static final Set<String> EXTENSOES_PROIBIDAS = Set.of(
@@ -44,6 +41,7 @@ class ExemplosJavaTest {
         return achadas;
     }
 
+    @DisplayName("ExemplosJava: Blocos de codigo da trilha devem ser java ou configuracao")
     @Test
     void blocosDeCodigoDaTrilhaDevemSerJavaOuConfiguracao() {
         var erros = new ArrayList<String>();
@@ -57,6 +55,7 @@ class ExemplosJavaTest {
         assertTrue(erros.isEmpty(), () -> erros.size() + " problema(s):\n" + String.join("\n", erros));
     }
 
+    @DisplayName("ExemplosJava: Excecoes de legado devem continuar necessarias")
     @Test
     void excecoesDeLegadoDevemContinuarNecessarias() {
         var erros = new ArrayList<String>();
@@ -69,6 +68,7 @@ class ExemplosJavaTest {
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
 
+    @DisplayName("ExemplosJava: Modulos executaveis devem conter somente fontes java")
     @Test
     void modulosExecutaveisDevemConterSomenteFontesJava() throws IOException {
         var erros = new ArrayList<String>();
@@ -83,6 +83,7 @@ class ExemplosJavaTest {
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
     }
 
+    @DisplayName("ExemplosJava: Cada exemplo deve ter prova com mesmo nome")
     @Test
     void cadaExemploDeveTerProvaComMesmoNome() throws IOException {
         var erros = new ArrayList<String>();

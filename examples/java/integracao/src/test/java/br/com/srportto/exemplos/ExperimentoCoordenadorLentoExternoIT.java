@@ -6,6 +6,7 @@ import eu.rekawek.toxiproxy.model.ToxicDirection;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
@@ -75,6 +76,7 @@ class ExperimentoCoordenadorLentoExternoIT {
         return contagem;
     }
 
+    @DisplayName("ExperimentoCoordenadorLentoExterno: Coordenador lento deve degradar para limite local limitado e recuperar")
     @Test
     void coordenadorLentoDeveDegradarParaLimiteLocalLimitadoERecuperar() throws Exception {
         // Quota global folgada; limite local degradado de 5 de burst por instância.

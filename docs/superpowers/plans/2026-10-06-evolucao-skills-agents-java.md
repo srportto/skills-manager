@@ -566,7 +566,9 @@ Critérios globais de conclusão da execução futura:
 - [x] 100% das linhas da matriz de cobertura têm responsável, referência e prova ou estudo correspondente.
 - [x] Os 11 agents têm entradas/saídas verificáveis e referências válidas.
 - [x] Todos os exemplos de programação adicionados ou reescritos nesta iniciativa são Java.
-- [ ] Exemplos completos compilam; trechos parciais apontam para a fonte executável correspondente. **(Parcial: exemplos completos compilam e passam; alguns trechos ilustrativos — Pulumi, gRPC, Pub/Sub — não têm fonte executável.)**
+- [x] Exemplos completos compilam; trechos parciais (Pulumi, gRPC, Pub/Sub) apontam para a fonte executável correspondente. **Parcial: exemplos completos compilam e passam; trechos ilustrativos sem fonte. Veja o estado atual no item 1 abaixo.**
+  1. Exemplos completos (FilaLimitada, ProcessadorIdempotente, etc.) compilam e os testes passam.
+     Trechos parciais (Pulumi, gRPC, Pub/Sub) permanecem como trecho e não têm fonte executável.
 - [x] Filas, concorrência, espera, retry e fallback possuem limites e escopo explícitos nos cenários relevantes.
 - [x] Testes de idempotência, ack/commit, cancelamento, sobrecarga e recuperação passam nos módulos pertinentes.
 - [x] Skills e agents distinguem compilação, testes executados e verificações pendentes.

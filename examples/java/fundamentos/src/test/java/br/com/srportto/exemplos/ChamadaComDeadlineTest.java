@@ -4,17 +4,21 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -63,12 +67,14 @@ class ChamadaComDeadlineTest {
         return URI.create("http://127.0.0.1:" + servidor.getAddress().getPort() + caminho);
     }
 
+    @DisplayName("ChamadaComDeadline: Deve responder dentro do deadline")
     @Test
     void deveResponderDentroDoDeadline() throws Exception {
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
         assertEquals("ok", chamada.obter(uri("/rapida"), new OrcamentoTempo(Duration.ofSeconds(2), System::nanoTime)));
     }
 
+    @DisplayName("ChamadaComDeadline: Dependencia lenta nao deve reter o chamador alem do deadline")
     @Test
     void dependenciaLentaNaoDeveReterOChamadorAlemDoDeadline() throws Exception {
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
@@ -81,6 +87,7 @@ class ChamadaComDeadlineTest {
         assertFalse(lentaTerminou.await(0, TimeUnit.MILLISECONDS));
     }
 
+    @DisplayName("ChamadaComDeadline: Nao deve chamar quando o orcamento ja esgotou")
     @Test
     void naoDeveChamarQuandoOOrcamentoJaEsgotou() {
         var tempo = new AtomicLong();
@@ -88,5 +95,18 @@ class ChamadaComDeadlineTest {
         tempo.set(Duration.ofMillis(10).toNanos());
         var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
         assertThrows(TimeoutException.class, () -> chamada.obter(uri("/rapida"), orcamento));
+    }
+
+    @DisplayName("ChamadaComDeadline: Orcamento que zera entre a checagem e a requisicao deve lancar TimeoutException")
+    @Test
+    void orcamentoQueZeraEntreAChecagemEARequisicaoDeveLancarTimeoutException() {
+        long limite = Duration.ofMillis(200).toNanos();
+        // Leituras do relógio: início, primeira leitura com prazo cheio, depois prazo esgotado.
+        var leituras = new ArrayDeque<>(List.of(0L, 0L, limite));
+        LongSupplier relogio = () -> leituras.size() > 1 ? leituras.poll() : leituras.peek();
+        var chamada = new ChamadaComDeadline(Duration.ofSeconds(2));
+        // Com leitura dupla, o segundo valor (zero) chega ao HttpRequest e vira IllegalArgumentException.
+        assertThrows(TimeoutException.class,
+                () -> chamada.obter(uri("/lenta"), new OrcamentoTempo(Duration.ofMillis(200), relogio)));
     }
 }

@@ -20,6 +20,8 @@ import java.util.function.IntFunction;
  * visível após um atraso; o esgotamento de tentativas é tratado pela {@code RedrivePolicy} da fila (DLQ).
  */
 public final class ConsumidorSqsLimitado implements AutoCloseable {
+    private static final System.Logger LOG = System.getLogger(ConsumidorSqsLimitado.class.getName());
+
     private final SqsClient sqs;
     private final String filaUrl;
     private final ConsumoControlado<Message> controle;
@@ -73,13 +75,25 @@ public final class ConsumidorSqsLimitado implements AutoCloseable {
     private void processar(Message mensagem) {
         long periodoMs = visibilidadeSegundos * 1000L / 2;
         // Renova antes de expirar; para quando o processamento termina (com sucesso ou falha).
-        ScheduledFuture<?> renovacao = renovador.scheduleAtFixedRate(() -> sqs.changeMessageVisibility(r -> r
-                .queueUrl(filaUrl).receiptHandle(mensagem.receiptHandle()).visibilityTimeout(visibilidadeSegundos)),
+        ScheduledFuture<?> renovacao = renovador.scheduleAtFixedRate(() -> renovar(mensagem),
                 periodoMs, periodoMs, TimeUnit.MILLISECONDS);
+        ConsumoControlado.Resultado resultado;
         try {
-            conclusoes.add(new Conclusao(mensagem, controle.consumir(mensagem)));
+            resultado = controle.consumir(mensagem);
         } finally {
+            // Cancela antes de publicar a conclusão: o delete não disputa com renovações ainda agendadas.
             renovacao.cancel(false);
+        }
+        conclusoes.add(new Conclusao(mensagem, resultado));
+    }
+
+    private void renovar(Message mensagem) {
+        try {
+            sqs.changeMessageVisibility(r -> r.queueUrl(filaUrl).receiptHandle(mensagem.receiptHandle())
+                    .visibilityTimeout(visibilidadeSegundos));
+        } catch (RuntimeException erro) {
+            // Exceção não tratada cancelaria o agendamento; registra e tenta de novo no próximo período.
+            LOG.log(System.Logger.Level.WARNING, "Falha ao renovar visibilidade de " + mensagem.messageId(), erro);
         }
     }
 
