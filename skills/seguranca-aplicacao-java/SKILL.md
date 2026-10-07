@@ -34,7 +34,7 @@ em log, `monitoramento-java` (`references/logs-estruturados.md`, seção "Regras
 - Superfície exposta: endpoints públicos x autenticados, integrações que chamam URL externa.
 - Stack: Spring Boot 4 / Spring Security 7 / Java 25.
 
-## Decisão: qual item OWASP → qual reference
+## Decisão: qual item OWASP → qual reference (guia de references)
 
 | Item OWASP | Reference | Quando ler |
 |---|---|---|
@@ -95,8 +95,6 @@ inválidos rejeitados) e o checklist por feature marcado, citando o item OWASP d
 - [ ] Limites de payload, página e custo de consulta; quotas por cliente/tenant onde houver abuso possível
 - [ ] Dependências sem CVE crítico/alto
 - [ ] Migrations validadas (Flyway/Liquibase), sem `ddl-auto: update` em prod
-- [ ] Dependências sem CVE crítico/alto
-- [ ] Migrations validadas (Flyway/Liquibase), sem `ddl-auto: update` em prod
 
 ## Gotchas
 
@@ -107,21 +105,6 @@ inválidos rejeitados) e o checklist por feature marcado, citando o item OWASP d
 - Rate limit de aplicação não substitui proteção volumétrica de borda (WAF/CDN).
 - Limites de tráfego, formato de log e MDC têm fonte única em outras skills
   (`resiliencia-controle-fluxo-java`, `monitoramento-java`); as references apontam, não copiam.
-
-## Guia de references
-
-| Arquivo | Quando ler |
-|---|---|
-| `references/controle-acesso.md` | A01: ownership, IDOR, mass assignment, autorização no método |
-| `references/criptografia-senhas.md` | A02: hash de senha, dados em repouso, segredos |
-| `references/injecao.md` | A03: queries parametrizadas, command injection, Bean Validation |
-| `references/design-inseguro.md` | A04: enumeração de usuário, reset de senha |
-| `references/configuracao-headers-cors.md` | A05: headers, CORS, error handling |
-| `references/abuso-recursos-quotas.md` | API4: limites, quotas e identidade confiável |
-| `references/autenticacao-jwt.md` | A07: brute force, sessão, JWT, resource server |
-| `references/integridade-dependencias.md` | A08: desserialização, migrations, CVEs |
-| `references/logs-seguranca.md` | A09: auditoria e o que nunca logar |
-| `references/ssrf.md` | A10: SSRF com allowlist e URI parsing |
 
 # Constraints
 

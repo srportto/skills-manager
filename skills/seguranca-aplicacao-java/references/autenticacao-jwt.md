@@ -23,17 +23,19 @@ String token = Jwts.builder()
         .audience().add("sua-app").and()
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000))   // 15 min
-        .signWith(Keys.hmacShaKeyFor(secret.getBytes()), Jwts.SIG.HS256)
+        .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
         .compact();
 
 // Validacao (em filtro do Spring Security)
 Jws<Claims> parsed = Jwts.parser()
-        .verifyWith(Keys.hmacShaKeyFor(secret.getBytes()))
+        .verifyWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
         .requireIssuer("sua-app")
         .requireAudience("sua-app")
         .build()
         .parseSignedClaims(token);
 ```
+
+Para HS256 o segredo deve ter **≥ 256 bits (32 bytes)**; o jjwt rejeita chave menor. Prefira chave assimétrica (RS256/ES256) quando outros serviços só validam.
 
 **Checklist JWT:**
 - `algorithm` allowlist explícito (rejeitar `none` e algoritmos fracos).

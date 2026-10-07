@@ -9,7 +9,10 @@ Quando o backend faz request a uma URL fornecida pelo client (webhook, import po
 String url = request.getUrl();
 HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
 
-// CORRETO - resolve o host e bloqueia ranges privados/loopback antes de conectar
+// INSUFICIENTE (denylist fraca) - NAO use como solucao final:
+//  - checa so o primeiro IP resolvido e nao testa isLinkLocalAddress (169.254.169.254 e justamente o alvo);
+//  - nao restringe esquema/porta e o HttpURLConnection segue redirect para o interno;
+//  - a versao robusta (allowlist) esta logo abaixo e e a unica considerada correta.
 URI uri = new URI(url);
 InetAddress addr = InetAddress.getByName(uri.getHost());
 if (addr.isLoopbackAddress() || addr.isSiteLocalAddress() || addr.isAnyLocalAddress()) {
@@ -18,7 +21,7 @@ if (addr.isLoopbackAddress() || addr.isSiteLocalAddress() || addr.isAnyLocalAddr
 HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
 ```
 
-## Versão mais robusta: allowlist + parsing de URI + todos os IPs resolvidos
+## Versão correta: allowlist + parsing de URI + todos os IPs resolvidos
 
 Bloquear só ranges privados é uma denylist e tem furos (link-local `169.254.x.x`, IPv6, DNS que
 resolve para vários IPs, redirect para interno). Prefira **allowlist** de destinos conhecidos e,
@@ -73,6 +76,10 @@ HttpRequest req = HttpRequest.newBuilder(DestinoWebhook.validar(url))
         .POST(HttpRequest.BodyPublishers.ofString(payload))
         .build();
 ```
+
+Atenção: `isSiteLocalAddress()` não cobre IPv6 ULA (`fc00::/7`) nem endereços IPv4-mapeados
+(`::ffff:10.0.0.1`); por isso a **allowlist de host** é o controle principal e a checagem de IP é
+apenas defesa adicional (trate esses casos explicitamente se o host for livre).
 
 Limite conhecido: entre a validação e a conexão o DNS pode mudar (DNS rebinding). Em ambiente
 sensível, conecte no IP já validado (resolver customizado) ou isole a saída por egress firewall /

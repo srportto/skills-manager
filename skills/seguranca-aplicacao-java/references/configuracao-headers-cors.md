@@ -4,19 +4,7 @@ Leia este arquivo quando configurar headers de segurança (CSP, HSTS, X-Frame-Op
 
 ## Headers de segurança
 
-```yaml
-# application.yaml — headers minimos via Spring Security
-# ATENCAO: o Spring Boot NAO tem essas propriedades `spring.security.headers.*`; o bloco abaixo
-# nao produz efeito. Os headers sao configurados na SecurityFilterChain (exemplo "DEPOIS").
-spring:
-  security:
-    headers:
-      content-security-policy: "default-src 'self'"
-      x-content-type-options: nosniff
-      x-frame-options: DENY
-      referrer-policy: strict-origin-when-cross-origin
-      strict-transport-security: max-age=31536000 ; includeSubDomains
-```
+Não existem propriedades `spring.security.headers.*` no Spring Boot; configure os headers via `SecurityFilterChain`.
 
 ```java
 // DEPOIS - Spring Security 7 (Boot 4), DSL com lambda; X-Content-Type-Options: nosniff ja e padrao
