@@ -33,7 +33,7 @@
     ],
     "should_not_trigger": [
       "Troque este switch com break por uma switch expression moderna do Java.",
-      "Em qual camada hexagonal este Strategy deve ficar: domain ou infrastructure?",
+      "Em qual camada hexagonal esta classe de cálculo de frete deve ficar: domain ou infrastructure?",
       "Remova o parâmetro não usado deste método."
     ]
   }

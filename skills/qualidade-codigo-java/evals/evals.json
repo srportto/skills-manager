@@ -33,7 +33,7 @@
       "files": [],
       "expectations": [
         "Não força abstração na segunda ocorrência",
-        "Evita parâmetros booleanos de modo para unificar métodos",
+        "Não cria generalização especulativa (YAGNI)",
         "Cita DRY com bom senso/KISS como critério"
       ]
     }

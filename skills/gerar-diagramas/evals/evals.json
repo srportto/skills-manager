@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Documente em docs/arquitetura/fluxo-pedido.md o fluxo de criação de pedido entre API, fila e banco com um diagrama.",
+      "prompt": "Documente no repositório o fluxo de criação de pedido entre API, fila e banco com um diagrama.",
       "expected_output": "Usa bloco mermaid nativo (sequenceDiagram para troca de chamadas) em .md versionado, baseado no código real, sem ASCII art; encaixa no arquivo de docs existente",
       "files": [],
       "expectations": [
@@ -33,7 +33,7 @@
     "should_not_trigger": [
       "Faça um gráfico de barras com a evolução de latência por semana.",
       "Monte um dashboard de KPIs de negócio em uma página publicada.",
-      "Desenhe a topologia de VPC e subnets da nossa conta AWS."
+      "Escreva o módulo Terraform da VPC e das subnets da nossa conta AWS."
     ]
   }
 }

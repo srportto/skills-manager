@@ -32,8 +32,8 @@
     ],
     "should_not_trigger": [
       "Refine esta demanda vaga em história com critérios de aceite Dado/Quando/Então.",
-      "Escreva o design.md da change com o diagrama de sequência em Mermaid.",
-      "Revise o diff Java desta change por severidade."
+      "Desenhe o diagrama de sequência do checkout para a documentação.",
+      "Revise este PR Java e classifique os achados por severidade."
     ]
   }
 }

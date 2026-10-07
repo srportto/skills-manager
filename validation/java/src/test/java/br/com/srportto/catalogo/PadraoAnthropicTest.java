@@ -109,25 +109,31 @@ class PadraoAnthropicTest {
 
     @DisplayName("PadraoAnthropic: toda skill da trilha deve ter evals com disparo positivo e negativo")
     @Test @SuppressWarnings("unchecked")
-    void skillsDevemTerEvals() throws IOException {
+    void skillsDevemTerEvals() {
         var erros = new ArrayList<String>();
         for (Path pasta : Catalogo.skillsDaTrilha()) {
             String nome = pasta.getFileName().toString();
             Path arquivo = pasta.resolve("evals/evals.json");
             if (!Files.exists(arquivo)) { erros.add(nome + " → sem evals/evals.json"); continue; }
-            Map<String, Object> raiz;
+            Object carregado;
             try {
-                // JSON é YAML válido; SafeConstructor evita instanciar tipos arbitrários
-                raiz = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(new org.yaml.snakeyaml.LoaderOptions()))
+                // JSON é YAML válido; SafeConstructor evita instanciar tipos arbitrários e rejeita chave duplicada
+                var opcoes = new org.yaml.snakeyaml.LoaderOptions();
+                opcoes.setAllowDuplicateKeys(false);
+                carregado = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(opcoes))
                         .load(Files.readString(arquivo));
-            } catch (RuntimeException e) { erros.add(nome + " → evals.json inválido: " + e.getMessage()); continue; }
+            } catch (IOException | RuntimeException e) { erros.add(nome + " → evals.json ilegível ou inválido: " + e.getMessage()); continue; }
+            if (!(carregado instanceof Map<?, ?> m0)) { erros.add(nome + " → raiz não é objeto JSON"); continue; }
+            var raiz = (Map<String, Object>) m0;
             if (!nome.equals(raiz.get("skill_name"))) erros.add(nome + " → skill_name divergente");
             var evals = raiz.get("evals") instanceof List<?> l ? (List<Object>) l : List.<Object>of();
             if (evals.size() < 2) erros.add(nome + " → menos de 2 casos");
             for (Object o : evals) {
                 var caso = o instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.<String, Object>of();
-                if (!naoVazio(caso.get("prompt")) || !naoVazio(caso.get("expected_output")) || !naoVazio(caso.get("expectations")))
-                    erros.add(nome + " → caso " + caso.get("id") + " sem prompt, expected_output ou expectations");
+                boolean expectativasOk = caso.get("expectations") instanceof List<?> exp && !exp.isEmpty()
+                        && exp.stream().allMatch(PadraoAnthropicTest::naoVazio);
+                if (!naoVazio(caso.get("prompt")) || !naoVazio(caso.get("expected_output")) || !expectativasOk)
+                    erros.add(nome + " → caso " + caso.get("id") + " sem prompt, expected_output ou expectations (strings não vazias)");
             }
             var trigger = raiz.get("trigger") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.<String, Object>of();
             if (!naoVazio(trigger.get("should_trigger")) || !naoVazio(trigger.get("should_not_trigger")))
