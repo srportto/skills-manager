@@ -2,6 +2,17 @@
 
 Comprehensive guide for Google Cloud Platform services, patterns, and architecture framework.
 
+## Sumário
+
+- [Google Cloud Architecture Framework](#google-cloud-architecture-framework)
+- [Core Services Architecture](#core-services-architecture)
+- [Architecture Patterns](#architecture-patterns)
+- [Landing Zone Design](#landing-zone-design)
+- [Migration Strategies](#migration-strategies)
+- [Cost Optimization](#cost-optimization)
+- [Disaster Recovery](#disaster-recovery)
+- [Monitoring and Observability](#monitoring-and-observability)
+
 ## Google Cloud Architecture Framework
 
 ### Five Pillars

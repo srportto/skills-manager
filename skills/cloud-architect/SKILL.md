@@ -21,7 +21,16 @@ otimizar custo (FinOps) e estruturar disaster recovery (RTO/RPO). Cobre seleçã
 serviços gerenciados, rede (VPC, peering, subnets), IAM com least-privilege, e o
 Well-Architected Framework.
 
-**Quando NÃO usar:**
+## Quando usar
+
+- Desenhar topologia de nuvem para workload novo (VPC, subnets, IAM, networking).
+- Planejar migração on-premises → cloud aplicando o framework 6Rs.
+- Implementar disaster recovery com RTO/RPO definidos.
+- Otimizar custo (right-sizing, reserved capacity, spot, FinOps).
+- Aplicar Well-Architected Framework em arquitetura existente.
+- Configurar landing zone multi-conta.
+
+## Quando NÃO usar
 
 - Para design de **sistemas** (escolha entre monolito e microsserviços, ADRs,
   topologia de aplicação), use `design-system-architecture`.
@@ -31,16 +40,23 @@ Well-Architected Framework.
 - Para observabilidade de aplicação (Prometheus, OTel, Grafana), use
   `monitoramento-java`.
 
-## Quando aplicar
+## Entradas
 
-- Desenhar topologia de nuvem para workload novo (VPC, subnets, IAM, networking).
-- Planejar migração on-premises → cloud aplicando o framework 6Rs.
-- Implementar disaster recovery com RTO/RPO definidos.
-- Otimizar custo (right-sizing, reserved capacity, spot, FinOps).
-- Aplicar Well-Architected Framework em arquitetura existente.
-- Configurar landing zone multi-conta.
+- Workload e requisitos: SLO/disponibilidade-alvo, RTO/RPO, volume e picos, dados sensíveis.
+- Restrições: compliance (LGPD, PCI, SOC2), provedor já adotado, orçamento, equipe disponível.
+- Estado atual (quando migração ou auditoria): inventário, topologia, contas/projetos existentes.
 
-## Workflow
+## Decisão
+
+| Pergunta | Se sim | Onde aprofundar |
+|---|---|---|
+| Provedor já definido? | Seguir o guia do provedor | `references/aws.md`, `references/azure.md`, `references/gcp.md` |
+| Exige mais de um provedor? | Avaliar custo de portabilidade antes de abstrair | `references/multi-cloud.md` |
+| Foco é reduzir gasto? | Right-sizing, reserved/spot, tags | `references/cost.md` |
+| Precisa de IAM, VPC ou auto-scaling prontos? | Partir dos exemplos | `references/padroes-cloud.md` |
+| RTO/RPO exige multi-região? | Só se o SLO justificar, com custo explícito | seção Disaster Recovery do guia do provedor |
+
+## Passo a passo
 
 1. **Discovery** — levantar estado atual, requisitos, restrições, compliance.
 2. **Design** — selecionar serviços, topologia, arquitetura de dados.
@@ -49,7 +65,28 @@ Well-Architected Framework.
 5. **Migration** — framework 6Rs, waves, validar conectividade antes do cutover.
 6. **Operate** — monitoramento, automação, otimização contínua.
 
-### Checkpoints de validação
+Checklist copiável:
+
+- [ ] Requisitos, SLO e compliance levantados
+- [ ] Topologia sem single point of failure
+- [ ] IAM least-privilege e encryption at rest/in transit
+- [ ] Modelo de custo com tags de alocação
+- [ ] Plano de migração em waves (se aplicável) e plano de DR com RTO/RPO
+- [ ] Entrega montada com `assets/topologia-template.md`
+
+## Saída
+
+Toda entrega deve conter:
+
+1. Diagrama de arquitetura com serviços e fluxo de dados.
+2. Justificativa de seleção de serviços (compute, storage, database, networking).
+3. Arquitetura de segurança (IAM, segmentação de rede, encryption).
+4. Estimativa de custo e estratégia de otimização.
+5. Plano de deploy e rollback.
+
+Esqueleto pronto para preencher: [`assets/topologia-template.md`](assets/topologia-template.md).
+
+## Validação
 
 **Após Design:** confirmar redundância em todo componente — sem single point of
 failure.
@@ -77,17 +114,7 @@ aws elbv2 describe-target-health \
 
 **Após teste de DR:** confirmar RTO/RPO atingidos; documentar tempos reais.
 
-## Guia de referências
-
-| Tópico | Referência | Quando carregar |
-|---|---|---|
-| AWS Services | `references/aws.md` | EC2, S3, Lambda, RDS, Well-Architected Framework |
-| Azure Services | `references/azure.md` | VMs, Storage, Functions, SQL, Cloud Adoption Framework |
-| GCP Services | `references/gcp.md` | Compute Engine, Cloud Storage, BigQuery |
-| Multi-Cloud | `references/multi-cloud.md` | Camadas de abstração, portabilidade, lock-in |
-| Cost Optimization | `references/cost.md` | Reserved/spot, right-sizing, FinOps |
-
-## Constraints
+## Regras (MUST / MUST NOT)
 
 ### MUST DO
 
@@ -133,138 +160,24 @@ proteções na aplicação: `resiliencia-controle-fluxo-java`. Isolamento: separ
 quando a criticidade exigir, por tenant/carga (bulkhead de infraestrutura) — quota compartilhada é ponto de falha
 comum.
 
-## Padrões comuns com exemplos
+## Gotchas
 
-### Least-Privilege IAM (Zero-Trust)
+- TTL baixo de DNS não garante failover rápido: caches de resolvers e clientes o ignoram.
+- Autoscaling sem teto coerente com o downstream derruba o banco ou estoura quota de API.
+- Multi-região sem custo e consistência de dados explícitos é complexidade sem ganho (YAGNI).
+- Peering/conectividade precisa estar `Active` antes do cutover; validar, não presumir.
+- Exemplos de `references/padroes-cloud.md` são ponto de partida: CIDRs e escopos de IAM devem ser ajustados.
 
-Políticas escopadas em recursos e ações específicas — nunca permissões amplas:
+## Guia de references
 
-```bash
-# AWS: criar role escopada para uma aplicação
-aws iam create-role \
-  --role-name AppRole \
-  --assume-role-policy-document file://trust-policy.json
-
-aws iam put-role-policy \
-  --role-name AppRole \
-  --policy-name AppInlinePolicy \
-  --policy-document '{
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::my-app-bucket/*"
-    }]
-  }'
-```
-
-````hcl
-# Equivalente em Terraform
-resource "aws_iam_role" "app_role" {
-  name               = "AppRole"
-  assume_role_policy = data.aws_iam_policy_document.trust.json
-}
-
-resource "aws_iam_role_policy" "app_policy" {
-  role = aws_iam_role.app_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject"]
-      Resource = "${aws_s3_bucket.app.arn}/*"
-    }]
-  })
-}
-````
-
-### VPC com subnets pública/privada (Terraform)
-
-````hcl
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  tags = { Name = "main", CostCenter = var.cost_center }
-}
-
-resource "aws_subnet" "private" {
-  count             = 2
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet("10.0.0.0/16", 8, count.index)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
-}
-
-resource "aws_subnet" "public" {
-  count                   = 2
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet("10.0.0.0/16", 8, count.index + 10)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
-}
-````
-
-### Auto-Scaling com target tracking (Terraform)
-
-````hcl
-resource "aws_autoscaling_group" "app" {
-  desired_capacity    = 2
-  min_size            = 1
-  max_size            = 10
-  vpc_zone_identifier = aws_subnet.private[*].id
-
-  launch_template {
-    id      = aws_launch_template.app.id
-    version = "$Latest"
-  }
-
-  tag {
-    key                 = "CostCenter"
-    value               = var.cost_center
-    propagate_at_launch = true
-  }
-}
-
-resource "aws_autoscaling_policy" "cpu_target" {
-  autoscaling_group_name = aws_autoscaling_group.app.name
-  policy_type            = "TargetTrackingScaling"
-  target_tracking_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ASGAverageCPUUtilization"
-    }
-    target_value = 60.0
-  }
-}
-````
-
-### Análise de custo (CLI)
-
-```bash
-# AWS: top drivers de custo nos últimos 30 dias
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY \
-  --metrics "UnblendedCost" \
-  --group-by Type=DIMENSION,Key=SERVICE \
-  --query 'ResultsByTime[0].Groups[*].{Service:Keys[0],Cost:Metrics.UnblendedCost.Amount}' \
-  --output table
-
-# Azure: gasto por resource group
-az consumption usage list \
-  --start-date $(date -d '30 days ago' +%Y-%m-%d) \
-  --end-date $(date +%Y-%m-%d) \
-  --query "[].{ResourceGroup:resourceGroup,Cost:pretaxCost,Currency:currency}" \
-  --output table
-```
-
-## Templates de saída
-
-Toda entrega deve conter:
-
-1. Diagrama de arquitetura com serviços e fluxo de dados.
-2. Justificativa de seleção de serviços (compute, storage, database, networking).
-3. Arquitetura de segurança (IAM, segmentação de rede, encryption).
-4. Estimativa de custo e estratégia de otimização.
-5. Plano de deploy e rollback.
+| Arquivo | Quando ler |
+|---|---|
+| `references/aws.md` | EC2, S3, Lambda, RDS, Well-Architected Framework, landing zone, DR na AWS |
+| `references/azure.md` | VMs, Storage, Functions, SQL, Cloud Adoption Framework |
+| `references/gcp.md` | Compute Engine, Cloud Storage, BigQuery |
+| `references/multi-cloud.md` | Camadas de abstração, portabilidade, lock-in |
+| `references/cost.md` | Reserved/spot, right-sizing, FinOps |
+| `references/padroes-cloud.md` | Exemplos prontos: IAM least-privilege, VPC pública/privada, auto-scaling, análise de custo |
 
 ## Quem aplica o quê
 

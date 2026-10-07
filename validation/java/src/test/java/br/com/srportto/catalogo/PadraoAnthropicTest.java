@@ -19,12 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PadraoAnthropicTest {
 
     // Violações conhecidas no início do plano; cada task remove as suas. Só pode encolher.
-    static final Set<String> PENDENCIAS = Set.of(
-            "cloud-architect/references/aws.md:sumario",
-            "cloud-architect/references/azure.md:sumario",
-            "cloud-architect/references/gcp.md:sumario",
-            "cloud-architect/references/cost.md:sumario",
-            "cloud-architect/references/multi-cloud.md:sumario");
+    static final Set<String> PENDENCIAS = Set.of();
 
     static final int MAX_LINHAS_SKILL = 500;
     static final int LINHAS_EXIGE_SUMARIO = 300;

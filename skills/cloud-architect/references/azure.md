@@ -2,6 +2,19 @@
 
 Comprehensive guide for Azure services, patterns, and Cloud Adoption Framework implementation.
 
+## Sumário
+
+- [Cloud Adoption Framework](#cloud-adoption-framework)
+- [Azure Well-Architected Framework](#azure-well-architected-framework)
+- [Core Services Architecture](#core-services-architecture)
+- [Architecture Patterns](#architecture-patterns)
+- [Landing Zone Design](#landing-zone-design)
+- [Migration Strategies](#migration-strategies)
+- [Cost Optimization](#cost-optimization)
+- [Disaster Recovery](#disaster-recovery)
+- [Monitoring and Observability](#monitoring-and-observability)
+- [Identity and Access](#identity-and-access)
+
 ## Cloud Adoption Framework
 
 ### Framework Phases
