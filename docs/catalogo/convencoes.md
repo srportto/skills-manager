@@ -10,11 +10,40 @@ Neste repositório, `skills/<nome>/SKILL.md` e `agents/<nome>.md` são as fontes
 
 Seções esperadas (nomes podem variar; o conteúdo, não): **quando usar / quando não usar**, **entradas**,
 **decisão**, **passo a passo**, **saída**, **critérios de validação**, **limites** e **referências sob
-demanda**, fechando com **quem aplica o quê**.
+demanda**, fechando com **quem aplica o quê**. A forma em disco (`references/`, `assets/`, `evals/`) está em [Anatomia de skill](#anatomia-de-skill).
 
 Declare quando usar e quando não usar; leia somente as referências pertinentes. Receba escopo, requisitos conhecidos e evidências. Entregue decisão, artefatos, verificação e limitações. Defina quem aplica o conteúdo. Não copie regras completas de outras skills: a fonte de resiliência é `resiliencia-controle-fluxo-java`; a de evidências de teste é `testes-sistemas-java`.
 
 Pergunte apenas pelo que muda a decisão e ainda não foi informado. Use defaults declarados quando adequados; explicite hipóteses revisáveis. Referências a aplicações de outros monorepos são contexto histórico, não arquivos obrigatórios deste catálogo.
+
+## Anatomia de skill
+
+Complementa o contrato acima (conteúdo) com a forma em disco:
+
+```text
+skills/<nome>/
+  SKILL.md          # obrigatório: frontmatter name + description
+  references/       # opcional: lido sob demanda, um nível (sem subpastas)
+  assets/           # opcional: arquivos usados na saída (templates, YAML, SQL)
+  evals/evals.json  # casos de avaliação da skill
+  scripts/          # só para operação determinística repetitiva
+```
+
+- `SKILL.md` tem **no máximo 500 linhas**; o que passa disso vai para `references/`.
+- `references/` tem **um nível**; todo arquivo é **linkado a partir do `SKILL.md`** numa tabela
+  "arquivo | quando ler" (o "quando ler" diz em que situação abrir, não resume o arquivo).
+- Reference com **mais de 300 linhas** abre com `## Sumário`.
+- Conteúdo movido para `references/` é movido, não reescrito: nenhuma regra some no fatiamento.
+- `assets/` guarda só o que vira saída (modelo copiado, YAML, SQL); explicação fica em `references/`.
+- `evals/evals.json` acompanha a skill; mudou a skill, atualize os casos e rode `/catalogo:avaliar`.
+- Ferramentas auxiliares (`Catalogo.AUXILIARES`) só recebem ajustes estruturais mínimos (sumário, links).
+
+## Comandos
+
+Os comandos de `commands/{java,arq,catalogo,opsx}/` são **finos**: acionam o agent (ou a skill) certo,
+repassam `$ARGUMENTS` e **não repetem** passos, regras ou checklists, que ficam na skill. Um comando que
+cresce além de poucas linhas indica conteúdo que deveria estar numa skill. Todo agent ou skill citado deve
+existir; os testes de `validation/java` verificam os tokens dos comandos.
 
 ## Contrato de agent
 

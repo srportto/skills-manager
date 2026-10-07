@@ -4,6 +4,25 @@ Catálogo de **skills** e **agents** para engenharia de software e system design
 Spring Boot 4). Use para consultar convenções, decidir arquitetura, construir, revisar e operar
 sistemas Java com limites de recursos explícitos e evidência de funcionamento.
 
+## Comece aqui
+
+1. **Instale o plugin** (detalhes na seção [Instalação como plugin do Claude Code](#instalação-como-plugin-do-claude-code)):
+   `/plugin marketplace add srportto/skills-manager` e `/plugin install catalogo-java@srportto-catalogo`.
+2. **Use um destes 3 comandos** (finos: só delegam ao agent e à skill certos):
+   - `/java:nova-app` — cria uma aplicação Java hexagonal buildável e a audita ao fim.
+   - `/java:revisar` — revisa diff, classe ou entrega com o `java-revisor`.
+   - `/opsx:propose` — abre uma change OpenSpec com todos os artefatos.
+3. **Não decore nomes de skill**: o comando aciona o agent, e o agent lê só a skill e a reference do
+   assunto (tabela "Resolução das skills" de cada agent).
+
+```mermaid
+flowchart LR
+    pedido["Pedido: revisar PR com N+1"] --> comando["/java:revisar"]
+    comando --> agent["agent java-revisor"]
+    agent --> skill["skill persistencia-jpa"]
+    skill --> reference["references/n-mais-um.md"]
+```
+
 ## Fonte e instalação
 
 ### Instalação como plugin do Claude Code
@@ -25,7 +44,7 @@ Este repositório é a **fonte** do catálogo:
 
 | Conteúdo | Fonte (este repositório) | Destino típico de instalação |
 |---|---|---|
-| Skills | `skills/<nome>/SKILL.md` (+ `references/`) | `.claude/skills/<nome>/SKILL.md`, `.codex/skills/...` |
+| Skills | `skills/<nome>/SKILL.md` (+ `references/`, `assets/`, `evals/`) | `.claude/skills/<nome>/SKILL.md`, `.codex/skills/...` |
 | Agents | `agents/<nome>.md` | `.claude/agents/<nome>.md` |
 | Exemplos Java executáveis | `examples/java/` | permanecem no repositório (não são instalados) |
 | Validação do catálogo | `validation/java/` | permanece no repositório |
@@ -66,6 +85,8 @@ origem — quem instala mapeia para capacidades equivalentes) e a lista `skills`
 Compilação não é teste; teste pulado é pendência, nunca aprovação.
 
 ## Inventário
+
+31 skills, uma pasta cada em `skills/`: 21 da trilha Java, 1 de fluxo spec-driven e 9 auxiliares.
 
 ### Trilha Java — engenharia, arquitetura e operação
 
@@ -133,7 +154,7 @@ falhas.
 ## Estrutura da fonte
 
 ```text
-skills/                      # uma pasta por skill (SKILL.md + references/ opcionais)
+skills/                      # uma pasta por skill (SKILL.md + references/, assets/, evals/ opcionais)
 agents/                      # um .md por agent
 docs/catalogo/               # convenções, matriz de cobertura, compatibilidade, avaliações de agents
 examples/java/               # exemplos Maven executáveis (fundamentos, linguagem, reativo, integracao, carga)
@@ -149,6 +170,7 @@ validation/java/             # testes Java que validam estrutura, links e lingua
 Contrato completo em [convenções](../docs/catalogo/convencoes.md). Em resumo:
 
 - Frontmatter com `name`, `description` (gatilhos em pt-BR) e `metadata` opcional.
+- Anatomia (`SKILL.md` ≤ 500 linhas, `references/`, `assets/`, `evals/evals.json`) em [convenções](../docs/catalogo/convencoes.md#anatomia-de-skill).
 - Quando usar / **quando não usar**, entradas, decisão, passo a passo, saída, critérios de validação e
   limites; referências longas em `references/`, lidas sob demanda.
 - Explicações e comentários de código em português; termos técnicos consagrados em inglês.
