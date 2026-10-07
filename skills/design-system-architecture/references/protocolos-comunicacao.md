@@ -32,3 +32,39 @@ var resposta = estoqueStub
 
 Todos os clientes e trechos de implementação desta trilha são Java. Para garantias concretas: [mensageria](../../mensageria-sqs-kafka/SKILL.md); para limites: [resiliência](../../resiliencia-controle-fluxo-java/SKILL.md). Não iniciar SDKs/brokers quando o pedido requer apenas comparar alternativas.
 
+
+## Exemplo aplicado: checkout
+
+Caso de estudo: [checkout](estudos-de-caso-java.md#4-e-commerce-em-alta-escala-checkout--caso-executável). Escolha de protocolo por salto, com a perda aceita:
+
+| Salto | Protocolo | Por quê | Contrato que o torna seguro |
+|---|---|---|---|
+| Cliente para checkout | HTTP/REST | Recurso `pedidos`, interoperável com web e mobile | `Idempotency-Key` obrigatório (400 se ausente, 422 se o valor for inválido); 409 se a chave voltar com outro payload; 503 + `Retry-After` sob saturação |
+| Checkout para provedor de pagamento | HTTP síncrono com deadline | Resposta imediata necessária para confirmar o pedido | Deadline restante propagado; chave de idempotência enviada ao provedor; bulkhead |
+| Checkout para notificação/faturamento | Evento (Kafka) via outbox | Desacopla disponibilidade; vários consumidores | `eventId` para deduplicar; at-least-once; ordem por chave `pedidoId` |
+
+Antes/depois do contrato HTTP de criação:
+
+```http
+# Antes: sem chave de idempotência — retry do cliente cria pedido duplicado
+POST /pedidos
+Content-Type: application/json
+
+{"centavos": 15990}
+
+# Depois: chave obrigatória; repetição devolve o mesmo pedido, e saturação é explícita
+POST /pedidos
+Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+X-Tenant: loja-1
+Content-Type: application/json
+
+{"centavos": 15990}
+
+# 201 Created -> {"id":"..."}              (primeira vez e repetições idênticas)
+# 409 Conflict -> Problem Details          (mesma chave, payload diferente)
+# 503 Service Unavailable + Retry-After    (admissão esgotada; cliente espera e repete com a MESMA chave)
+```
+
+O trecho de deadline em gRPC acima aplica-se ao salto de estoque, se existir; para o provedor HTTP, o equivalente é `HttpRequest.timeout(orcamento.restante())`. Se o tempo restante for insuficiente para a 1ª tentativa, não chame: falhe rápido e deixe o pedido `PENDENTE` para reconciliação.
+
+Provas executáveis: [CheckoutApplicationTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/CheckoutApplicationTest.java) cobre os três status do contrato HTTP (201 repetido, 409, 503 com `Retry-After`); [CheckoutSobCargaSimulationCargaIT](../../../examples/java/carga/src/test/java/br/com/srportto/exemplos/CheckoutSobCargaSimulationCargaIT.java) mostra o comportamento sob pico. Detalhes de contrato HTTP: `api-rest-design`; de ack/DLQ: [mensageria](../../mensageria-sqs-kafka/SKILL.md).

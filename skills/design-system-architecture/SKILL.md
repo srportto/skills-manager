@@ -1,6 +1,6 @@
 ---
 name: design-system-architecture
-description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — requisitos e capacidade (SLO, Lei de Little, orçamento de conexões/deadline), monolito modular vs microsserviços, consistência (CAP/PACELC, replicação, sharding), tráfego (DNS, LB, CDN), protocolos, ADRs e matriz de falhas. Distinta de `arquitetura-limpa-java` (camadas internas) (a stack Spring está em `references/modulos-spring.md`). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
+description: "Desenho e revisão de arquitetura de alto nível de sistemas distribuídos — requisitos e capacidade (SLO, Lei de Little, orçamento de conexões/deadline), monolito modular vs microsserviços, consistência (CAP/PACELC, replicação, sharding), tráfego (DNS, LB, CDN), protocolos, ADRs e matriz de falhas. Distinta de `arquitetura-limpa-java` (camadas internas e stack Spring, em `references/modulos-spring.md`). Uso: agent `arquiteto-sistemas` ou `/design-system-architecture`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
@@ -18,7 +18,14 @@ metadata:
 Referência para desenhar ou revisar a arquitetura de **sistemas distribuídos** em alto nível, partindo de
 requisitos e capacidade mensuráveis até decisões registradas (ADR), proteções e evidências.
 
-**Quando NÃO usar:**
+## Quando usar
+
+- Desenhar a arquitetura de um sistema novo ou decompor um monólito.
+- Revisar uma arquitetura existente (capacidade, consistência, tráfego, falhas).
+- Escrever ADR, matriz de falhas ou estimativa de capacidade.
+- Comparar protocolos, bancos ou padrões arquiteturais com trade-offs explícitos.
+
+## Quando NÃO usar
 
 - Camada de um código dentro da aplicação hexagonal → `arquitetura-limpa-java`.
 - Stack Spring Boot 4 e camadas clássicas → `arquitetura-limpa-java` (`references/camadas-classicas.md`, `references/modulos-spring.md`).
@@ -35,7 +42,16 @@ Objetivo de negócio, operações e seus efeitos, carga conhecida (média, pico 
 restrições (equipe, prazo, custo, compliance) e o que já foi decidido. Use o que foi informado; pergunte só o
 que muda a decisão. O que faltar vira **hipótese rotulada** com forma de validação.
 
-## Workflow
+## Decisão
+
+| Pergunta | Se sim | Onde aprofundar |
+|---|---|---|
+| Faltam números de carga? | Estimar ordem de grandeza e rotular como hipótese | [estimativas rápidas](references/estimativas-rapidas.md), [capacidade e SLOs](references/capacidade-slos.md) |
+| Operação exige consistência forte? | Decidir por operação, com idempotência e outbox | [consistência](references/consistencia-distribuida.md) |
+| Há integração entre serviços? | Escolher protocolo e dono do retry por salto | [protocolos](references/protocolos-comunicacao.md), [rede e tráfego](references/rede-trafego.md) |
+| Decisão relevante tomada? | Registrar ADR com alternativas e perda aceita | [`assets/adr-template.md`](assets/adr-template.md) |
+
+## Passo a passo
 
 1. **Requisitos** — RF por operação e RNF observáveis ([checklist NFR](references/nfr-checklist.md)).
    SLI com numerador/denominador, SLO com janela.
@@ -51,13 +67,27 @@ que muda a decisão. O que faltar vira **hipótese rotulada** com forma de valid
    ([rede e tráfego](references/rede-trafego.md), [protocolos](references/protocolos-comunicacao.md)).
 6. **Falhas e proteções** — matriz de falhas com limite (unidade, escopo, motivo), rejeição/degradação,
    idempotência e recuperação, seguindo o contrato de proteção de `docs/catalogo/convencoes.md`.
-7. **Decisões** — ADR para cada decisão relevante ([template](references/adr-template.md)).
+7. **Decisões** — ADR para cada decisão relevante ([template](assets/adr-template.md)).
 8. **Evidência** — liste o teste/medição que transforma cada hipótese crítica em evidência e quem executa.
 
 O documento end-to-end está em [roteiro de system design](references/system-design.md); diagramas seguem
 `gerar-diagramas` (Mermaid).
 
-## Guia de referências
+## Validação
+
+- Cada número tem unidade, fonte (medido, contrato, hipótese) e escopo.
+- Toda decisão relevante tem ADR com alternativa simples avaliada e perda aceita.
+- Toda hipótese crítica aponta o teste ou a medição que a prova, com responsável.
+- O diagrama é Mermaid (`gerar-diagramas`) e a matriz de falhas cobre cada salto.
+
+## Gotchas
+
+- Média esconde pico: sempre registrar duração e percentil.
+- Pool de conexões é somado entre réplicas e autoscaling; ver [estimativas rápidas](references/estimativas-rapidas.md).
+- Exatamente-uma-vez tem fronteira: Kafka transacional não torna HTTP externo idempotente.
+- Números de laboratório (estudos de caso) ilustram o método; não são SLO de produção.
+
+## Guia de references
 
 | Tópico | Referência | Quando carregar |
 |---|---|---|
@@ -68,7 +98,7 @@ O documento end-to-end está em [roteiro de system design](references/system-des
 | Seleção de persistência | [database-selection.md](references/database-selection.md) | Escolher modelo de dados por operação |
 | Rede e tráfego | [rede-trafego.md](references/rede-trafego.md) | DNS, L4/L7, balanceamento, gateway, CDN/edge |
 | Protocolos e mensageria | [protocolos-comunicacao.md](references/protocolos-comunicacao.md) | REST/gRPC/GraphQL/WebSocket, RabbitMQ/SQS/Kafka |
-| Template de ADR | [adr-template.md](references/adr-template.md) | Documentar decisão |
+| Estimativas rápidas | [estimativas-rapidas.md](references/estimativas-rapidas.md) | Latências, conversões req/dia→req/s, Little e pools Java |
 | Documento completo | [system-design.md](references/system-design.md) | Desenho end-to-end |
 | Estudos de caso | [estudos-de-caso-java.md](references/estudos-de-caso-java.md) | Encurtador, chat, feed, checkout (executável com ensaio de carga) |
 | Entrevista | [entrevista-system-design.md](references/entrevista-system-design.md) | Roteiro de 45 min, rubrica e armadilhas |
@@ -113,7 +143,7 @@ graph TD
     Kafka --> Notificacao["Notificação"]
 ```
 
-Exemplo completo de ADR (incluindo alternativas e perda aceita) em [adr-template.md](references/adr-template.md).
+Exemplo completo de ADR (incluindo alternativas e perda aceita) em [`assets/adr-template.md`](assets/adr-template.md) (template pronto para copiar).
 
 ## Quem aplica o quê
 

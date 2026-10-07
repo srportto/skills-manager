@@ -40,7 +40,7 @@ dono do retry, idempotência.
 Modelo por operação, chave/consulta, índice, replicação, atraso tolerado, particionamento e migração.
 
 ## 6. Decisões (ADRs)
-Lista de ADRs com link (ver adr-template.md).
+Lista de ADRs com link (ver `assets/adr-template.md`).
 
 ## 7. Matriz de falhas
 | Componente/dependência | Falha | Impacto | Proteção e limite | Degradação | Recuperação | Métrica | Teste |

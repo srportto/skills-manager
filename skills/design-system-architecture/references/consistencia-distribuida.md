@@ -27,3 +27,40 @@ Exemplo executável Java: [ProcessadorIdempotente](../../../examples/java/integr
 
 Teste perda de resposta após commit, duplicata concorrente, conflito de payload, leitura em réplica atrasada, falha do relay e replay. Migração usa expand/contract: adicionar campo compatível, migrar dados, conviver leitores, mudar produtor e remover contrato antigo só após janela acordada.
 
+
+## Exemplo aplicado: checkout
+
+Caso de estudo: [checkout](estudos-de-caso-java.md#4-e-commerce-em-alta-escala-checkout--caso-executável). Aplique a regra "consistência por operação, não por banco" ao fluxo de criação de pedido:
+
+| Operação | Consistência exigida | Tolerância declarada | Como é observada |
+|---|---|---|---|
+| Criar pedido / cobrança | Forte (uma única decisão por chave de idempotência) | Nenhuma: cobrança duplicada é inaceitável | Teste de duplicata concorrente; métrica de conflitos 409 |
+| Consultar status do pedido | Read-your-writes para quem criou | Outros usuários: segundos de atraso | Leitura do primário logo após criar; réplica para listagens |
+| Catálogo de produtos | Eventual | Até 60 s desatualizado | Idade do cache exposta em métrica |
+| Evento "pedido criado" para o broker | At-least-once | Duplicata aceita; perda não | Lag da outbox e deduplicação no consumidor |
+
+Antes/depois do efeito distribuído (publicar no broker depois do commit). Os tipos `repositorio`, `kafka` e `outbox` abaixo são ilustrativos; a implementação executável está no `ProcessadorIdempotente`:
+
+```java
+// Antes: commit no banco e publicação no Kafka são dois efeitos independentes.
+// Se o processo cai entre os dois, o pedido existe e o evento nunca sai.
+@Transactional
+public PedidoResponse criar(PedidoRequest req) {
+    var pedido = repositorio.save(Pedido.novo(req));
+    kafka.send("pedidos", pedido.id(), pedido.paraEvento()); // fora da transação do banco
+    return PedidoResponse.de(pedido);
+}
+
+// Depois: pedido e intenção de publicar entram na MESMA transação (outbox);
+// um relay publica ao menos uma vez e o consumidor deduplica por eventId.
+@Transactional
+public PedidoResponse criar(PedidoRequest req) {
+    var pedido = repositorio.save(Pedido.novo(req));
+    outbox.save(EventoOutbox.de("pedidos", pedido.id(), pedido.paraEvento()));
+    return PedidoResponse.de(pedido);
+}
+```
+
+Prova executável: [CheckoutApplication](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/CheckoutApplication.java) usa [ProcessadorIdempotente](../../../examples/java/integracao/src/main/java/br/com/srportto/exemplos/ProcessadorIdempotente.java) para gravar chave, efeito e outbox juntos; [CheckoutApplicationTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/CheckoutApplicationTest.java) cobre repetição com a mesma chave (mesma resposta, sem efeito duplicado) e conflito 409 quando a chave volta com outro payload.
+
+Perguntas de revisão para este caso: o que o cliente vê se o relay estiver parado por 10 min? (pedido `CRIADO`, evento pendente, lag alertado); quem reconcilia o pagamento remoto se a resposta se perder após o commit? (job de reconciliação com a chave enviada ao provedor).

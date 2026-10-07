@@ -28,3 +28,29 @@ fronteira medida, resultado esperado e como medir. Hipótese sem medição fica 
 
 Cálculos de capacidade e SLO: [capacidade e SLOs](capacidade-slos.md). Refinamento de histórias com esses
 critérios: `refinamento-de-historias`.
+
+## Exemplo aplicado: checkout
+
+Caso de estudo: [checkout](estudos-de-caso-java.md#4-e-commerce-em-alta-escala-checkout--caso-executável). A tabela abaixo transforma o checklist em requisitos observáveis para `POST /pedidos`, com hipóteses rotuladas:
+
+| Área | Requisito escrito | Evidência / teste | Natureza |
+|---|---|---|---|
+| Performance | p99 < 300 ms a 50 req/s sustentados | Ensaio de carga na fase de baseline | Hipótese a validar em ambiente real |
+| Capacidade | Pico de 400 req/s por 15 min; 6 réplicas × pool 20 = 120 conexões ≤ orçamento do banco | Rampa de carga + métrica de pool | Hipótese (duração do pico) |
+| Sobrecarga | Acima da capacidade, responder 503 com `Retry-After` em vez de enfileirar sem limite | `saturacaoDeveResponder503RapidoComRetryAfterEMetricaDeRejeicao` | Medido em laboratório |
+| Disponibilidade | 99,9% de criações bem-sucedidas em 30 dias; 429/503 contam como falha | Alerta por burn rate | Contrato (SLO) |
+| Confiabilidade | Repetição com a mesma `Idempotency-Key` devolve o mesmo pedido, sem cobrança duplicada | `repeticaoComMesmaChaveDeveDevolverOMesmoPedidoSemDuplicarEfeito` | Medido |
+| Dados | Catálogo até 60 s desatualizado; saldo/cobrança fortemente consistente | Contrato de dados + teste transacional | Contrato |
+
+Antes/depois de um requisito:
+
+```text
+Antes:  "O checkout deve aguentar o lançamento."
+Depois: "POST /pedidos aceita até 400 req/s por 15 min; acima disso responde 503 + Retry-After
+         rápido (o teste exige < 1 s), sem esperar a dependência lenta; a rejeição é
+         contada em app.requisicoes{resultado=rejeitada} e entra no SLO de 99,9% em 30 dias."
+```
+
+Provas executáveis: [CheckoutApplicationTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/CheckoutApplicationTest.java) (idempotência, conflito, validação, 503 rápido, probes) e [CheckoutSobCargaSimulationCargaIT](../../../examples/java/carga/src/test/java/br/com/srportto/exemplos/CheckoutSobCargaSimulationCargaIT.java) (baseline, rampa, pico acima da capacidade, retorno). O que o laboratório mede não vira SLO: os números de produção vêm de medição real.
+
+Cálculos de apoio (taxa média, pico, Little) em [estimativas rápidas](estimativas-rapidas.md) e [capacidade e SLOs](capacidade-slos.md).
