@@ -21,7 +21,7 @@ consequência.
 
 Leia `api-rest-design` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Onde o controller vive
 (driving adapter em `infrastructure/web`, chamando `port/in`): `arquitetura-limpa-java`. DTOs e handler de
-erros: `revisao-de-codigo-java` (Contrato HTTP). Testes de contrato: `testes-sistemas-java`. Quotas e rejeição
+erros: `revisao-de-codigo-java/references/checklist-contrato-http.md`. Testes de contrato: `testes-sistemas-java`. Quotas e rejeição
 por saturação (mecanismo): `resiliencia-controle-fluxo-java`, só quando o pedido envolver limites.
 
 ## Entradas

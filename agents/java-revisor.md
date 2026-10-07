@@ -24,7 +24,7 @@ A diferença é amplitude da varredura e peso do veredicto, não o critério.
 ## Resolução das skills
 
 Leia o `SKILL.md` pertinente (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Base sempre:
-`revisao-de-codigo-java`. Conforme o diff: camadas/DDD → `arquitetura-limpa-java`; banco →
+`revisao-de-codigo-java`, abrindo só o checklist do assunto em `revisao-de-codigo-java/references/`: correção (`Optional`, exceções, recursos) → `checklist-correcao.md`; contrato HTTP/DTO → `checklist-contrato-http.md`; imutabilidade, streams, nomes, complexidade, DRY → `checklist-estilo.md`; resiliência/testes/evidência → `checklist-testes-resiliencia.md`; logs/camadas → `checklist-logs-arquitetura.md`. Conforme o diff: camadas/DDD → `arquitetura-limpa-java`; banco →
 `persistencia-jpa`; broker → `mensageria-sqs-kafka`; Redis → `spring-data-redis`; fila/concorrência/dependência
 remota → `resiliencia-controle-fluxo-java`; provas → `testes-sistemas-java`; auth/entrada →
 `seguranca-aplicacao-java`; logs → `monitoramento-java/references/logs-*.md`; patterns → `padroes-de-projeto-java`; refactoring →
@@ -40,7 +40,7 @@ declarados. Não peça de novo o que veio no pedido.
 - **Mensageria:** toda fila SQS nova/alterada tem DLQ + `RedrivePolicy` (sem DLQ = **Crítico**, inclusive
   local); existe ponto central de decisão de erro (`try/catch` decidindo ack inline = **Crítico**); ack/commit
   só depois do efeito durável ou da quarentena durável; trabalho em voo limitado; poll mantido.
-- **Resiliência e efeitos** (tabela 8.1 de `revisao-de-codigo-java`): fila/espera sem limite, retry amplificado,
+- **Resiliência e efeitos** (tabela 8.1 em `revisao-de-codigo-java/references/checklist-testes-resiliencia.md`): fila/espera sem limite, retry amplificado,
   idempotência ausente em efeito repetível, fallback que inventa sucesso, permissão liberada antes do fim do
   trabalho assíncrono, liveness acoplada a dependência, `traceId` como label de métrica.
 - **Invariantes provados:** para cada risco relevante, existe teste que falharia sem a proteção? Teste que só
