@@ -29,7 +29,8 @@ de cluster inteiro, rede, IAM de provedor cloud, ou administração de cluster.
 ## Workflow
 
 1. **Confirme o que já existe** — verifique `.github/workflows/`, `Dockerfile`, `k8s/`,
-   `docker-compose.yml`. Ajuste em vez de recriar.
+   `docker-compose.yml` (dependência AWS local no compose: serviço `floci/floci:2.2.0` na porta 4566). Ajuste em vez
+   de recriar.
 2. **Defina os estágios necessários** — build → test → package → (push) → (deploy).
 3. **Escreva o YAML** com quality gates apropriados ao projeto.
 4. **Valide** — `docker build`, `kubectl apply --dry-run=client` (se o cluster estiver acessível),

@@ -68,7 +68,7 @@ Provas:
 [ConsumidorSqsLimitadoTest](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ConsumidorSqsLimitadoTest.java)
 (nunca pede além da capacidade, apaga só após o efeito, renova visibilidade e evita entrega duplicada) e
 [ConsumidorSqsLimitadoExternoIT](../../../examples/java/integracao/src/test/java/br/com/srportto/exemplos/ConsumidorSqsLimitadoExternoIT.java)
-(LocalStack: mensagem que sempre falha chega à DLQ após 3 recebimentos; as demais são apagadas).
+(Floci: mensagem que sempre falha chega à DLQ após 3 recebimentos; as demais são apagadas).
 
 ## Métricas mínimas
 

@@ -167,11 +167,11 @@ Detalhes: `resiliencia-controle-fluxo-java`, `mensageria-sqs-kafka`, `testes-sis
 
 2. **Aplicar a variante**, se houver: gere os componentes obrigatórios da tabela acima, seguindo a
    skill de referência indicada. Para variantes com SQS, provisione a fila com DLQ (IaC local, ex.
-   Terraform contra o emulador) e implemente o interceptor central de erro **no mesmo passo** — não
+   Terraform contra o Floci em `http://localhost:4566`) e implemente o interceptor central de erro **no mesmo passo** — não
    deixe para depois.
 
 3. **Buildar e testar**: `mvn clean verify`. Testes que dependem de infraestrutura externa usam
-   Testcontainers (Docker) num perfil separado (`-Pintegracao`); se o ambiente não tiver Docker/emulador,
+   Testcontainers (Docker) — para SQS e demais serviços AWS, `FlociContainer` (`io.floci:testcontainers-floci`) — num perfil separado (`-Pintegracao`); se o ambiente não tiver Docker/emulador,
    **não** use `-DskipTests` para declarar sucesso — relate compilação, testes executados e testes
    **pendentes** separadamente (o `java-revisor` trata pendência como pendência, não aprovação).
 
@@ -195,11 +195,11 @@ agent `java-revisor` (modo `auditoria`), independentemente de quem gerou os arqu
 |---------|-------------------|
 | App não sobe: "Failed to configure a DataSource" | Incluiu `spring-boot-starter-data-jpa` sem o banco no ar. Suba o banco ou remova a dependência se não for usá-la. |
 | `mvnw.cmd` quebrado/falha no Windows | Use `mvn` diretamente em vez do wrapper. |
-| Plugin do Spring Boot não compila `void main()` | Use `public static void main(String[] args)` — o plugin ainda não suporta o `void main()` do JDK 25. |
+| Plugin do Spring Boot não empacota `void main()` ("Unable to find main class" no `repackage`) | Use `public static void main(String[] args)` — o plugin 4.0.7 não reconhece o `void main()` do JDK 25 (verificado em 2026-10-06). |
 | Porta ocupada | Escolha uma porta livre ou pare o processo conflitante. |
 | Container web errado no log de startup | Confira se a exclusão do Tomcat + starter Jetty foi aplicada corretamente no `pom.xml`. |
 | `NoSuchBeanDefinitionException` para `ObjectMapper` (variantes SQS/Kafka com Jackson) | Spring Boot 4 usa Jackson 3 por padrão e não cria um `ObjectMapper` clássico automaticamente — declare o bean explicitamente. |
-| `mvn test` completo falha com `SdkClientException: Connection refused` | Variante com SQS exige o emulador rodando e a fila já criada antes de rodar a suíte completa — não é bug. |
+| `mvn test` completo falha com `SdkClientException: Connection refused` | Variante com SQS exige o Floci rodando (`docker run -d -p 4566:4566 floci/floci:2.2.0`) e a fila já criada antes de rodar a suíte completa — não é bug. |
 
 ## Checklist final
 

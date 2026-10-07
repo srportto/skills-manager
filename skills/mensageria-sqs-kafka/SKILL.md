@@ -77,7 +77,10 @@ resource "aws_sqs_queue" "fila" {
 }
 ```
 
-Via AWS CLI (LocalStack), a mesma regra: criar a DLQ, obter o ARN e só então criar a fila com `RedrivePolicy`:
+Localmente, use o **Floci** (emulador AWS, porta 4566): `docker run -d -p 4566:4566 floci/floci:2.2.0`. Com
+`AWS_ENDPOINT_URL=http://localhost:4566`, `AWS_ACCESS_KEY_ID=test`, `AWS_SECRET_ACCESS_KEY=test` e
+`AWS_DEFAULT_REGION=us-east-1`, AWS CLI e AWS SDK v2 apontam para ele sem mudança de código. A mesma regra: criar
+a DLQ, obter o ARN e só então criar a fila com `RedrivePolicy`:
 
 ```bash
 aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name fila-pedidos-dlq
