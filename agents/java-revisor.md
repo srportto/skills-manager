@@ -23,12 +23,29 @@ A diferença é amplitude da varredura e peso do veredicto, não o critério.
 
 ## Resolução das skills
 
-Leia o `SKILL.md` pertinente (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Base sempre:
-`revisao-de-codigo-java`, abrindo só o checklist do assunto em `revisao-de-codigo-java/references/`: correção (`Optional`, exceções, recursos) → `checklist-correcao.md`; contrato HTTP/DTO → `checklist-contrato-http.md`; imutabilidade, streams, nomes, complexidade, DRY → `checklist-estilo.md`; resiliência/testes/evidência → `checklist-testes-resiliencia.md`; logs/camadas → `checklist-logs-arquitetura.md`. Conforme o diff: camadas/DDD → `arquitetura-limpa-java`; banco →
-`persistencia-jpa`; broker → `mensageria-sqs-kafka`; Redis → `spring-data-redis`; fila/concorrência/dependência
-remota → `resiliencia-controle-fluxo-java`; provas → `testes-sistemas-java`; auth/entrada →
-`seguranca-aplicacao-java`; logs → `monitoramento-java/references/logs-*.md`; patterns → `padroes-de-projeto-java`; refactoring →
-`qualidade-codigo-java`; features modernas → `java-moderno`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Checklist base: correção, `Optional`, exceções, recursos | `revisao-de-codigo-java` | `references/checklist-correcao.md` |
+| Contrato HTTP, DTO | `revisao-de-codigo-java` | `references/checklist-contrato-http.md` |
+| Imutabilidade, streams, nomes, complexidade, DRY | `revisao-de-codigo-java` | `references/checklist-estilo.md` |
+| Resiliência, testes, evidência | `revisao-de-codigo-java` | `references/checklist-testes-resiliencia.md` |
+| Logs e camadas no diff | `revisao-de-codigo-java` | `references/checklist-logs-arquitetura.md` |
+| Exemplos de achados e severidade | `revisao-de-codigo-java` | `references/exemplos-revisao-java.md` |
+| Camadas, DDD, fronteiras | `arquitetura-limpa-java` | `references/camadas-classicas.md`, `references/ddd-tatico.md`, `references/anti-padroes-e-gotchas.md` |
+| N+1, `LazyInitializationException`, transação, lock | `persistencia-jpa` | `references/n-mais-um.md`, `references/transacoes.md`, `references/locking.md` |
+| DLQ, `RedrivePolicy`, redrive SQS | `mensageria-sqs-kafka` | `references/sqs-dlq-redrive.md` |
+| Ponto central de erro, ack/commit, interceptor | `mensageria-sqs-kafka` | `references/erro-central-interceptor.md` |
+| Idempotência, outbox, replay | `mensageria-sqs-kafka` | `references/idempotencia-outbox-replay-java.md` |
+| Cache, rate limiting, streams Redis | `spring-data-redis` | `references/cache.md`, `references/cache-protecao-java.md`, `references/rate-limiting.md`, `references/streams-consumer-group.md` |
+| Fila/espera sem limite, timeout, retry, bulkhead | `resiliencia-controle-fluxo-java` | `references/backpressure-java.md`, `references/timeouts-retries-java.md`, `references/isolamento-degradacao-java.md` |
+| Provas: concorrência, falha, contrato, slice | `testes-sistemas-java` | `references/concorrencia-resiliencia.md`, `references/contratos-arquitetura.md`, `references/testes-slice-spring.md` |
+| Auth, JWT, injeção, entrada | `seguranca-aplicacao-java` | `references/autenticacao-jwt.md`, `references/injecao.md`, `references/controle-acesso.md` |
+| Formato de log, MDC, nível por camada | `monitoramento-java` | `references/logs-estruturados.md`, `references/logs-mdc-correlacao.md`, `references/logs-por-camada.md` |
+| Padrões de projeto (e quando não aplicar) | `padroes-de-projeto-java` | `references/quando-nao-aplicar.md`, `references/strategy-lista-injetada.md` |
+| Clean code, exceções, imutabilidade | `qualidade-codigo-java` | `references/clean-code-principios.md`, `references/excecoes.md`, `references/imutabilidade-optional-streams.md` |
+| Features modernas do Java | `java-moderno` | `references/records.md`, `references/sealed-e-switch.md`, `references/pattern-matching.md` |
 
 ## Entradas
 

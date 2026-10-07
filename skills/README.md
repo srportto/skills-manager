@@ -75,7 +75,7 @@ Compilação não é teste; teste pulado é pendência, nunca aprovação.
 | `arquitetura-limpa-java` | Camadas hexagonais (e clássicas), módulos Spring, DDD tático/estratégico, fronteiras | `java-revisor`, `java-construtor` |
 | `banco-de-dados-performance` | SQL/SGBD: EXPLAIN, índices, tuning, conexões, replicação | `especialista-banco-dados` |
 | `chaos-engineer` | Experimentos de falha, game days, abort e recuperação | `engenheiro-chaos` |
-| `cloud-architect` | Topologia de nuvem, DNS/LB/CDN, IAM, DR, FinOps | `cloud-architect` |
+| `cloud-architect` | Topologia de nuvem, DNS/LB/CDN, IAM, DR, FinOps | `arquiteto-cloud` |
 | `criar-aplicacao-java` | Esqueleto Spring Boot 4 + variantes (REST, banco, SQS, Kafka) | `java-construtor` |
 | `design-system-architecture` | System design, capacidade/SLO, consistência, protocolos, ADR, estudos de caso | `arquiteto-sistemas` |
 | `devops-cicd` | Pipeline, Dockerfile, manifests K8s, probes e drenagem | `engenheiro-devops` |
@@ -116,7 +116,7 @@ Preservadas sem reescrita; a regra "todo exemplo de programação é Java" não 
 | Agent | Papel | Entrega verificável |
 |---|---|---|
 | `arquiteto-sistemas` | Decide arquitetura, capacidade, consistência e proteções | ADR + orçamento de capacidade + matriz de falhas |
-| `cloud-architect` | Topologia de nuvem, limites de serviço, DR e custo | Topologia + capacidade + custo + plano de recuperação |
+| `arquiteto-cloud` | Topologia de nuvem, limites de serviço, DR e custo | Topologia + capacidade + custo + plano de recuperação |
 | `engenheiro-chaos` | Exercita sobrecarga, falhas e recuperação | Hipótese + baseline + abort + relatório |
 | `engenheiro-devops` | Pipeline, imagem, manifests, probes e drenagem | Pipeline e ciclo de vida verificados |
 | `engenheiro-seguranca` | Auditoria dedicada, abuso de recursos e limites por identidade | Modelo de ameaça + testes de abuso |
@@ -217,6 +217,7 @@ Skills e agents que mudaram de nome ou foram fundidos; use o destino indicado.
 | `refactoring-remove-parameter` | `qualidade-codigo-java` | `references/refatoracoes-fowler.md#remove-parameter` |
 | `java-architecture` | `arquitetura-limpa-java` + `testes-sistemas-java` | camadas clássicas em `references/camadas-classicas.md`, módulos Spring em `references/modulos-spring.md`; testes de slice e Testcontainers em `testes-sistemas-java/references/testes-slice-spring.md` |
 | `padrao-de-logs-java` | `monitoramento-java` | `references/logs-estruturados.md`, `logs-mdc-correlacao.md`, `logs-por-camada.md` |
+| agent `cloud-architect` | agent `arquiteto-cloud` | nome igual ao da skill `cloud-architect` causava ambiguidade; a skill mantém o nome |
 
 ## Validação do catálogo
 

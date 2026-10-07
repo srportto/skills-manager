@@ -11,7 +11,7 @@ Em infraestrutura real, ferramentas como Toxiproxy, service mesh ou recursos de 
 
 ## Falhas de host e recursos
 
-Encerramento de instância, drenagem de nó, pressão de CPU/memória, saturação de disco, DNS e expiração de certificado precisam de política específica da plataforma, orçamento de impacto e rollback. Consulte `cloud-architect` para conta, rede, IAM e recuperação de cloud; consulte `engenheiro-devops` para pipeline e operação Kubernetes.
+Encerramento de instância, drenagem de nó, pressão de CPU/memória, saturação de disco, DNS e expiração de certificado precisam de política específica da plataforma, orçamento de impacto e rollback. Consulte `arquiteto-cloud` para conta, rede, IAM e recuperação de cloud; consulte `engenheiro-devops` para pipeline e operação Kubernetes.
 
 ## Evidência
 

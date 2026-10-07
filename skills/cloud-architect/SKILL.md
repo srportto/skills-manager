@@ -1,7 +1,7 @@
 ---
 
 name: cloud-architect
-description: "Desenho e auditoria de topologia de nuvem (AWS/Azure/GCP) — VPC, subnets, IAM least-privilege, FinOps, disaster recovery (RTO/RPO), landing zone, Well-Architected Framework. Use para topologia cloud, migração, otimização de custo ou DR. Uso: agent `cloud-architect` ou `/cloud-architect`; não carregar proativamente."
+description: "Desenho e auditoria de topologia de nuvem (AWS/Azure/GCP) — VPC, subnets, IAM least-privilege, FinOps, disaster recovery (RTO/RPO), landing zone, Well-Architected Framework. Use para topologia cloud, migração, otimização de custo ou DR. Uso: agent `arquiteto-cloud` ou `/cloud-architect`; não carregar proativamente."
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
@@ -183,10 +183,10 @@ comum.
 
 | Cenário | Agent / Modo | Skills complementares |
 |---|---|---|
-| Desenhar topologia cloud nova | `cloud-architect` (sessão dedicada) | `design-system-architecture`, `devops-cicd` |
-| Auditar arquitetura cloud existente | `cloud-architect` (modo `auditoria`) | `seguranca-aplicacao-java` |
-| Plano de migração | `cloud-architect` (sessão dedicada) | `devops-cicd`, `design-system-architecture` |
-| Otimização FinOps | `cloud-architect` (sessão dedicada) | `monitoramento-java` |
+| Desenhar topologia cloud nova | `arquiteto-cloud` (sessão dedicada) | `design-system-architecture`, `devops-cicd` |
+| Auditar arquitetura cloud existente | `arquiteto-cloud` (modo `auditoria`) | `seguranca-aplicacao-java` |
+| Plano de migração | `arquiteto-cloud` (sessão dedicada) | `devops-cicd`, `design-system-architecture` |
+| Otimização FinOps | `arquiteto-cloud` (sessão dedicada) | `monitoramento-java` |
 | Deploy de app Java específica | `engenheiro-devops` (variante `k8s`) | `devops-cicd` |
 
 [Documentação base](https://jeffallan.github.io/claude-skills/skills/infrastructure/cloud-architect/)

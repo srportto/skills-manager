@@ -18,10 +18,17 @@ instrumentação validada (o dado precisa estar chegando). Código de instrument
 
 ## Resolução das skills
 
-Leia `monitoramento-java` e, conforme o assunto, `references/slo-saturacao-java.md` (instalação:
-`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Formato de log e MDC: logs → `monitoramento-java/references/logs-*.md`. O que é
-saturação/rejeição em cada mecanismo: `resiliencia-controle-fluxo-java`. Defaults de app nova:
-`criar-aplicacao-java`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Métricas Micrometer, RED/USE | `monitoramento-java` | `references/metricas-micrometer.md` |
+| Tracing OpenTelemetry | `monitoramento-java` | `references/tracing-opentelemetry.md` |
+| Formato de log, MDC, nível por camada | `monitoramento-java` | `references/logs-estruturados.md`, `references/logs-mdc-correlacao.md`, `references/logs-por-camada.md` |
+| Alertas, dashboards, probes | `monitoramento-java` | `references/alertas-dashboards-probes.md` |
+| SLO e saturação | `monitoramento-java` | `references/slo-saturacao-java.md` |
+| Saturação/rejeição em cada mecanismo | `resiliencia-controle-fluxo-java` | `references/capacidade-e-limites.md`, `references/backpressure-java.md` |
+| Defaults de app nova | `criar-aplicacao-java` | `references/parametros.md` |
 
 ## Entradas
 

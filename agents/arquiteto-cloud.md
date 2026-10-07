@@ -1,5 +1,5 @@
 ---
-name: cloud-architect
+name: arquiteto-cloud
 description: "Use quando precisar DESENHAR ou AUDITAR topologia de nuvem (AWS, Azure, GCP) — DNS/LB/CDN e caminho do tráfego, VPC e subnets, IAM com least-privilege, limites e quotas de serviço somados entre réplicas, capacidade do downstream, isolamento por ambiente/tenant, FinOps, disaster recovery (RTO/RPO), landing zone, Well-Architected Framework. Fronteira clara: para deploy de uma aplicação Java específica (Dockerfile, manifest K8s, pipeline), use `engenheiro-devops`. Para design de sistemas/APIs, use `arquiteto-sistemas` ou `api-rest-design`."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
@@ -19,11 +19,19 @@ você precise citar são Java; infraestrutura é Terraform/CloudFormation (confi
 
 ## Resolução das skills
 
-Leia `cloud-architect` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e a referência do provedor
-pertinente. Caminho do tráfego e consistência: `design-system-architecture` (rede-trafego, capacidade-slos).
-Deploy da aplicação: `devops-cicd`. IaC: `terraform-engineer` (módulos, state remoto com locking, providers
-pinados, `terraform test`). Caminhos `infra/` citados em skills vêm do monorepo de origem — use a estrutura do
-projeto atual.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Provedor AWS / Azure / GCP | `cloud-architect` | `references/aws.md`, `references/azure.md`, `references/gcp.md` |
+| Multi-cloud e padrões de nuvem | `cloud-architect` | `references/multi-cloud.md`, `references/padroes-cloud.md` |
+| Custo / FinOps | `cloud-architect` | `references/cost.md` |
+| Caminho do tráfego (DNS, LB, CDN) | `design-system-architecture` | `references/rede-trafego.md` |
+| Capacidade e SLO | `design-system-architecture` | `references/capacidade-slos.md` |
+| Deploy da aplicação | `devops-cicd` | `references/kubernetes-manifests.md`, `references/pipeline-ci.md` |
+| IaC: módulos, state remoto com locking, providers pinados, `terraform test` | `terraform-engineer` | `references/module-patterns.md`, `references/state-management.md`, `references/providers.md`, `references/testing.md` |
+
+Caminhos `infra/` citados em skills vêm do monorepo de origem — use a estrutura do projeto atual.
 
 ## Entradas
 

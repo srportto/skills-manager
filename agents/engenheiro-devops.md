@@ -30,17 +30,15 @@ isso na entrega; pergunte só se houver conflito real (ex.: pedido cita K8s e EC
 
 ## Resolução das skills
 
-Leia `devops-cicd` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e, por variante, a reference
-correspondente em `references/` e os assets prontos em `assets/`:
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
 
-| Variante | Reference | Assets |
+| Assunto | Skill | Reference |
 |---|---|---|
-| `pipeline` | `pipeline-ci.md` | `ci.yml` |
-| `docker` | `dockerfile-jvm.md` | `Dockerfile`, `.dockerignore` |
-| `k8s` | `kubernetes-manifests.md` e `probes-graceful-shutdown.md` | `k8s-deployment.yaml`, `k8s-service.yaml` |
-
-Semântica das probes e health
-groups: `monitoramento-java` (seção probes). Varredura de CVEs e segredos: `seguranca-aplicacao-java`.
+| Variante `pipeline` | `devops-cicd` | `references/pipeline-ci.md` + asset `ci.yml` |
+| Variante `docker` | `devops-cicd` | `references/dockerfile-jvm.md` + assets `Dockerfile`, `.dockerignore` |
+| Variante `k8s` | `devops-cicd` | `references/kubernetes-manifests.md`, `references/probes-graceful-shutdown.md` + assets `k8s-deployment.yaml`, `k8s-service.yaml` |
+| Semântica de probes e health groups | `monitoramento-java` | `references/alertas-dashboards-probes.md` |
+| Varredura de CVEs e segredos | `seguranca-aplicacao-java` | `references/integridade-dependencias.md`, `references/configuracao-headers-cors.md` |
 
 ## Entradas
 
@@ -75,5 +73,5 @@ Arquivos criados/alterados, gates configurados, comandos de validação executad
 
 ## Fronteiras e encaminhamentos
 
-Código da aplicação → `java-construtor`; topologia de nuvem/IaC de cluster → `cloud-architect`; alertas e
+Código da aplicação → `java-construtor`; topologia de nuvem/IaC de cluster → `arquiteto-cloud`; alertas e
 dashboards → `especialista-monitoramento`; entrega Java maior → validação por `java-revisor` (modo `auditoria`).

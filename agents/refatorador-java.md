@@ -19,10 +19,15 @@ transação, idempotência, cancelamento, timeouts e liberação de recursos em 
 
 ## Resolução das skills
 
-Leia `qualidade-codigo-java` e, para exemplos completos, `references/refatoracoes-fowler.md` (instalação:
-`.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Remove Parameter: `qualidade-codigo-java` (`references/refatoracoes-fowler.md#remove-parameter`). Limpeza de
-imports: `remover-imports-nao-usados`. O que **não** refatorar (abstração especulativa): `padroes-de-projeto-java`.
-Testes de caracterização de concorrência, consumo e falha: `testes-sistemas-java`.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
+
+| Assunto | Skill | Reference |
+|---|---|---|
+| Remove Parameter e demais refactorings do Fowler | `qualidade-codigo-java` | `references/refatoracoes-fowler.md` (`#remove-parameter`) |
+| Nomes, clean code | `qualidade-codigo-java` | `references/nomenclatura.md`, `references/clean-code-principios.md` |
+| Limpeza de imports | `remover-imports-nao-usados` | `SKILL.md` |
+| O que **não** refatorar (abstração especulativa) | `padroes-de-projeto-java` | `references/quando-nao-aplicar.md` |
+| Testes de caracterização de concorrência, consumo e falha | `testes-sistemas-java` | `references/concorrencia-resiliencia.md` |
 
 ## Entradas
 

@@ -19,18 +19,19 @@ Boot 4 quando houver aplicação).
 
 ## Resolução das skills
 
-Leia o `SKILL.md` de cada skill pertinente antes de usá-la: na instalação, `.claude/skills/<nome>/SKILL.md`;
-na fonte do catálogo, `skills/<nome>/SKILL.md`. Abra `references/` só quando o assunto pedir.
+Leia primeiro o `SKILL.md` da skill (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e abra só a reference do assunto, no formato `skills/<skill>/references/<arquivo>.md` (instalado: `.claude/skills/...`). Cada skill traz um "Guia de references" com o quando ler.
 
-| Assunto do pedido | Skills |
-|---|---|
-| App nova / variante | `criar-aplicacao-java`, `arquitetura-limpa-java` |
-| Qualquer código | `qualidade-codigo-java` (durante a geração), `java-moderno` |
-| Banco | `persistencia-jpa` |
-| SQS/Kafka | `mensageria-sqs-kafka` |
-| Redis/Valkey (cache, quota, stream) | `spring-data-redis` |
-| Fila, concorrência, dependência remota, sobrecarga | `resiliencia-controle-fluxo-java` |
-| Provas (concorrência, idempotência, falha, carga) | `testes-sistemas-java` |
+| Assunto | Skill | Reference |
+|---|---|---|
+| App nova / variante | `criar-aplicacao-java` | `references/parametros.md`, `references/variante-rest.md`, `references/variante-crud-banco.md`, `references/variante-sqs-listener.md`, `references/variante-kafka-consumer.md`, `references/variante-ponte-sqs-kafka.md` (só a variante pedida) |
+| Camadas e fronteiras | `arquitetura-limpa-java` | `references/camadas-classicas.md`, `references/modulos-spring.md`, `references/ddd-tatico.md` |
+| Qualquer código (durante a geração) | `qualidade-codigo-java` | `references/clean-code-principios.md`, `references/nomenclatura.md`, `references/imutabilidade-optional-streams.md` |
+| Features modernas | `java-moderno` | `references/records.md`, `references/sealed-e-switch.md` |
+| Banco | `persistencia-jpa` | `references/entidades-projecoes.md`, `references/transacoes.md`, `references/n-mais-um.md` |
+| SQS/Kafka | `mensageria-sqs-kafka` | `references/sqs-dlq-redrive.md`, `references/kafka-produtor-consumidor.md`, `references/erro-central-interceptor.md` |
+| Redis/Valkey (cache, quota, stream) | `spring-data-redis` | `references/cache.md`, `references/rate-limiting.md`, `references/streams-consumer-group.md` |
+| Fila, concorrência, dependência remota, sobrecarga | `resiliencia-controle-fluxo-java` | `references/backpressure-java.md`, `references/timeouts-retries-java.md`, `references/capacidade-e-limites.md` |
+| Provas (concorrência, idempotência, falha, carga) e testes de slice | `testes-sistemas-java` | `references/concorrencia-resiliencia.md`, `references/testes-slice-spring.md`, `references/integracao-carga.md` |
 
 Serviços em outra linguagem (ex.: funções Python) estão **fora** deste agent; sinalize ao invocador.
 
