@@ -37,6 +37,11 @@ class PadraoAnthropicTest {
         if (!PENDENCIAS.contains(chave)) erros.add(chave + " → " + mensagem);
     }
 
+    @DisplayName("PadraoAnthropic: nao deve restar nenhuma pendencia conhecida")
+    @Test void pendenciasDevemEstarVazias() {
+        assertTrue(PENDENCIAS.isEmpty(), () -> "pendencias restantes: " + PENDENCIAS);
+    }
+
     @DisplayName("PadraoAnthropic: SKILL.md deve ter no maximo 500 linhas")
     @Test void skillDeveTerNoMaximo500Linhas() {
         var erros = new ArrayList<String>();
