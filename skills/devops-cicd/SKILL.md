@@ -16,315 +16,82 @@ metadata:
 
 # DevOps & CI/CD (Java/Maven, Docker, Kubernetes)
 
-## Visão geral
-
 Guia de DevOps focado no **caminho do código até a aplicação rodando em produção** em stack
 Java/Maven, limitado a **CI/CD + containerização + deployment da aplicação** — não cobre Terraform
 de cluster inteiro, rede, IAM de provedor cloud, ou administração de cluster.
+
+## Quando usar / Quando NÃO usar
+
+Use para criar ou ajustar pipeline CI, Dockerfile e manifests Kubernetes de uma app Java.
 
 **Quando NÃO usar:** código de aplicação → `java-construtor`. Auditoria completa de segurança →
 `seguranca-aplicacao-java` + agent `engenheiro-seguranca`. Tuning de banco →
 `banco-de-dados-performance`. Observabilidade pós-deploy → `monitoramento-java`.
 
-## Workflow
+## Entradas
+
+Repositório e artefatos existentes (`.github/workflows/`, `Dockerfile`, `k8s/`), versão do JDK/Boot, porta da
+aplicação, dependências que entram na readiness, tempo de shutdown e limites de recursos.
+
+## Decisão — variante e reference
+
+| Variante do agent | O que o pedido cobre | Leia | Asset de partida |
+|---|---|---|---|
+| `pipeline` | CI/CD, quality gates, versionamento, estratégia de deploy | [pipeline-ci](references/pipeline-ci.md) | `assets/ci.yml` |
+| `docker` | Dockerfile multi-stage, usuário não-root, HEALTHCHECK | [dockerfile-jvm](references/dockerfile-jvm.md) | `assets/Dockerfile`, `assets/.dockerignore` |
+| `k8s` | Deployment, Service, ConfigMap, Ingress | [kubernetes-manifests](references/kubernetes-manifests.md) e [probes-graceful-shutdown](references/probes-graceful-shutdown.md) | `assets/k8s-deployment.yaml`, `assets/k8s-service.yaml` |
+| `all` | Os três, nesta ordem | todas | todos |
+
+## Passo a passo
 
 1. **Confirme o que já existe** — verifique `.github/workflows/`, `Dockerfile`, `k8s/`,
    `docker-compose.yml` (dependência AWS local no compose: serviço `floci/floci:2.2.0` na porta 4566). Ajuste em vez
    de recriar.
 2. **Defina os estágios necessários** — build → test → package → (push) → (deploy).
-3. **Escreva o YAML** com quality gates apropriados ao projeto.
+3. **Escreva o YAML** com quality gates apropriados ao projeto, partindo dos assets (copie e ajuste nomes, imagem e recursos).
 4. **Valide** — `docker build`, `kubectl apply --dry-run=client` (se o cluster estiver acessível),
    `mvn clean verify` localmente.
 5. **Reporte** o que foi criado/alterado e quais gates foram configurados.
 
----
+## Saída
 
-# 1. CI/CD — GitHub Actions
-
-## Pipeline mínimo (build → test → package)
-
-```yaml
-name: ci
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configurar JDK 25 (Temurin)
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Build, testes e empacotamento
-        run: mvn clean verify
-
-      - name: Publicar artefato
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-jar
-          path: target/*.jar
-```
-
-## Quality gates
-
-- **Testes**: o build **deve falhar** se qualquer teste falhar — `mvn clean verify` já falha com
-  testes vermelhos. **Nunca** usar `-DskipTests` em pipeline de CI.
-- **Cobertura**: se o projeto tiver JaCoCo configurado, o gate barra merge abaixo do limiar (ex.: 80%)
-  com `mvn jacoco:check -Djacoco.minimum.coverage=0.80`.
-- **Dependências vulneráveis**: varredura de CVE no PR com
-  `mvn org.owasp:dependency-check-maven:check` — ver `seguranca-aplicacao-java`.
-
-## Versionamento e cache
-
-- Versione o artefato com `${project.version}` do Maven, tag Git ou `${{ github.sha }}`
-  (`mvn clean package -Drevision=${{ github.sha }}`); **evite** publicar sempre `app.jar` sem versão
-  em ambientes não-efêmeros.
-- Cache: `actions/setup-java` com `cache: 'maven'` resolve a maioria dos casos; para cache custom,
-  `actions/cache@v4` com chave baseada em hash do `pom.xml`.
-
-## Estratégias de deployment (acoplado à pipeline)
-
-| Estratégia | Mecanismo | Quando usar |
-|---|---|---|
-| Rolling update (default K8s) | `RollingUpdate` com `maxUnavailable`/`maxSurge` | Padrão — substitui réplicas gradualmente |
-| Blue-Green | Deploy em slot paralelo (`myapp-blue`), depois `kubectl patch service` troca o seletor | Rollback instantâneo, mas exige 2x recursos durante o switch |
-| Canary (Flagger) | CRD `Canary` desloca tráfego em passos (`stepWeight`) monitorando métricas | Validação gradual com rollback automático por métrica |
-
-```yaml
-spec:
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-```
-
----
-
-# 2. Docker — containerização
-
-## Dockerfile multi-stage (Java 25)
-
-```dockerfile
-# Stage 1: build
-FROM maven:3.9-eclipse-temurin-25 AS build
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
-COPY src ./src
-# Os testes rodam no job de CI ANTES do build da imagem (gate obrigatório); aqui só se empacota o que já
-# passou. Imagem construída com -DskipTests não é evidência de qualidade nem de resiliência.
-RUN mvn clean package -DskipTests
-
-# Stage 2: runtime — -jre-alpine é mais enxuta e já traz wget via busybox (variante -jre
-# Ubuntu/Debian NÃO tem wget/curl, o que quebra o HEALTHCHECK só em runtime, não no build).
-FROM eclipse-temurin:25-jre-alpine
-# Alpine/busybox cria usuário com addgroup/adduser, não groupadd/useradd (exigem pacote shadow).
-RUN addgroup -S app && adduser -S -G app app
-WORKDIR /app
-COPY --from=build /app/target/*.jar /app/app.jar
-USER app
-HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:8080/actuator/health/liveness || exit 1
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-```
-
-## `.dockerignore` (sempre!)
-
-```
-target/
-.git/
-*.log
-.env
-```
-
-## Regras não negociáveis
-
-- **Multi-stage sempre** — nunca incluir Maven/JDK na imagem de runtime.
-- **Usuário não-root** na imagem final.
-- **HEALTHCHECK** apontando para a liveness do Actuator (`/actuator/health/liveness`) — nunca para algo que
-  dependa de banco ou serviço externo; confirme que `wget`/`curl` existe na imagem final. (Em Kubernetes o
-  HEALTHCHECK do Docker é ignorado; valem as probes.)
+Arquivos criados/alterados (pipeline, Dockerfile, manifests), gates configurados, comandos de validação com
+resultado e pendências (Secrets, Ingress, credenciais, valores assumidos).
 
 ## Validação
 
 ```bash
-docker build -t minha-app:test .
-docker run --rm -p 8080:8080 minha-app:test
-curl http://localhost:8080/actuator/health/readiness   # pronto para tráfego?
-curl http://localhost:8080/disponibilidade             # smoke test funcional do esqueleto (legado)
+mvn -B verify                                    # testes vermelhos derrubam o build
+docker build -t minha-app:test . && docker run --rm -p 8080:8080 minha-app:test
+curl http://localhost:8080/actuator/health/readiness
+kubectl apply --dry-run=client -f k8s/
 ```
 
----
+O que não puder rodar (sem Docker, sem cluster) fica **pendente** na entrega, nunca verde.
 
-# 3. Kubernetes — manifests da aplicação
+## Gotchas
 
-## Deployment + Service (mínimo completo)
+- `-DskipTests` no `RUN mvn package` do Dockerfile só vale porque o CI já rodou os testes antes; nunca como aprovação.
+- A variante `-jre` (Debian/Ubuntu) não traz `wget`/`curl`: o HEALTHCHECK quebra só em runtime. Use `-jre-alpine`.
+- Em Kubernetes o HEALTHCHECK do Docker é ignorado; valem as probes.
+- Liveness nunca depende de banco/broker/API externa; `/disponibilidade` do esqueleto é smoke test, não probe.
+- `terminationGracePeriodSeconds` precisa ser maior que `preStop` + `timeout-per-shutdown-phase`.
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: minha-app
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: minha-app
-  template:
-    metadata:
-      labels:
-        app: minha-app
-    spec:
-      terminationGracePeriodSeconds: 30
-      containers:
-        - name: minha-app
-          image: minha-app:latest
-          ports:
-            - containerPort: 8080
-          envFrom:
-            - configMapRef:
-                name: minha-app-config
-          startupProbe:                 # protege a subida lenta da JVM sem afrouxar a liveness
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            periodSeconds: 5
-            failureThreshold: 24        # até 120 s para subir
-          readinessProbe:               # readinessState + dependências necessárias (ex.: db)
-            httpGet:
-              path: /actuator/health/readiness
-              port: 8080
-            periodSeconds: 10
-            failureThreshold: 3
-          livenessProbe:                # só o estado do processo; nunca banco/broker/cache
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            periodSeconds: 15
-            failureThreshold: 3
-          lifecycle:
-            preStop:                    # dá tempo do endpoint sair do balanceador antes do SIGTERM
-                                        # (ação sleep: Kubernetes 1.30+; antes, exec com "sleep 5")
-              sleep:
-                seconds: 5
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "250m"
-            limits:
-              memory: "768Mi"
-              cpu: "1000m"
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: "-XX:MaxRAMPercentage=75"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: minha-app
-spec:
-  selector:
-    app: minha-app
-  ports:
-    - port: 80
-      targetPort: 8080
-```
+## Guia de references
 
-## ConfigMap (env vars)
+| Arquivo | Quando ler |
+|---|---|
+| [pipeline-ci](references/pipeline-ci.md) | Montar/ajustar pipeline GitHub Actions, gates, cache, versionamento, estratégias de deploy |
+| [dockerfile-jvm](references/dockerfile-jvm.md) | Escrever/revisar Dockerfile multi-stage, `.dockerignore`, flags de memória |
+| [kubernetes-manifests](references/kubernetes-manifests.md) | Escrever/revisar Deployment, Service, ConfigMap, Ingress |
+| [probes-graceful-shutdown](references/probes-graceful-shutdown.md) | Memória da JVM, orçamento de shutdown, semântica das probes |
 
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: minha-app-config
-data:
-  SPRING_PROFILES_ACTIVE: "producao"
-```
+Assets prontos: `assets/ci.yml`, `assets/Dockerfile`, `assets/.dockerignore`, `assets/k8s-deployment.yaml`,
+`assets/k8s-service.yaml`. O esqueleto de `criar-aplicacao-java` carrega uma cópia do Dockerfile.
 
-## Ingress (exposição externa, referencia o Service já criado acima)
+## Constraints
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: minha-app-ingress
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: myapp.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: minha-app
-                port:
-                  number: 80
-```
-
-## Recursos e memória JVM
-
-- **Limite de memória do container** deve considerar **heap + metaspace + overhead da JVM**, não só
-  o heap.
-- Use `-XX:MaxRAMPercentage=75` (via `JAVA_TOOL_OPTIONS` ou `JAVA_OPTS`) para que a JVM dimensione o
-  heap como fração do limite do container — evita OOMKill por heap sub/superdimensionado.
-- Regra prática: `requests.memory` = `limits.memory` (classe QoS Guaranteed) para workloads
-  previsíveis; ajuste conforme a criticidade.
-
-## Graceful shutdown
-
-- Sequência: o pod entra em *Terminating* → `preStop` (alguns segundos para o endpoint sair do Service/LB) →
-  SIGTERM → Spring marca readiness como `REFUSING_TRAFFIC`, para de aceitar requisições e espera as em andamento
-  → consumidores param de buscar mensagens e **não confirmam** trabalho não concluído.
-- Orçamento: `preStop` + `timeout-per-shutdown-phase` < `terminationGracePeriodSeconds` (ex.: 5 s + 20 s < 30 s).
-  O deregistration delay do load balancer externo também precisa caber.
-- Spring Boot: `server.shutdown: graceful` (padrão nas versões recentes; deixe explícito) +
-  `spring.lifecycle.timeout-per-shutdown-phase`.
-- Rolling update com `maxUnavailable: 0` + readiness correta evita perder capacidade durante o deploy; um
-  `PodDisruptionBudget` protege contra drenagem de nós derrubando réplicas demais.
-
-```yaml
-# application.yaml
-server:
-  shutdown: graceful
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 25s
-```
-
-## Probes — por que sempre configurar
-
-- `readinessProbe` — diz ao Service se a réplica pode receber tráfego; sem ele, tráfego vai para
-  réplicas ainda subindo ou com dependência necessária indisponível.
-- `livenessProbe` — diz ao kubelet se o processo travou; reinicia se falhar. **Nunca** inclua banco,
-  broker ou API externa: uma queda da dependência reiniciaria todos os pods ao mesmo tempo.
-- `startupProbe` — cobre a subida da JVM sem precisar de `initialDelaySeconds` grande na liveness.
-- Semântica única dos grupos de health: `monitoramento-java` (seção probes). `/disponibilidade` do esqueleto
-  continua como smoke test funcional, não como probe.
-
-## Validação
-
-```bash
-kubectl apply --dry-run=client -f deployment.yaml
-kubectl apply -f deployment.yaml
-kubectl rollout status deployment/minha-app
-```
-
----
-
-# Constraints
-
-## MUST DO
+### MUST DO
 - Use infrastructure as code (nunca mudanças manuais em produção).
 - Implemente health checks e readiness probes em **toda** aplicação.
 - Armazene segredos em secret manager (não em env files ou configmaps).
@@ -334,7 +101,7 @@ kubectl rollout status deployment/minha-app
 - Configure **liveness e readiness probes** separados.
 - Limite de memória do container sempre maior que o heap configurado via `MaxRAMPercentage`.
 
-## MUST NOT DO
+### MUST NOT DO
 - Faça deploy em produção sem aprovação explícita.
 - Armazene segredos em código ou variáveis de CI/CD.
 - Pule testes em pipeline de CI (`-DskipTests`).

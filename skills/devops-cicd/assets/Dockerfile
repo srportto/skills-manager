@@ -1,4 +1,5 @@
-# Multi-stage Java 25 — cópia de skills/devops-cicd/assets/Dockerfile (mantenha os dois iguais).
+# Dockerfile multi-stage Java 25 — pronto para copiar. O esqueleto de criar-aplicacao-java carrega uma cópia
+# idêntica em skills/criar-aplicacao-java/assets/esqueleto/Dockerfile (mantenha os dois iguais).
 # Stage 1: build
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app

@@ -30,7 +30,16 @@ isso na entrega; pergunte só se houver conflito real (ex.: pedido cita K8s e EC
 
 ## Resolução das skills
 
-Leia `devops-cicd` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`). Semântica das probes e health
+Leia `devops-cicd` (instalação: `.claude/skills/<nome>/`; fonte: `skills/<nome>/`) e, por variante, a reference
+correspondente em `references/` e os assets prontos em `assets/`:
+
+| Variante | Reference | Assets |
+|---|---|---|
+| `pipeline` | `pipeline-ci.md` | `ci.yml` |
+| `docker` | `dockerfile-jvm.md` | `Dockerfile`, `.dockerignore` |
+| `k8s` | `kubernetes-manifests.md` e `probes-graceful-shutdown.md` | `k8s-deployment.yaml`, `k8s-service.yaml` |
+
+Semântica das probes e health
 groups: `monitoramento-java` (seção probes). Varredura de CVEs e segredos: `seguranca-aplicacao-java`.
 
 ## Entradas
