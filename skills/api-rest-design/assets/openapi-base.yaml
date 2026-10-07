@@ -130,8 +130,8 @@ components:
         status: { type: integer }
         detail: { type: string }
         instance: { type: string, format: uri-reference }
-        errorCode: { type: string }
-        timestamp: { type: string, format: date-time }
+        errorCode: { type: string, description: 'Extensão do catálogo (não é campo padrão da RFC 9457)' }
+        timestamp: { type: string, format: date-time, description: 'Extensão do catálogo (não é campo padrão da RFC 9457)' }
       additionalProperties: true
     Order:
       type: object

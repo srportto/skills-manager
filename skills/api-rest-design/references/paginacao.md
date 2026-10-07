@@ -4,6 +4,11 @@ Leia este arquivo quando for definir payload de paginação, limite de página o
 
 ### Padrão de payload
 
+> **Formato recomendado (alinhado a `assets/openapi-base.yaml`, schema `OrderPage`):** página **plana**, sem
+> envelope, com erros em Problem Details: `{ "content": [...], "page": 0, "size": 20, "totalElements": 150, "totalPages": 8, "last": false }`.
+> O formato com envelope `{success, data}` abaixo é a opção **customizada/legada** do tradeoff "Envelope de
+> resposta" (SKILL.md); use-o só se o projeto já adotou o envelope em todas as respostas. Não misture os dois.
+
 ```json
 { "success": true, "data": { "content": [...], "page": 0, "size": 20, "totalElements": 150, "totalPages": 8, "last": false } }
 ```
