@@ -1,0 +1,12 @@
+{
+  "name": "srportto-catalogo",
+  "description": "Catálogo de skills, agents e comandos para Java 25 + Spring Boot 4.",
+  "owner": { "name": "srportto" },
+  "plugins": [
+    {
+      "name": "catalogo-java",
+      "source": "./",
+      "description": "Catálogo Java: skills, agents e comandos de fluxo."
+    }
+  ]
+}

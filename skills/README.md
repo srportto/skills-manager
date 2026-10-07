@@ -6,6 +6,21 @@ sistemas Java com limites de recursos explícitos e evidência de funcionamento.
 
 ## Fonte e instalação
 
+### Instalação como plugin do Claude Code
+
+```text
+/plugin marketplace add srportto/skills-manager
+/plugin install catalogo-java@srportto-catalogo
+```
+
+Skills, agents e comandos `/opsx:*` passam a vir do plugin `catalogo-java` (marketplace `srportto-catalogo`).
+Validação manual pendente: o teste ponta a ponta numa sessão limpa ainda não foi registrado; o
+`PluginManifestoTest` só garante a coerência dos manifestos em `.claude-plugin/`.
+
+A cópia manual descrita abaixo continua válida como alternativa.
+
+### Cópia manual (alternativa)
+
 Este repositório é a **fonte** do catálogo:
 
 | Conteúdo | Fonte (este repositório) | Destino típico de instalação |
