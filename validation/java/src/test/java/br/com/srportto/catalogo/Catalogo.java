@@ -97,6 +97,13 @@ final class Catalogo {
         }
     }
 
+    /** Pastas de skill da trilha (exclui ferramentas auxiliares preservadas). */
+    static List<Path> skillsDaTrilha() {
+        return diretorios("skills").stream()
+                .filter(p -> !AUXILIARES.containsKey(p.getFileName().toString()))
+                .toList();
+    }
+
     static List<Path> agents() {
         try (Stream<Path> itens = Files.list(RAIZ.resolve("agents"))) {
             return itens.filter(p -> p.toString().endsWith(".md")).sorted().toList();
