@@ -12,5 +12,5 @@ CDN: cache key inclui dimensões relevantes (idioma/versão/tenant quando aplic�
 
 No Java, configure timeout de conexão e de requisição no HttpClient ou cliente gerenciado pelo Spring; use pooling e orçamento restante. WebSocket/gRPC de longa duração exigem limites por conexão, reconexão com jitter e drenagem no deploy.
 
-Prova: failover DNS com caches; LB remove instância indisponível; overload resulta em rejeição previsível; headers não burlam limite; CDN não mistura conteúdo privado. Configuração cloud pertence a cloud-architect; contrato HTTP a api-rest-design.
+Prova: failover DNS com caches; LB remove instância indisponível; overload resulta em rejeição previsível; headers não burlam limite; CDN não mistura conteúdo privado. Configuração cloud pertence à skill `cloud-architect` (agent `arquiteto-cloud`); contrato HTTP a api-rest-design.
 

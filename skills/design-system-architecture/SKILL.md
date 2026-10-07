@@ -30,7 +30,7 @@ requisitos e capacidade mensuráveis até decisões registradas (ADR), proteçõ
 - Camada de um código dentro da aplicação hexagonal → `arquitetura-limpa-java`.
 - Stack Spring Boot 4 e camadas clássicas → `arquitetura-limpa-java` (`references/camadas-classicas.md`, `references/modulos-spring.md`).
 - Contrato HTTP (OpenAPI, RFC 9457, 429/503) → `api-rest-design`.
-- Topologia cloud concreta (VPC, IAM, DR, FinOps) → `cloud-architect`.
+- Topologia cloud concreta (VPC, IAM, DR, FinOps) → skill `cloud-architect` (agent `arquiteto-cloud`).
 - Implementação de backpressure, retry, breaker, bulkhead → `resiliencia-controle-fluxo-java` (esta skill
   decide **onde** e **com qual limite**; aquela explica **como**).
 - Ack/offset/DLQ concretos → `mensageria-sqs-kafka`.
