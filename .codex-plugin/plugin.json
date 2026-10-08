@@ -1,0 +1,7 @@
+{
+  "name": "catalogo-java",
+  "version": "2.0.0",
+  "description": "Skills para engenharia de software e system design com Java 25 e Spring Boot 4.",
+  "author": { "name": "srportto" },
+  "skills": "./skills/"
+}

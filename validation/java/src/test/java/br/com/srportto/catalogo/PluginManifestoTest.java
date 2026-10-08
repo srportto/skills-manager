@@ -17,10 +17,19 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 /** Valida os manifestos do plugin e do marketplace do Claude Code (JSON é subconjunto de YAML). */
 class PluginManifestoTest {
     private static final Path DIR = Catalogo.RAIZ.resolve(".claude-plugin");
+    private static final Path DIR_CODEX = Catalogo.RAIZ.resolve(".codex-plugin");
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> ler(String arquivo) throws IOException {
         var caminho = DIR.resolve(arquivo);
+        assertTrue(Files.isRegularFile(caminho), "manifesto ausente: " + caminho);
+        var yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
+        return (Map<String, Object>) yaml.load(Files.readString(caminho));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> lerCodex(String arquivo) throws IOException {
+        var caminho = DIR_CODEX.resolve(arquivo);
         assertTrue(Files.isRegularFile(caminho), "manifesto ausente: " + caminho);
         var yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
         return (Map<String, Object>) yaml.load(Files.readString(caminho));
@@ -57,5 +66,13 @@ class PluginManifestoTest {
         var fonte = (String) primeiroPlugin(marketplace).get("source");
         assertNotNull(fonte, "plugin sem 'source'");
         assertTrue(Files.isDirectory(Catalogo.RAIZ.resolve(fonte).normalize()), "source inexistente: " + fonte);
+    }
+
+    @Test
+    void manifestoCodexDeclaraAsSkillsDoCatalogo() throws IOException {
+        var manifesto = lerCodex("plugin.json");
+        assertEquals("catalogo-java", manifesto.get("name"));
+        assertEquals("./skills/", manifesto.get("skills"));
+        assertTrue(Files.isDirectory(Catalogo.RAIZ.resolve("skills")));
     }
 }
