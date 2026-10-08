@@ -210,25 +210,64 @@ Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` 
 | `/opsx:propose` | Cria uma proposta OpenSpec. |
 | `/opsx:sync` | Sincroniza delta specs. |
 
-## Mapa de decisão por tarefa
+## Mapa rápido de skills por tarefa
 
 | Tarefa | Skill principal | Complementos |
 |---|---|---|
 | Criar aplicação | `criar-aplicacao-java` | `arquitetura-limpa-java`, `mensageria-sqs-kafka`, `persistencia-jpa` |
 | Decidir camada ou módulo | `arquitetura-limpa-java` | `design-system-architecture` |
 | Desenhar sistema distribuído ou ADR | `design-system-architecture` | `resiliencia-controle-fluxo-java`, `gerar-diagramas` |
+| Proteger fluxo contra sobrecarga ou falha | `resiliencia-controle-fluxo-java` | `testes-sistemas-java`, `monitoramento-java` |
+| Provar concorrência, idempotência, falha ou carga | `testes-sistemas-java` | `resiliencia-controle-fluxo-java` |
+| Decompor monólito em microsserviços | `arquitetura-limpa-java` | `design-system-architecture`, `mensageria-sqs-kafka` |
 | Projetar API | `api-rest-design` | `testes-sistemas-java` |
 | Diagnosticar JPA | `persistencia-jpa` | `banco-de-dados-performance` |
 | Otimizar banco | `banco-de-dados-performance` | `persistencia-jpa` |
+| Padronizar logs estruturados | `monitoramento-java` | `revisao-de-codigo-java` |
 | Configurar observabilidade | `monitoramento-java` | `devops-cicd` |
 | Implementar segurança ou quotas | `seguranca-aplicacao-java` | `resiliencia-controle-fluxo-java` |
+| Refinar demanda ou história | `refinamento-de-historias` | `openspec-propose`, `api-rest-design` |
+| Revisar diff ou pull request | `revisao-de-codigo-java` | `testes-sistemas-java`, `arquitetura-limpa-java` |
 | Adicionar mensageria | `mensageria-sqs-kafka` | `testes-sistemas-java` |
 | Usar Redis ou Valkey | `spring-data-redis` | `resiliencia-controle-fluxo-java` |
+| Escolher padrões de projeto | `padroes-de-projeto-java` | `qualidade-codigo-java` |
+| Migrar para recursos modernos Java | `java-moderno` | `revisao-de-codigo-java` |
+| Gerar diagrama Mermaid | `gerar-diagramas` | `design-system-architecture` |
 | Pipeline, imagem e Kubernetes | `devops-cicd` | `monitoramento-java` |
 | Cloud, IAM, DR e custo | `cloud-architect` | `terraform-engineer` |
 | Chaos engineering | `chaos-engineer` | `monitoramento-java` |
 | Refatorar sem mudar comportamento | `qualidade-codigo-java` | `remover-imports-nao-usados` |
+| Remover imports não usados | `remover-imports-nao-usados` | — |
+| Usar Terraform | `terraform-engineer` | `cloud-architect` |
+| Criar ou consultar grafo de conhecimento | `graphify` | — |
 | Trabalhar por especificação | `openspec-propose` | `openspec-apply-change`, `openspec-sync-specs` |
+
+## Fluxos de trabalho
+
+| Você quer... | Primeiro | Depois |
+|---|---|---|
+| Criar uma aplicação nova | `java-construtor` | `java-revisor` no modo `auditoria` |
+| Desenhar um sistema ou decisão arquitetural | `arquiteto-sistemas` | `java-construtor` → `java-revisor` |
+| Adicionar feature em aplicação existente | sessão principal com skills | `java-revisor` em modo `tempestivo` e depois `auditoria` |
+| Revisar um PR ou diff | `java-revisor` no modo `tempestivo` | `java-revisor` no modo `auditoria`, se necessário |
+| Aplicar refactoring | `refatorador-java` | `java-revisor` no modo `tempestivo` |
+| Desenhar contrato de API | `projetista-api` | `java-construtor` → `java-revisor` |
+| Investigar query lenta ou pool saturado | `especialista-banco-dados` | — |
+| Configurar observabilidade e SLO | `especialista-monitoramento` | `engenheiro-chaos` exercita os alertas |
+| Testar resiliência | `engenheiro-chaos` | `especialista-monitoramento` |
+| Auditar segurança | `engenheiro-seguranca` | `java-revisor` no modo `auditoria` |
+| Montar pipeline, imagem ou Kubernetes | `engenheiro-devops` | `java-revisor` no modo `auditoria` para entrega Java |
+
+`java-revisor` é a última linha de defesa antes de declarar uma entrega pronta. O modo `tempestivo` cobre um diff pontual; `auditoria` emite veredicto para a entrega completa.
+
+## Migração de nomes
+
+| Nome antigo | Destino | Observação |
+|---|---|---|
+| `refactoring-remove-parameter` | `qualidade-codigo-java` | Consulte `references/refatoracoes-fowler.md#remove-parameter`. |
+| `java-architecture` | `arquitetura-limpa-java` + `testes-sistemas-java` | Camadas e módulos vivem em `arquitetura-limpa-java`; testes de slice e Testcontainers vivem em `testes-sistemas-java`. |
+| `padrao-de-logs-java` | `monitoramento-java` | Consulte `references/logs-estruturados.md`, `logs-mdc-correlacao.md` e `logs-por-camada.md`. |
+| agent `cloud-architect` | agent `arquiteto-cloud` | O nome foi alterado para evitar ambiguidade com a skill `cloud-architect`. |
 
 ## Estrutura do repositório
 

@@ -103,6 +103,15 @@ class ReferenciasCatalogoTest {
         assertTrue(erros.isEmpty(), () -> falhas(erros));
     }
 
+    @DisplayName("ReferenciasCatalogo: Indice deve preservar guias de descoberta")
+    @Test
+    void indiceDevePreservarGuiasDeDescoberta() {
+        String texto = Catalogo.ler(Catalogo.RAIZ.resolve("README.md"));
+        for (String secao : List.of("## Fluxos de trabalho", "## Migração de nomes", "## Mapa rápido de skills por tarefa")) {
+            assertTrue(texto.contains(secao), "README.md sem a seção " + secao);
+        }
+    }
+
     @DisplayName("ReferenciasCatalogo: Matriz de cobertura deve rastrear todos os modulos")
     @Test
     void matrizDeCoberturaDeveRastrearTodosOsModulos() {
