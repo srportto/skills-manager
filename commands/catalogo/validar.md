@@ -5,7 +5,7 @@ category: Workflow
 tags: [catalogo, validacao]
 ---
 
-Execute, a partir da raiz do repositório, os quatro comandos Maven da seção "Validação do catálogo" de `skills/README.md` e
+Execute, a partir da raiz do repositório, os quatro comandos Maven da seção "Validação do catálogo" de `README.md` e
 registre o resultado de cada um (contagem de testes, falhas, pulados). Não use `-DskipTests`.
 
 Relate em duas listas: **executado** (comando, contagem) e **pendente** (comando não rodado ou teste pulado, com o

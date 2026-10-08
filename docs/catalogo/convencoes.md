@@ -4,7 +4,7 @@
 
 Neste repositório, `skills/<nome>/SKILL.md` e `agents/<nome>.md` são as fontes. Em uma instalação, o executor pode copiá-las para `.claude/skills`, `.codex/skills` ou outra raiz. Resolva referências usando a raiz em que a skill foi encontrada, nunca um caminho absoluto de uma máquina. Links relativos entre skills continuam relativos ao catálogo.
 
-`skills/README.md` é o índice. O frontmatter identifica cada item; a lista `skills` de um agent deve referenciar identificadores existentes. `metadata.related-skills` pode usar lista YAML ou texto separado por vírgulas. Templates, URLs e exemplos de caminhos não são dependências locais reais.
+[README.md](../../README.md) é o índice canônico. O frontmatter identifica cada item; a lista `skills` de um agent deve referenciar identificadores existentes. `metadata.related-skills` pode usar lista YAML ou texto separado por vírgulas. Templates, URLs e exemplos de caminhos não são dependências locais reais.
 
 ## Contrato de skill
 

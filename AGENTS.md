@@ -1,6 +1,6 @@
 # Catálogo de skills, agents e comandos
 
-Catálogo Java 25 / Spring Boot 4 empacotado como plugin do Codex. Índice em `skills/README.md`;
+Catálogo Java 25 / Spring Boot 4 empacotado como plugin do Codex. Índice em `README.md`;
 regras de anatomia em [docs/catalogo/convencoes.md](docs/catalogo/convencoes.md).
 
 - Idioma: português do Brasil em textos, respostas e comentários de código; termos técnicos consagrados em inglês.
