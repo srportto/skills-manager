@@ -76,7 +76,7 @@ class ReferenciasCatalogoTest {
     @DisplayName("ReferenciasCatalogo: Indice deve listar inventario sem contagem desatualizada")
     @Test
     void indiceDeveListarInventarioSemContagemDesatualizada() {
-        Path indice = Catalogo.RAIZ.resolve("skills/README.md");
+        Path indice = Catalogo.RAIZ.resolve("README.md");
         String texto = Catalogo.ler(indice);
         var erros = new ArrayList<String>();
         var skills = Catalogo.diretorios("skills");
@@ -84,20 +84,20 @@ class ReferenciasCatalogoTest {
         for (Path skill : skills) {
             String nome = skill.getFileName().toString();
             if (!texto.contains("`" + nome + "`") && !texto.contains(nome + "/")) {
-                erros.add("skills/README.md não cita a skill " + nome);
+                erros.add("README.md não cita a skill " + nome);
             }
         }
         for (Path agent : agents) {
             String nome = agent.getFileName().toString().replace(".md", "");
             if (!texto.contains("`" + nome + "`") && !texto.contains(nome + ".md")) {
-                erros.add("skills/README.md não cita o agent " + nome);
+                erros.add("README.md não cita o agent " + nome);
             }
         }
         var m = CONTAGEM.matcher(texto);
         while (m.find()) {
             int esperado = m.group(2).equals("skills") ? skills.size() : agents.size();
             if (Integer.parseInt(m.group(1)) != esperado) {
-                erros.add("skills/README.md contagem desatualizada: '" + m.group() + "' (inventário: " + esperado + ")");
+                erros.add("README.md contagem desatualizada: '" + m.group() + "' (inventário: " + esperado + ")");
             }
         }
         assertTrue(erros.isEmpty(), () -> falhas(erros));

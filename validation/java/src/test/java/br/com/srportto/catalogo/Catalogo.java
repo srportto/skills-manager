@@ -73,6 +73,8 @@ final class Catalogo {
     /** Markdown versionado da trilha do catálogo: skills, agents, docs/catalogo e README dos exemplos. */
     static List<Path> markdownDaTrilha() {
         var arquivos = new ArrayList<Path>();
+        Path indice = RAIZ.resolve("README.md");
+        if (Files.isRegularFile(indice)) arquivos.add(indice);
         for (String raiz : List.of("skills", "agents", "docs/catalogo", "examples/java")) {
             Path base = RAIZ.resolve(raiz);
             if (!Files.isDirectory(base)) continue;
