@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Refatorar"
+name: "Refatorar"
 description: Refatora código Java e revisa o resultado
 category: Workflow
 tags: [exj, java, refatoracao]

@@ -96,7 +96,7 @@ O catálogo preserva o manifesto e o marketplace compatíveis com Claude Code. D
 
 ```text
 /plugin marketplace add srportto/skills-manager
-/plugin install exj@srportto-exj
+/plugin install exj@srportto-catalogo
 ```
 
 Como alternativa, instale manualmente `skills/<nome>/` em `.claude/skills/<nome>/`, os arquivos de `agents/` em `.claude/agents/` e os comandos em `.claude/commands/`. As referências relativas de uma skill devem acompanhar o diretório instalado.
@@ -267,7 +267,7 @@ Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` 
 
 ## Migração de nomes
 
-O plugin antes identificado como `catalogo-java` passou a usar `exj` nos clientes Codex e Claude Code; o marketplace Claude passou de `srportto-catalogo` para `srportto-exj`. Em instalações existentes, atualize o identificador do plugin nas configurações locais ou do projeto, habilite `exj` e desabilite a entrada antiga. O caminho do clone pode permanecer `plugins/catalogo-java/` ou `~/.codex/plugins/catalogo-java/`. No Claude Code, instale `/plugin install exj@srportto-exj` após atualizar o marketplace. O repositório GitHub continua `skills-manager`; as skills especializadas, os agents e os comandos `/opsx:*` mantêm seus nomes.
+O plugin antes identificado como `catalogo-java` passou a usar `exj` nos clientes Codex e Claude Code; o marketplace Claude segue como `srportto-catalogo`. Em instalações existentes, atualize o identificador do plugin nas configurações locais ou do projeto, habilite `exj` e desabilite a entrada antiga. O caminho do clone pode permanecer `plugins/catalogo-java/` ou `~/.codex/plugins/catalogo-java/`. No Claude Code, instale `/plugin install exj@srportto-catalogo` após atualizar o marketplace. O repositório GitHub continua `skills-manager`; as skills especializadas, os agents e os comandos `/opsx:*` mantêm seus nomes.
 
 | Nome antigo | Destino | Observação |
 |---|---|---|

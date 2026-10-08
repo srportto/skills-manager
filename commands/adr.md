@@ -1,5 +1,5 @@
 ---
-name: "EXJ: ADR"
+name: "ADR"
 description: Registra decisão arquitetural com arquiteto-sistemas
 category: Workflow
 tags: [exj, arquitetura, adr]

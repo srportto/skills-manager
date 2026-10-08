@@ -1,5 +1,5 @@
 ---
-name: "OPSX: Sync"
+name: "Sync"
 description: Sync delta specs from a change to main specs
 category: Workflow
 tags: [workflow, specs, experimental]

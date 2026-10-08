@@ -1,5 +1,5 @@
 ---
-name: "OPSX: Apply"
+name: "Apply"
 description: Implement tasks from an OpenSpec change (Experimental)
 category: Workflow
 tags: [workflow, artifacts, experimental]

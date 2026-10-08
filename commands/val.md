@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Validar"
+name: "Validar"
 description: Roda a validação Maven do catálogo e relata resultados
 category: Workflow
 tags: [exj, validacao]

@@ -18,10 +18,10 @@ class ComandosCatalogoTest {
     /** Tokens kebab-case entre crases que não são skill nem agent (nenhum hoje; justifique cada entrada). */
     private static final Set<String> EXCECOES = Set.of();
 
-    @DisplayName("ComandosCatalogo: fluxos EXJ usam o namespace curto e OpenSpec mantém opsx")
+    @DisplayName("ComandosCatalogo: fluxos EXJ ficam direto em commands/ (namespace /exj:*) e OpenSpec mantém opsx")
     @Test void comandosPublicosUsamNamespaceExj() throws Exception {
         for (var nome : List.of("app", "feat", "ref", "rev", "adr", "av", "val")) {
-            assertTrue(Files.isRegularFile(Catalogo.RAIZ.resolve("commands/exj/" + nome + ".md")), nome);
+            assertTrue(Files.isRegularFile(Catalogo.RAIZ.resolve("commands/" + nome + ".md")), nome);
         }
         for (var nome : List.of("apply", "archive", "explore", "propose", "sync")) {
             assertTrue(Files.isRegularFile(Catalogo.RAIZ.resolve("commands/opsx/" + nome + ".md")), nome);
