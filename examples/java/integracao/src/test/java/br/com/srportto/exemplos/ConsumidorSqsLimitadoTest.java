@@ -138,7 +138,8 @@ class ConsumidorSqsLimitadoTest {
         }, 2, Duration.ofSeconds(30));
         for (int i = 0; i < 5; i++) fila.enviar("m" + i);
 
-        cicloAte(() -> consumidor.emVoo() == 2);
+        // emVoo() conta o despacho; só "ativas" garante que os dois efeitos de fato começaram (virtual threads).
+        cicloAte(() -> consumidor.emVoo() == 2 && ativas.get() == 2);
         for (int i = 0; i < 5; i++) consumidor.ciclo();
         // Nunca pede mais mensagens do que a capacidade livre; nada é apagado antes do efeito.
         assertTrue(fila.maximosPedidos.stream().allMatch(n -> n <= 2), fila.maximosPedidos::toString);
