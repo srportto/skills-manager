@@ -1,7 +1,7 @@
 {
-  "name": "catalogo-java",
+  "name": "exj",
   "version": "2.0.0",
-  "description": "Skills para engenharia de software e system design com Java 25 e Spring Boot 4.",
+  "description": "EXJ — Especialista em tudo Java: skills para Java 25 e Spring Boot 4.",
   "author": { "name": "srportto" },
   "skills": "./skills/"
 }

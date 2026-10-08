@@ -1,8 +1,8 @@
 ---
-name: "Arq: ADR"
-description: Registra uma decisão arquitetural (ADR) com o agent arquiteto-sistemas
+name: "EXJ: ADR"
+description: Registra decisão arquitetural com arquiteto-sistemas
 category: Workflow
-tags: [arquitetura, adr]
+tags: [exj, arquitetura, adr]
 ---
 
 Acione o agent `arquiteto-sistemas` para registrar a decisão descrita abaixo, usando o template

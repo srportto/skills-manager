@@ -1,8 +1,8 @@
 ---
-name: "Java: Revisar"
-description: Revisa diff, classe ou entrega Java com o agent java-revisor
+name: "EXJ: Revisar"
+description: Revisa código Java com java-revisor
 category: Workflow
-tags: [java, revisao]
+tags: [exj, java, revisao]
 ---
 
 Acione o agent `java-revisor` com a entrada abaixo. Modo: primeiro argumento (`tempestivo` ou `auditoria`);

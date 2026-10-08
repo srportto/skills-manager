@@ -35,12 +35,13 @@ skills/<nome>/
 - Reference com **mais de 300 linhas** abre com `## Sumário`.
 - Conteúdo movido para `references/` é movido, não reescrito: nenhuma regra some no fatiamento.
 - `assets/` guarda só o que vira saída (modelo copiado, YAML, SQL); explicação fica em `references/`.
-- `evals/evals.json` acompanha a skill; mudou a skill, atualize os casos e rode `/catalogo:avaliar`.
+- `evals/evals.json` acompanha a skill; mudou a skill, atualize os casos e rode `/exj:av`.
 - Ferramentas auxiliares (`Catalogo.AUXILIARES`) só recebem ajustes estruturais mínimos (sumário, links).
 
 ## Comandos
 
-Os comandos de `commands/{java,arq,catalogo,opsx}/` são **finos**: acionam o agent (ou a skill) certo,
+Os comandos de `commands/exj/` oferecem os fluxos do EXJ; os de `commands/opsx/` oferecem o fluxo OpenSpec.
+Todos são **finos**: acionam o agent (ou a skill) certo,
 repassam `$ARGUMENTS` e **não repetem** passos, regras ou checklists, que ficam na skill. Um comando que
 cresce além de poucas linhas indica conteúdo que deveria estar numa skill. Todo agent ou skill citado deve
 existir; os testes de `validation/java` verificam os tokens dos comandos.
