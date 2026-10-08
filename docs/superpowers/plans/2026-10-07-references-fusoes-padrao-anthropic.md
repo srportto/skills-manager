@@ -146,7 +146,7 @@ Expected: `0 linhas perdidas`, exceto frontmatter e títulos reescritos; cada li
 **Interfaces:**
 - Produces: `Catalogo.skillsDaTrilha(): List<Path>` (pastas de skill não auxiliares); `PadraoAnthropicTest.PENDENCIAS: Set<String>` no formato `"<skill>:<regra>"` — tasks seguintes **removem** entradas; a Task 16 exige o conjunto vazio.
 
-- [ ] **Step 1: Escrever os testes**
+- [x] **Step 1: Escrever os testes**
 
 ```java
 package br.com.srportto.catalogo;
@@ -279,14 +279,14 @@ Em `Catalogo.java`, depois de `diretorios(...)`:
     }
 ```
 
-- [ ] **Step 2: Rodar e confirmar que só as pendências declaradas existem**
+- [x] **Step 2: Rodar e confirmar que só as pendências declaradas existem**
 
 Run: `mvn -f validation/java/pom.xml verify`
 Expected: PASS. Se falhar, a mensagem lista uma violação não prevista: acrescente-a a `PENDENCIAS` **somente** se for violação real do estado atual (não bug do teste) e anote qual task a resolve.
 
-- [ ] **Step 3: Provar que o teste morde** — remova temporariamente `"revisao-de-codigo-java:tamanho"` de `PENDENCIAS`, rode de novo e confirme FAIL com `revisao-de-codigo-java:tamanho → 532 linhas`. Restaure.
+- [x] **Step 3: Provar que o teste morde** — remova temporariamente `"revisao-de-codigo-java:tamanho"` de `PENDENCIAS`, rode de novo e confirme FAIL com `revisao-de-codigo-java:tamanho → 532 linhas`. Restaure.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add validation/java/src/test/java/br/com/srportto/catalogo/
@@ -307,11 +307,11 @@ git commit -m "test(catalogo): regras do padrão de skill da Anthropic com pend�
 - Modify: `skills/padroes-de-projeto-java/SKILL.md`, `skills/remover-imports-nao-usados/SKILL.md` (`related-skills`), `skills/README.md` (inventário, mapa rápido, nova seção "Migração de nomes"), `docs/catalogo/matriz-cobertura.md` se citar
 - Modify: `validation/java/.../PadraoAnthropicTest.java` (remover `qualidade-codigo-java/references/refatoracoes-java.md:sumario`)
 
-- [ ] **Step 1:** Copiar as seções da skill removida para `refatoracoes-fowler.md` (texto integral, sem frontmatter); deduplicar o que já existia na `## Remove Parameter` mantendo a versão mais completa de cada parágrafo.
-- [ ] **Step 2:** Abrir o arquivo com `## Sumário` listando cada refactoring com âncora.
-- [ ] **Step 3:** Resíduos — Run: `grep -rn "refactoring-remove-parameter" --include=*.md --include=*.java . | grep -v "^./.superpowers\|^./docs/superpowers"` → Expected: só a linha da tabela "Migração de nomes" no README.
-- [ ] **Step 4:** Run: `mvn -f validation/java/pom.xml verify` → Expected: PASS.
-- [ ] **Step 5:** Commit `refactor(catalogo): funde refactoring-remove-parameter em qualidade-codigo-java`.
+- [x] **Step 1:** Copiar as seções da skill removida para `refatoracoes-fowler.md` (texto integral, sem frontmatter); deduplicar o que já existia na `## Remove Parameter` mantendo a versão mais completa de cada parágrafo.
+- [x] **Step 2:** Abrir o arquivo com `## Sumário` listando cada refactoring com âncora.
+- [x] **Step 3:** Resíduos — Run: `grep -rn "refactoring-remove-parameter" --include=*.md --include=*.java . | grep -v "^./.superpowers\|^./docs/superpowers"` → Expected: só a linha da tabela "Migração de nomes" no README.
+- [x] **Step 4:** Run: `mvn -f validation/java/pom.xml verify` → Expected: PASS.
+- [x] **Step 5:** Commit `refactor(catalogo): funde refactoring-remove-parameter em qualidade-codigo-java`.
 
 ### Task 3: Fundir `java-architecture` em `arquitetura-limpa-java` e `testes-sistemas-java`
 
@@ -328,10 +328,10 @@ git commit -m "test(catalogo): regras do padrão de skill da Anthropic com pend�
 - Modify: `skills/arquitetura-limpa-java/SKILL.md` — vira: decisão hexagonal (padrão) × clássica, regra de dependência, "que classe vai em qual camada", exemplo mínimo, mapa de erros, **Guia de references**; `description` passa a cobrir "app não hexagonal e escolha de módulos Spring"
 - Modify: todos os `related-skills`/agents/README/matriz que citam `java-architecture` (`grep -rln java-architecture skills agents docs/catalogo commands`)
 
-- [ ] **Step 1:** Rodar `preserva.sh` (seção "Ferramenta compartilhada") contra `HEAD:skills/java-architecture/SKILL.md` + `HEAD:skills/arquitetura-limpa-java/SKILL.md` depois de mover — Expected: `0 linhas perdidas`.
-- [ ] **Step 2:** Resíduos: `grep -rn "java-architecture" skills agents commands docs/catalogo` → Expected: só README (tabela de migração).
-- [ ] **Step 3:** `mvn -f validation/java/pom.xml verify` → PASS.
-- [ ] **Step 4:** Commit `refactor(catalogo): funde java-architecture em arquitetura-limpa-java e testes-sistemas-java`.
+- [x] **Step 1:** Rodar `preserva.sh` (seção "Ferramenta compartilhada") contra `HEAD:skills/java-architecture/SKILL.md` + `HEAD:skills/arquitetura-limpa-java/SKILL.md` depois de mover — Expected: `0 linhas perdidas`.
+- [x] **Step 2:** Resíduos: `grep -rn "java-architecture" skills agents commands docs/catalogo` → Expected: só README (tabela de migração).
+- [x] **Step 3:** `mvn -f validation/java/pom.xml verify` → PASS.
+- [x] **Step 4:** Commit `refactor(catalogo): funde java-architecture em arquitetura-limpa-java e testes-sistemas-java`.
 
 ### Task 4: Fundir `padrao-de-logs-java` em `monitoramento-java`
 
@@ -347,15 +347,15 @@ git commit -m "test(catalogo): regras do padrão de skill da Anthropic com pend�
 - Modify: `skills/monitoramento-java/SKILL.md` — workflow de instrumentação + tabela "pilar → reference"; `description` inclui "padrão de logs, MDC, nível"
 - Modify: agents `java-revisor`, `engenheiro-seguranca`, `especialista-monitoramento` (skills e resolução: "logs → `monitoramento-java/references/logs-*.md`"); `related-skills` de `seguranca-aplicacao-java`, `revisao-de-codigo-java`; README; matriz (linha M8)
 
-- [ ] **Step 1: Preservação** (script em "Ferramenta compartilhada").
+- [x] **Step 1: Preservação** (script em "Ferramenta compartilhada").
 
 Run: `bash preserva.sh HEAD:skills/padrao-de-logs-java/SKILL.md skills/monitoramento-java`
 Expected: `0 linhas perdidas` — exceto frontmatter e títulos reescritos; cada linha restante é justificada no commit ou recolocada.
 
-- [ ] **Step 2:** Mesmo script para `HEAD:skills/monitoramento-java/SKILL.md`.
-- [ ] **Step 3:** Resíduos `grep -rn "padrao-de-logs-java" skills agents commands docs/catalogo` → só README.
-- [ ] **Step 4:** `mvn -f validation/java/pom.xml verify` → PASS.
-- [ ] **Step 5:** Commit `refactor(catalogo): funde padrao-de-logs-java em monitoramento-java`.
+- [x] **Step 2:** Mesmo script para `HEAD:skills/monitoramento-java/SKILL.md`.
+- [x] **Step 3:** Resíduos `grep -rn "padrao-de-logs-java" skills agents commands docs/catalogo` → só README.
+- [x] **Step 4:** `mvn -f validation/java/pom.xml verify` → PASS.
+- [x] **Step 5:** Commit `refactor(catalogo): funde padrao-de-logs-java em monitoramento-java`.
 
 ---
 
@@ -443,9 +443,9 @@ Expected: `0 linhas perdidas` — exceto frontmatter e títulos reescritos; cada
 
 (adicionar `com.fasterxml.jackson.core:jackson-databind` com escopo `test` em `validation/java/pom.xml`, versão fixada em `docs/catalogo/compatibilidade.md`).
 
-- [ ] **Step 1:** Escrever o teste; Run `mvn -f validation/java/pom.xml verify` → Expected: FAIL listando cada skill sem evals.
-- [ ] **Step 2:** Criar os `evals.json`: casos A01–A12 de `avaliacoes-agents.md` vão para a skill-fonte da coluna "Fonte no catálogo"; demais skills ganham 2 casos de decisão + `should_not_trigger` com um prompt da skill vizinha (ex.: `persistencia-jpa` ↔ `banco-de-dados-performance`).
-- [ ] **Step 3:** Run → PASS. Commit `test(catalogo): evals de decisão e disparo por skill`.
+- [x] **Step 1:** Escrever o teste; Run `mvn -f validation/java/pom.xml verify` → Expected: FAIL listando cada skill sem evals.
+- [x] **Step 2:** Criar os `evals.json`: casos A01–A12 de `avaliacoes-agents.md` vão para a skill-fonte da coluna "Fonte no catálogo"; demais skills ganham 2 casos de decisão + `should_not_trigger` com um prompt da skill vizinha (ex.: `persistencia-jpa` ↔ `banco-de-dados-performance`).
+- [x] **Step 3:** Run → PASS. Commit `test(catalogo): evals de decisão e disparo por skill`.
 
 ---
 
@@ -474,10 +474,10 @@ Expected: `0 linhas perdidas` — exceto frontmatter e títulos reescritos; cada
 }
 ```
 
-- [ ] **Step 1:** Antes de escrever, confirmar com o agent `claude-code-guide` o schema atual de `plugin.json`/`marketplace.json` e como comandos em subpasta (`commands/opsx/apply.md`) são nomeados dentro de plugin; ajustar os JSON acima ao que a doc disser.
-- [ ] **Step 2:** `PluginManifestoTest`: JSON válido; `plugin.json.name` igual a `marketplace.plugins[0].name`; `version` semver; `source` existe.
-- [ ] **Step 3:** Teste manual: `/plugin marketplace add <caminho-local-do-repo>` numa sessão limpa e conferir que skills, agents e `/opsx:*` aparecem. Registrar resultado no PR (não é evidência automatizada).
-- [ ] **Step 4:** `mvn -f validation/java/pom.xml verify` → PASS. Commit `feat(plugin): empacota o catálogo como plugin do Claude Code`.
+- [ ] **Step 1:** Antes de escrever, confirmar com o agent `claude-code-guide` o schema atual de `plugin.json`/`marketplace.json` e como comandos em subpasta (`commands/opsx/apply.md`) são nomeados dentro de plugin; ajustar os JSON acima ao que a doc disser. — *Não feito como escrito: schema tirado de manifestos oficiais instalados localmente (ver ruling no progress.md); nome dos comandos dentro do plugin segue sem confirmação.*
+- [x] **Step 2:** `PluginManifestoTest`: JSON válido; `plugin.json.name` igual a `marketplace.plugins[0].name`; `version` semver; `source` existe.
+- [ ] **Step 3:** Teste manual: `/plugin marketplace add <caminho-local-do-repo>` numa sessão limpa e conferir que skills, agents e `/opsx:*` aparecem. Registrar resultado no PR (não é evidência automatizada). — *Pendente.*
+- [x] **Step 4:** `mvn -f validation/java/pom.xml verify` → PASS. Commit `feat(plugin): empacota o catálogo como plugin do Claude Code`.
 
 ### Task 16: Comandos de fluxo + agents apontando references
 
@@ -534,10 +534,10 @@ Entrada: $ARGUMENTS
     }
 ```
 
-- [ ] **Step 1:** Escrever `ComandosCatalogoTest`; criar `commands/java/revisar.md` citando `java-revisorx` de propósito → Run → Expected: FAIL `commands/java/revisar.md → java-revisorx`. Corrigir.
-- [ ] **Step 2:** Criar os demais comandos e ajustar agents.
-- [ ] **Step 3:** `mvn -f validation/java/pom.xml verify` → PASS com `PENDENCIAS` vazio.
-- [ ] **Step 4:** Commit `feat(comandos): fluxos java/arq/catalogo e agents resolvendo references`.
+- [x] **Step 1:** Escrever `ComandosCatalogoTest`; criar `commands/java/revisar.md` citando `java-revisorx` de propósito → Run → Expected: FAIL `commands/java/revisar.md → java-revisorx`. Corrigir.
+- [x] **Step 2:** Criar os demais comandos e ajustar agents.
+- [x] **Step 3:** `mvn -f validation/java/pom.xml verify` → PASS com `PENDENCIAS` vazio.
+- [x] **Step 4:** Commit `feat(comandos): fluxos java/arq/catalogo e agents resolvendo references`.
 
 ### Task 17: README "Comece aqui", CLAUDE.md e convenções
 
@@ -547,8 +547,8 @@ Entrada: $ARGUMENTS
 - Create `CLAUDE.md` na raiz: idioma pt-BR; antes de commitar rode `mvn -f validation/java/pom.xml verify`; mudança em skill → atualizar `evals.json` e rodar `/catalogo:avaliar` nos casos afetados; nunca reescrever auxiliares; link para convenções.
 - Modify `docs/catalogo/matriz-cobertura.md`: destinos apontam para as novas references.
 
-- [ ] **Step 1:** Editar; `mvn -f validation/java/pom.xml verify` → PASS (links e inventário).
-- [ ] **Step 2:** Commit `docs(catalogo): guia de entrada, convenções de anatomia e CLAUDE.md`.
+- [x] **Step 1:** Editar; `mvn -f validation/java/pom.xml verify` → PASS (links e inventário).
+- [x] **Step 2:** Commit `docs(catalogo): guia de entrada, convenções de anatomia e CLAUDE.md`.
 
 ---
 
@@ -556,11 +556,11 @@ Entrada: $ARGUMENTS
 
 ### Task 18: Avaliação antes × depois
 
-- [ ] **Step 1:** Baseline já existe em `.superpowers/sdd/2026-10-06-evolucao-skills-agents-java/baseline` — conferir se reflete `main` atual; senão, copiar `skills/` e `agents/` de `main` para `.superpowers/sdd/2026-10-07-references-fusoes/baseline`.
-- [ ] **Step 2:** Rodar `/catalogo:avaliar` (A01–A12, 2 execuções independentes cada) contra baseline e contra a branch; saídas em `docs/catalogo/avaliacoes/2026-10-07/`.
-- [ ] **Step 3:** Meta (de `avaliacoes-agents.md`): nenhum zero, ≥ 90% dos pontos por execução (≥ 22/24; 44/48 somando as duas), nota 2 em A01–A08. Regressão em qualquer caso → abrir a reference/descrição responsável e corrigir antes do merge.
-- [ ] **Step 4:** (Opcional) `skill-creator` → otimização de `description` com os `trigger` dos `evals.json` nas skills cujo disparo falhou.
-- [ ] **Step 5:** Registrar resultados na tabela de `avaliacoes-agents.md`; commit `docs(avaliacoes): resultados pós-fatiamento e fusões`.
+- [x] **Step 1:** Baseline já existe em `.superpowers/sdd/2026-10-06-evolucao-skills-agents-java/baseline` — conferir se reflete `main` atual; senão, copiar `skills/` e `agents/` de `main` para `.superpowers/sdd/2026-10-07-references-fusoes/baseline`.
+- [ ] **Step 2:** Rodar `/catalogo:avaliar` (A01–A12, 2 execuções independentes cada) contra baseline e contra a branch; saídas em `docs/catalogo/avaliacoes/2026-10-07/`. — *Parcial: rodado só contra a branch; comparação com o baseline histórico de `2026-10-06-fase2` (linhas de baseline seguem "pendente" em `avaliacoes-agents.md`).*
+- [x] **Step 3:** Meta (de `avaliacoes-agents.md`): nenhum zero, ≥ 90% dos pontos por execução (≥ 22/24; 44/48 somando as duas), nota 2 em A01–A08. Regressão em qualquer caso → abrir a reference/descrição responsável e corrigir antes do merge.
+- [ ] **Step 4:** (Opcional) `skill-creator` → otimização de `description` com os `trigger` dos `evals.json` nas skills cujo disparo falhou. — *Não executado (opcional).*
+- [x] **Step 5:** Registrar resultados na tabela de `avaliacoes-agents.md`; commit `docs(avaliacoes): resultados pós-fatiamento e fusões`.
 
 ---
 
