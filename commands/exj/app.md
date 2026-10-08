@@ -1,8 +1,8 @@
 ---
-name: "Java: Nova app"
-description: Cria aplicação Java hexagonal buildável com o agent java-construtor e audita ao fim
+name: "EXJ: Criar aplicação"
+description: Cria aplicação Java com java-construtor e audita ao fim
 category: Workflow
-tags: [java, scaffold]
+tags: [exj, java, aplicacao]
 ---
 
 Acione o agent `java-construtor` com a entrada abaixo; ele segue a skill `criar-aplicacao-java` (variante, nome e

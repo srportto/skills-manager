@@ -1,8 +1,8 @@
 ---
-name: "Catálogo: Validar"
-description: Roda a validação Maven do catálogo e relata executado x pendente
+name: "EXJ: Validar"
+description: Roda a validação Maven do catálogo e relata resultados
 category: Workflow
-tags: [catalogo, validacao]
+tags: [exj, validacao]
 ---
 
 Execute, a partir da raiz do repositório, os quatro comandos Maven da seção "Validação do catálogo" de `README.md` e

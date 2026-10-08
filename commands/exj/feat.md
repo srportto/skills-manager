@@ -1,8 +1,8 @@
 ---
-name: "Java: Feature"
-description: Fluxo de feature Java - refinamento, proposta OpenSpec, construção e revisão
+name: "EXJ: Feature"
+description: Conduz feature Java do refinamento à revisão
 category: Workflow
-tags: [java, feature, workflow]
+tags: [exj, java, feature]
 ---
 
 Conduza a feature em etapas, parando se uma etapa bloquear:

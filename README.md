@@ -1,6 +1,6 @@
-# Catálogo Java para skills, agents e comandos
+# EXJ — Especialista em tudo Java
 
-Catálogo em português do Brasil para engenharia de software e system design com **Java 25** e **Spring Boot 4**. Ele reúne instruções reutilizáveis, papéis especializados, comandos de fluxo, exemplos executáveis e validações para criar, projetar, revisar e operar sistemas Java.
+Catálogo em português do Brasil para engenharia de software e system design com **Java 25** e **Spring Boot 4**. O EXJ reúne instruções reutilizáveis, papéis especializados, comandos de fluxo, exemplos executáveis e validações para criar, projetar, revisar e operar sistemas Java.
 
 Use o catálogo para tomar decisões sustentadas por limites de recursos, evidências de teste e fronteiras claras entre arquitetura, implementação, revisão e operação.
 
@@ -32,7 +32,7 @@ Este escopo torna as **skills** disponíveis para a conta local em qualquer proj
   "name": "catalogo-local",
   "plugins": [
     {
-      "name": "catalogo-java",
+      "name": "exj",
       "source": {
         "source": "local",
         "path": "./.codex/plugins/catalogo-java"
@@ -47,10 +47,10 @@ Este escopo torna as **skills** disponíveis para a conta local em qualquer proj
 }
 ```
 
-3. Reinicie o cliente Codex e habilite `catalogo-java@catalogo-local` no navegador de plugins. Se preferir controlar a ativação em arquivo, use em `~/.codex/config.toml`:
+3. Reinicie o cliente Codex e habilite `exj@catalogo-local` no navegador de plugins. Se preferir controlar a ativação em arquivo, use em `~/.codex/config.toml`:
 
 ```toml
-[plugins."catalogo-java@catalogo-local"]
+[plugins."exj@catalogo-local"]
 enabled = true
 ```
 
@@ -66,7 +66,7 @@ Este escopo compartilha o mesmo catálogo com quem clonar o projeto consumidor.
   "name": "catalogo-do-projeto",
   "plugins": [
     {
-      "name": "catalogo-java",
+      "name": "exj",
       "source": {
         "source": "local",
         "path": "./plugins/catalogo-java"
@@ -84,7 +84,7 @@ Este escopo compartilha o mesmo catálogo com quem clonar o projeto consumidor.
 3. Habilite o plugin no `.codex/config.toml` do projeto:
 
 ```toml
-[plugins."catalogo-java@catalogo-do-projeto"]
+[plugins."exj@catalogo-do-projeto"]
 enabled = true
 ```
 
@@ -96,7 +96,7 @@ O catálogo preserva o manifesto e o marketplace compatíveis com Claude Code. D
 
 ```text
 /plugin marketplace add srportto/skills-manager
-/plugin install catalogo-java@srportto-catalogo
+/plugin install exj@srportto-exj
 ```
 
 Como alternativa, instale manualmente `skills/<nome>/` em `.claude/skills/<nome>/`, os arquivos de `agents/` em `.claude/agents/` e os comandos em `.claude/commands/`. As referências relativas de uma skill devem acompanhar o diretório instalado.
@@ -110,26 +110,30 @@ Como alternativa, instale manualmente `skills/<nome>/` em `.claude/skills/<nome>
 | **Comando** | Há um fluxo frequente composto por skill e agent. | Encadeamento curto, sem duplicar regras. |
 | **Exemplo Java** | Você quer validar uma técnica em código executável. | Código Maven e testes reproduzíveis. |
 
-No Codex, uma skill pode ser escolhida pelo contexto ou solicitada explicitamente, por exemplo: `$devops-cicd crie um pipeline para esta aplicação`. Os arquivos de `agents/` e `commands/` descrevem fluxos completos do catálogo, mas clientes Codex não os carregam automaticamente como componentes de plugin. Neles, use a skill indicada e informe o papel ou o fluxo desejado no pedido. No Claude Code, agents e comandos podem ser instalados pelo plugin.
+No Codex, comece com `$exj` para encaminhar uma tarefa Java à skill ou ao agent adequado, ou solicite diretamente uma skill especializada, por exemplo: `$devops-cicd crie um pipeline para esta aplicação`. Os arquivos de `agents/` e `commands/` descrevem fluxos completos do catálogo, mas clientes Codex não os carregam automaticamente como componentes de plugin. Neles, use a skill indicada e informe o papel ou o fluxo desejado no pedido. No Claude Code, agents e comandos podem ser instalados pelo plugin.
 
 ## Uso rápido
 
 | Objetivo | Pedido ou comando recomendado |
 |---|---|
-| Criar aplicação REST com banco | `$criar-aplicacao-java crie uma aplicação de pedidos REST com PostgreSQL` ou `/java:nova-app` |
-| Revisar um diff Java | `$revisao-de-codigo-java revise este diff` ou `/java:revisar tempestivo` |
+| Encontrar o especialista Java adequado | `$exj crie uma aplicação de pedidos REST com PostgreSQL` |
+| Criar aplicação REST com banco | `$criar-aplicacao-java crie uma aplicação de pedidos REST com PostgreSQL` ou `/exj:app` |
+| Conduzir uma feature Java | `/exj:feat` |
+| Refatorar código Java | `/exj:ref` |
+| Revisar um diff Java | `$revisao-de-codigo-java revise este diff` ou `/exj:rev tempestivo` |
 | Projetar uma API | `Use o agent projetista-api para desenhar o contrato desta API` |
 | Investigar N+1 | `$persistencia-jpa investigue este acesso N+1` |
 | Criar pipeline, Dockerfile e Kubernetes | `$devops-cicd prepare CI, imagem e manifests` |
 | Abrir uma mudança orientada a especificação | `/opsx:propose` |
-| Gerar um ADR | `/arq:adr` |
-| Avaliar a qualidade dos agents | `/catalogo:avaliar` |
+| Gerar um ADR | `/exj:adr` |
+| Avaliar a qualidade dos agents | `/exj:av` |
+| Validar o catálogo | `/exj:val` |
 
 Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` → `java-construtor` → `java-revisor` em modo `auditoria`.
 
 ## Inventário
 
-**31 skills**, uma pasta por item em `skills/`: 21 para a trilha Java, 1 para fluxo spec-driven e 9 ferramentas auxiliares. Há também **11 agents** e **12 comandos**.
+**32 skills**, uma pasta por item em `skills/`: 22 para a trilha Java, 1 para fluxo spec-driven e 9 ferramentas auxiliares. Há também **11 agents** e **12 comandos**.
 
 ### Skills da trilha Java
 
@@ -143,6 +147,7 @@ Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` 
 | `criar-aplicacao-java` | Esqueleto Spring Boot 4 e variantes REST, banco, SQS e Kafka | `java-construtor` |
 | `design-system-architecture` | System design, capacidade, SLO, consistência e ADR | `arquiteto-sistemas` |
 | `devops-cicd` | Pipeline, Dockerfile, Kubernetes, probes e drenagem | `engenheiro-devops` |
+| `exj` | Entrada `$exj` que encaminha tarefas Java aos especialistas do catálogo | sessão principal |
 | `gerar-diagramas` | Diagramas Mermaid versionados | sessão principal |
 | `java-moderno` | Records, sealed classes, virtual threads e demais recursos Java 25 | `java-construtor`, `java-revisor` |
 | `mensageria-sqs-kafka` | Ack, offset, DLQ, idempotência, outbox e replay | `java-construtor`, `java-revisor` |
@@ -197,13 +202,13 @@ Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` 
 
 | Comando | Finalidade |
 |---|---|
-| `/arq:adr` | Registra um ADR com `arquiteto-sistemas`. |
-| `/catalogo:avaliar` | Executa o protocolo de avaliação do catálogo. |
-| `/catalogo:validar` | Executa as validações Maven e separa executado de pendente. |
-| `/java:feature` | Refina, propõe, implementa e revisa uma feature Java. |
-| `/java:nova-app` | Cria uma aplicação Java e solicita auditoria. |
-| `/java:refatorar` | Aplica refactoring e revisão tempestiva. |
-| `/java:revisar` | Revisa uma classe, diff ou entrega Java. |
+| `/exj:adr` | Registra um ADR com `arquiteto-sistemas`. |
+| `/exj:av` | Executa o protocolo de avaliação do catálogo. |
+| `/exj:val` | Executa as validações Maven e separa executado de pendente. |
+| `/exj:feat` | Refina, propõe, implementa e revisa uma feature Java. |
+| `/exj:app` | Cria uma aplicação Java e solicita auditoria. |
+| `/exj:ref` | Aplica refactoring e revisão tempestiva. |
+| `/exj:rev` | Revisa uma classe, diff ou entrega Java. |
 | `/opsx:apply` | Implementa tarefas de uma change OpenSpec. |
 | `/opsx:archive` | Arquiva uma change concluída. |
 | `/opsx:explore` | Explora uma mudança antes da proposta. |
@@ -262,6 +267,8 @@ Um fluxo comum de entrega é: `refinamento-de-historias` → `openspec-propose` 
 
 ## Migração de nomes
 
+O plugin antes identificado como `catalogo-java` passou a usar `exj` nos clientes Codex e Claude Code; o marketplace Claude passou de `srportto-catalogo` para `srportto-exj`. Em instalações existentes, atualize o identificador do plugin nas configurações locais ou do projeto, habilite `exj` e desabilite a entrada antiga. O caminho do clone pode permanecer `plugins/catalogo-java/` ou `~/.codex/plugins/catalogo-java/`. No Claude Code, instale `/plugin install exj@srportto-exj` após atualizar o marketplace. O repositório GitHub continua `skills-manager`; as skills especializadas, os agents e os comandos `/opsx:*` mantêm seus nomes.
+
 | Nome antigo | Destino | Observação |
 |---|---|---|
 | `refactoring-remove-parameter` | `qualidade-codigo-java` | Consulte `references/refatoracoes-fowler.md#remove-parameter`. |
@@ -286,7 +293,7 @@ O contrato de cada skill e sua anatomia estão em [convenções do catálogo](do
 
 ## Manutenção e validação
 
-Depois de alterar uma skill, atualize seu `evals/evals.json` e execute `/catalogo:avaliar` nos casos afetados. Antes de commitar, execute:
+Depois de alterar uma skill, atualize seu `evals/evals.json` e execute `/exj:av` nos casos afetados. Antes de commitar, execute:
 
 ```bash
 mvn -f validation/java/pom.xml verify

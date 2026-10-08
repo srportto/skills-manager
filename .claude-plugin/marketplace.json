@@ -1,12 +1,12 @@
 {
-  "name": "srportto-catalogo",
-  "description": "Catálogo de skills, agents e comandos para Java 25 + Spring Boot 4.",
+  "name": "srportto-exj",
+  "description": "EXJ — Especialista em tudo Java: skills, agents e comandos para Java 25 + Spring Boot 4.",
   "owner": { "name": "srportto" },
   "plugins": [
     {
-      "name": "catalogo-java",
+      "name": "exj",
       "source": "./",
-      "description": "Catálogo Java: skills, agents e comandos de fluxo."
+      "description": "EXJ: skills, agents e comandos de fluxo para engenharia Java."
     }
   ]
 }

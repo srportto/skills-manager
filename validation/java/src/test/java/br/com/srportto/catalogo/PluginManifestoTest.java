@@ -48,6 +48,7 @@ class PluginManifestoTest {
         var plugin = ler("plugin.json");
         var nome = (String) plugin.get("name");
         assertNotNull(nome, "plugin.json sem 'name'");
+        assertEquals("exj", nome);
         assertTrue(nome.matches("^[a-z0-9-]+$"), "name deve ser kebab-case: " + nome);
         assertEquals(nome, primeiroPlugin(ler("marketplace.json")).get("name"));
     }
@@ -61,6 +62,7 @@ class PluginManifestoTest {
     @Test
     void marketplaceTemNomeDonoEFonteExistente() throws IOException {
         var marketplace = ler("marketplace.json");
+        assertEquals("srportto-exj", marketplace.get("name"));
         assertNotNull(marketplace.get("name"), "marketplace sem 'name'");
         assertNotNull(marketplace.get("owner"), "marketplace sem 'owner'");
         var fonte = (String) primeiroPlugin(marketplace).get("source");
@@ -71,7 +73,7 @@ class PluginManifestoTest {
     @Test
     void manifestoCodexDeclaraAsSkillsDoCatalogo() throws IOException {
         var manifesto = lerCodex("plugin.json");
-        assertEquals("catalogo-java", manifesto.get("name"));
+        assertEquals("exj", manifesto.get("name"));
         assertEquals("./skills/", manifesto.get("skills"));
         assertTrue(Files.isDirectory(Catalogo.RAIZ.resolve("skills")));
     }

@@ -27,6 +27,11 @@ class ExemplosJavaTest {
      */
     private static final Map<String, String> EXCECOES_LEGADO = Map.of();
 
+    /** Avaliações EXJ registram literalmente exemplos fora da trilha Java para testar o roteamento. */
+    private static final Set<String> EXCECOES_EVAL_EXJ = Set.of(
+            "docs/catalogo/avaliacoes/2026-10-08/exj-05-a.md",
+            "docs/catalogo/avaliacoes/2026-10-08/exj-05-b.md");
+
     private static final Pattern ABERTURA = Pattern.compile("(?m)^\\s*(?:```|~~~)\\s*([A-Za-z0-9_+#-]+)");
     private static final Set<String> EXTENSOES_PROIBIDAS = Set.of(
             ".py", ".js", ".mjs", ".ts", ".go", ".kt", ".kts", ".groovy", ".scala", ".rb", ".cs", ".rs");
@@ -48,7 +53,7 @@ class ExemplosJavaTest {
         for (Path arquivo : Catalogo.markdownDaTrilha()) {
             String nome = Catalogo.relativo(arquivo);
             var achadas = linguagensProibidas(arquivo);
-            if (!achadas.isEmpty() && !EXCECOES_LEGADO.containsKey(nome)) {
+            if (!achadas.isEmpty() && !EXCECOES_LEGADO.containsKey(nome) && !EXCECOES_EVAL_EXJ.contains(nome)) {
                 erros.add(nome + " → exemplo em linguagem não Java: " + achadas);
             }
         }
@@ -63,6 +68,19 @@ class ExemplosJavaTest {
             Path arquivo = Catalogo.RAIZ.resolve(nome);
             if (!Files.exists(arquivo) || linguagensProibidas(arquivo).isEmpty()) {
                 erros.add(nome + " já não precisa da exceção (" + motivo + ")");
+            }
+        });
+        assertTrue(erros.isEmpty(), () -> String.join("\n", erros));
+    }
+
+    @DisplayName("ExemplosJava: Avaliacoes EXJ fora do escopo devem continuar registrando Python")
+    @Test
+    void excecoesDeEvalExjDevemContinuarNecessarias() {
+        var erros = new ArrayList<String>();
+        EXCECOES_EVAL_EXJ.forEach(nome -> {
+            Path arquivo = Catalogo.RAIZ.resolve(nome);
+            if (!Files.exists(arquivo) || !linguagensProibidas(arquivo).contains("python")) {
+                erros.add(nome + " não registra mais o exemplo Python esperado da avaliação EXJ");
             }
         });
         assertTrue(erros.isEmpty(), () -> String.join("\n", erros));

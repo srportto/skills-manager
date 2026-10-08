@@ -1,8 +1,8 @@
 ---
-name: "Java: Refatorar"
-description: Refatora código Java sem mudar comportamento e revisa o resultado
+name: "EXJ: Refatorar"
+description: Refatora código Java e revisa o resultado
 category: Workflow
-tags: [java, refatoracao]
+tags: [exj, java, refatoracao]
 ---
 
 Acione o agent `refatorador-java` com a entrada abaixo (refactoring do Fowler, comportamento preservado, testes
