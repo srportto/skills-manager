@@ -26,6 +26,7 @@ replay_pid*
 
 ELP.md
 target/
+.worktrees/
 .mvn
 .kilo
 .docs
