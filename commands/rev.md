@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Revisar"
+name: "Revisar"
 description: Revisa código Java com java-revisor
 category: Workflow
 tags: [exj, java, revisao]

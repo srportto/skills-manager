@@ -62,7 +62,7 @@ class PluginManifestoTest {
     @Test
     void marketplaceTemNomeDonoEFonteExistente() throws IOException {
         var marketplace = ler("marketplace.json");
-        assertEquals("srportto-exj", marketplace.get("name"));
+        assertEquals("srportto-catalogo", marketplace.get("name"));
         assertNotNull(marketplace.get("name"), "marketplace sem 'name'");
         assertNotNull(marketplace.get("owner"), "marketplace sem 'owner'");
         var fonte = (String) primeiroPlugin(marketplace).get("source");

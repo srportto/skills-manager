@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Avaliar"
+name: "Avaliar"
 description: Executa o protocolo de avaliação de agents e casos de skills
 category: Workflow
 tags: [exj, avaliacao]

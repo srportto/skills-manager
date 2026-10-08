@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Criar aplicação"
+name: "Criar-app"
 description: Cria aplicação Java com java-construtor e audita ao fim
 category: Workflow
 tags: [exj, java, aplicacao]

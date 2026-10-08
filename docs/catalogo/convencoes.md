@@ -40,7 +40,7 @@ skills/<nome>/
 
 ## Comandos
 
-Os comandos de `commands/exj/` oferecem os fluxos do EXJ; os de `commands/opsx/` oferecem o fluxo OpenSpec.
+Os comandos de `commands/*.md` (sem subpasta, para virarem `/exj:<nome>`) oferecem os fluxos do EXJ; os de `commands/opsx/` oferecem o fluxo OpenSpec.
 Todos são **finos**: acionam o agent (ou a skill) certo,
 repassam `$ARGUMENTS` e **não repetem** passos, regras ou checklists, que ficam na skill. Um comando que
 cresce além de poucas linhas indica conteúdo que deveria estar numa skill. Todo agent ou skill citado deve

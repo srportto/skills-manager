@@ -1,5 +1,5 @@
 ---
-name: "EXJ: Feature"
+name: "Refinar"
 description: Conduz feature Java do refinamento à revisão
 category: Workflow
 tags: [exj, java, feature]
