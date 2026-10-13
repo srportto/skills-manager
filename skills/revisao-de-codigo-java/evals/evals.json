@@ -24,6 +24,18 @@
         "Cada achado traz arquivo:linha e o porquê",
         "Reconhece pontos positivos ao final da revisão"
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "Revise: a interface MeioPagamento tem autorizar, estornar, parcelar e agendar; Pix implementa parcelar lançando UnsupportedOperationException e o ParcelamentoService recebe MeioPagamento.",
+      "expected_output": "Achado de contrato de subtipo (LSP/ISP) com arquivo:linha, classificado como Crítico porque o caminho real (ParcelamentoService com MeioPagamento) alcança a chamada; aponta interfaces de capacidade como correção e não aceita override vazio",
+      "files": [],
+      "expectations": [
+        "Identifica a interface gorda (ISP) e o override que lança exceção (LSP)",
+        "Classifica como Crítico porque o ParcelamentoService pode receber Pix",
+        "Indica interfaces por capacidade como correção, com referência a qualidade-codigo-java",
+        "Não sugere trocar o throw por override vazio"
+      ]
     }
   ],
   "trigger": {

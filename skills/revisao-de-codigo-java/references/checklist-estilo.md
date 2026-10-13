@@ -1,6 +1,6 @@
-# Checklist 3–7 — Estilo (imutabilidade, streams, nomenclatura, complexidade, heurísticas, DRY)
+# Checklist 3–7 — Estilo (imutabilidade, streams, nomenclatura, complexidade, heurísticas, contrato de subtipo, DRY)
 
-Leia este arquivo ao revisar estilo e manutenibilidade: setters e estado mutável, pipelines de stream, nomes, método longo, heurísticas de design e duplicação. Severidade padrão: **Menor** (veja as exceções em cada item). Os exemplos antes/depois completos vivem em `qualidade-codigo-java`; aqui cada item traz a regra, a severidade e o link.
+Leia este arquivo ao revisar estilo e manutenibilidade: setters e estado mutável, pipelines de stream, nomes, método longo, heurísticas de design, subtipo que não cumpre o contrato do pai e duplicação. Severidade padrão: **Menor** (veja as exceções em cada item; 6.7 começa em **Importante**). Os exemplos antes/depois completos vivem em `qualidade-codigo-java`; aqui cada item traz a regra, a severidade e o link.
 
 ### 3. Imutabilidade
 
@@ -57,6 +57,25 @@ First Class Collections, Lei de Demeter e "no máximo dois atributos" são **heu
 diferentes em dois lugares → Importante). Quantidade de atributos, estilo de asserção ou ausência de um
 pattern **não** são falha funcional. Exemplos e explicações completas:
 [exemplos de revisão](exemplos-revisao-java.md); como aplicar: `qualidade-codigo-java`.
+
+### 6.7. Contrato de subtipo e interfaces (LSP/ISP)
+
+Diferente das heurísticas de 6.1, aqui o tipo **promete** algo que a implementação não entrega:
+
+- override que lança `UnsupportedOperationException` (ou exceção equivalente) em método herdado;
+- override vazio ou que ignora o argumento de um método com efeito de negócio;
+- subtipo com pré-condição mais forte ou pós-condição mais fraca que o tipo-pai;
+- `instanceof` no cliente para desviar de um subtipo antes de chamar o método;
+- interface "gorda" que obriga implementações a lançar exceção ou ficar vazias.
+
+Severidade: **Importante** (falha em runtime que o compilador não aponta). **Crítico** quando um caminho
+real de produção alcança a chamada ou quando o override vazio engole um efeito de negócio (saque,
+estorno, publicação). Não reporte `List.of(...)`/coleções imutáveis do JDK: `add` é operação opcional
+documentada no contrato de `Collection`.
+
+Correção (interfaces de capacidade, composição no lugar de herança) e exemplos antes/depois:
+[SOLID com contexto](../../qualidade-codigo-java/references/solid.md) (seções LSP e ISP). Não aceite
+como correção trocar o `throw` por override vazio — vira falha silenciosa.
 
 ### 7. DRY com bom senso
 
