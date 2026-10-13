@@ -5,7 +5,7 @@ description: "Checklist único de revisão de código Java/Spring Boot, organiza
 license: MIT
 metadata:
   author: https://github.com/srportto/srportto
-  version: "1.3.0"
+  version: "1.4.0"
   domain: code-review
   triggers: revise, code review, está bom?, melhore este código, PR, checklist, severidade
   role: reviewer
@@ -78,6 +78,7 @@ Cada linha resume o item e a severidade usual; o detalhe (regra + antes/depois) 
 | 5 | Nomenclatura | nomes grepáveis, sem `Handler`/`Util`/`Manager` genéricos, unidade no parâmetro | Menor | [checklist-estilo](references/checklist-estilo.md) |
 | 6 | Complexidade | método longo, arquivo grande, aninhamento > 3 níveis | Menor (Importante se esconde bug) | [checklist-estilo](references/checklist-estilo.md) |
 | 6.1 | Heurísticas de design | magic numbers, Tell Don't Ask, Primitive Obsession, Demeter | Menor | [checklist-estilo](references/checklist-estilo.md), [exemplos](references/exemplos-revisao-java.md) |
+| 6.7 | Contrato de subtipo (LSP/ISP) | override que lança `UnsupportedOperationException` ou fica vazio, `instanceof` no cliente, interface gorda | Importante (Crítico se o caminho real alcança) | [checklist-estilo](references/checklist-estilo.md) |
 | 7 | DRY com bom senso | extrair na 3ª ocorrência; sem abstração especulativa | Menor | [checklist-estilo](references/checklist-estilo.md) |
 | 8 | Testes | feliz + borda + erro, nomes descritivos, sem dependência de ordem; evidência executada | Importante / Crítico sem prova | [checklist-testes-resiliencia](references/checklist-testes-resiliencia.md) |
 | 8.1 | Resiliência | fila/espera/retry sem limite, ack antes do efeito, sem idempotência, fallback mentiroso | Crítico | [checklist-testes-resiliencia](references/checklist-testes-resiliencia.md) |
@@ -132,7 +133,7 @@ reforçado.
 |---|---|
 | [checklist-correcao](references/checklist-correcao.md) | Grupo 1: `Optional`, exceções, try-with-resources |
 | [checklist-contrato-http](references/checklist-contrato-http.md) | Grupo 2: status por origem do erro, DTO de borda |
-| [checklist-estilo](references/checklist-estilo.md) | Grupos 3–7: imutabilidade, streams, nomes, complexidade, heurísticas, DRY |
+| [checklist-estilo](references/checklist-estilo.md) | Grupos 3–7: imutabilidade, streams, nomes, complexidade, heurísticas, contrato de subtipo (LSP/ISP), DRY |
 | [checklist-testes-resiliencia](references/checklist-testes-resiliencia.md) | Grupo 8 e 8.1: testes, evidência executada, resiliência e limites |
 | [checklist-logs-arquitetura](references/checklist-logs-arquitetura.md) | Grupos 9–10: logs e camadas |
 | [exemplos-revisao-java](references/exemplos-revisao-java.md) | Magic numbers, tipagem, complexidade e Object Calisthenics com antes/depois |

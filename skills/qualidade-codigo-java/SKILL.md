@@ -1,14 +1,14 @@
 ---
 
 name: qualidade-codigo-java
-description: 'Guia de clean code aplicado a Java — DRY, KISS, YAGNI, naming, imutabilidade, `Optional`, streams, tratamento de exceção, Object Calisthenics — e refactorings do Fowler (Remove Parameter, Extract Method, Replace Magic Number, etc.). É o lado "ativo" da revisão: `revisao-de-codigo-java` diz o que revisar; esta diz como aplicar. Uso: sessão principal e agent `java-construtor` (carregada proativamente quando código Java for gerado/alterado); também `java-revisor`/`refatorador-java` ou `/qualidade-codigo-java`.'
+description: 'Guia de clean code aplicado a Java — DRY, KISS, YAGNI, SOLID com contexto, naming, imutabilidade, `Optional`, streams, tratamento de exceção, Object Calisthenics — e refactorings do Fowler (Remove Parameter, Extract Method, Replace Magic Number, etc.). É o lado "ativo" da revisão: `revisao-de-codigo-java` diz o que revisar; esta diz como aplicar. Uso: sessão principal e agent `java-construtor` (carregada proativamente quando código Java for gerado/alterado); também `java-revisor`/`refatorador-java` ou `/qualidade-codigo-java`.'
 license: MIT
 metadata:
 
   author: https://github.com/srportto/srportto
-  version: "1.3.0"
+  version: "1.4.0"
   domain: code-quality
-  triggers: clean code, boas praticas, refatorar, DRY, KISS, YAGNI, imutabilidade, Optional, streams, Fowler, Object Calisthenics, Wrap All Primitives, First Class Collections, Law of Demeter, Tell Don't Ask
+  triggers: clean code, boas praticas, refatorar, DRY, KISS, YAGNI, SOLID, SRP, Liskov, LSP, Interface Segregation, ISP, UnsupportedOperationException, imutabilidade, Optional, streams, Fowler, Object Calisthenics, Wrap All Primitives, First Class Collections, Law of Demeter, Tell Don't Ask
   role: reference
   scope: code-quality
   output-format: code
@@ -47,6 +47,10 @@ cobrindo o trecho, escreva a prova antes de refatorar (`testes-sistemas-java`).
 |---|---|---|---|
 | Mesma validacao/regra em 2+ lugares | DRY (regra das 3 ocorrencias) | [clean-code-principios.md](references/clean-code-principios.md) | Extract Method |
 | Interface com implementacao unica "para o futuro" | KISS / YAGNI | [clean-code-principios.md](references/clean-code-principios.md) | Inline (chamada direta) |
+| Classe com varios motivos para mudar (regra + SQL + evento no mesmo metodo) | SRP | [solid.md](references/solid.md) | Extract Class; porta em `port/out` |
+| Override que lanca `UnsupportedOperationException` ou fica vazio; `instanceof` no cliente para desviar de subtipo | LSP | [solid.md](references/solid.md) | Interface de capacidade; composicao no lugar de heranca |
+| Interface "gorda" que obriga a implementar metodo inutil | ISP | [solid.md](references/solid.md) | Extract Interface por papel (*role interface*) |
+| Pedido de "aplicar SOLID" sem sintoma (interface para cada classe, uma classe por metodo) | SOLID com contexto (SRP = motivo de mudanca) | [solid.md](references/solid.md) (secao "Quando NAO aplicar") | Nenhum ate haver sintoma; Extract Class so entre atores distintos |
 | Nome generico (`Handler`, `Util`, `get`), sigla, parametro sem unidade | Don't Abbreviate | [nomenclatura.md](references/nomenclatura.md) | Rename; Introduce Parameter Object |
 | `String status`/`int tipo` restrito a poucos valores | Tipos expressivos | [nomenclatura.md](references/nomenclatura.md) | Replace Magic Number com enum |
 | Setters publicos, estado mutavel pos-construcao | Imutabilidade | [imutabilidade-optional-streams.md](references/imutabilidade-optional-streams.md) | Converter em `record` / `final` |
@@ -79,6 +83,8 @@ cancelamento e timeouts.
 - Object Calisthenics sao **heuristicas de design**, nao bugs: aplique quando reduzem um problema
   concreto; classe coesa com 3 atributos nao precisa ser quebrada.
 - DRY com bom senso: na 1a e 2a ocorrencia duplicar pode ser mais barato que a abstracao errada.
+- SOLID vale onde ha **variacao real ou esperada**; SRP mede motivo de mudanca, nao numero de metodos.
+  Corrigir LSP trocando o `throw` por override vazio troca falha ruidosa por falha silenciosa.
 - Records sao o padrao para DTO/value object (ver `java-moderno`); nao use quando precisar de
   mutabilidade ou heranca.
 - Use portugues ou ingles de forma consistente dentro do mesmo pacote/classe.
@@ -88,6 +94,7 @@ cancelamento e timeouts.
 | Arquivo | Quando ler |
 |---|---|
 | [clean-code-principios.md](references/clean-code-principios.md) | Duplicacao de regra ou abstracao especulativa (DRY, KISS, YAGNI) |
+| [solid.md](references/solid.md) | Classe com varios motivos para mudar, subtipo que nao cumpre o contrato do pai, interface que obriga a implementar metodo inutil, ou duvida se um principio SOLID justifica a abstracao |
 | [nomenclatura.md](references/nomenclatura.md) | Nomear classe/metodo/campo/parametro; nomes genericos e siglas |
 | [imutabilidade-optional-streams.md](references/imutabilidade-optional-streams.md) | Setters, `Optional.get()`, streams com efeito colateral |
 | [excecoes.md](references/excecoes.md) | `try/catch`, excecao de dominio, try-with-resources |

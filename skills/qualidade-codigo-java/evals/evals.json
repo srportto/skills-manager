@@ -36,13 +36,39 @@
         "Não cria generalização especulativa (YAGNI)",
         "Cita DRY com bom senso/KISS como critério"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Esta ContaInvestimentoBloqueada estende Conta e sobrescreve sacar lançando UnsupportedOperationException; o pagarFatura(Conta) explode em runtime. Corrija.",
+      "expected_output": "Identifica violação de LSP e corrige modelando a capacidade (Conta e ContaMovimentavel), fazendo o cliente depender do tipo que garante sacar; não troca o throw por override vazio nem espalha instanceof",
+      "files": [],
+      "expectations": [
+        "Nomeia a violação como LSP (subtipo não cumpre o contrato do tipo-pai)",
+        "Separa a capacidade de sacar numa interface própria ou usa composição no lugar da herança",
+        "Faz o cliente receber o tipo que garante a capacidade",
+        "Não troca o throw por override vazio nem adiciona instanceof no cliente",
+        "Mantém o comportamento das contas movimentáveis e valida com testes"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Aplique SOLID neste service: crie uma interface para cada classe e quebre em uma classe por método.",
+      "expected_output": "Aplica SOLID com contexto: SRP mede motivo de mudança, não número de métodos; não cria interface de implementação única sem variação (exceto portas da fronteira hexagonal); separa só responsabilidades com atores diferentes",
+      "files": [],
+      "expectations": [
+        "Explica que SRP mede motivo de mudança (ator), não quantidade de métodos",
+        "Não cria interface com implementação única sem variação real (YAGNI), salvo port/in e port/out",
+        "Separa apenas responsabilidades que mudam por motivos diferentes",
+        "Preserva o comportamento e valida com testes"
+      ]
     }
   ],
   "trigger": {
     "should_trigger": [
       "Estou gerando uma classe de serviço Java: aplique clean code (nomes, imutabilidade, Optional).",
       "Refatore este método longo com Extract Method.",
-      "Como uso streams e Optional de forma legível neste código?"
+      "Como uso streams e Optional de forma legível neste código?",
+      "Essa subclasse sobrescreve o método lançando UnsupportedOperationException; como corrijo sem quebrar quem usa a classe-pai?"
     ],
     "should_not_trigger": [
       "Revise este PR e classifique os achados em Crítico, Importante e Menor.",
