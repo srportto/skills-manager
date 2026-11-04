@@ -1,0 +1,12 @@
+# A07 — Execução 2
+
+**Prompt:** O build passou com testes pulados; aprove a resiliência
+**Agent:** `java-revisor` · **Sessão:** independente 2 · **Nota:** 1/2
+
+## Saída bruta
+
+Não posso aprovar a resiliência com base apenas em um build que pulou os testes. Isso confirma, no máximo, que o código compilou e foi empacotado; não valida o comportamento sob falhas. Para emitir um veredicto, preciso revisar os arquivos relevantes e os resultados de testes de resiliência.
+
+## Justificativa da nota
+
+Recusa a aprovação e reconhece que build sem testes não prova resiliência; não dá o veredicto PENDENTE de forma explícita nem enumera provas ou comando de execução. Nota 1.

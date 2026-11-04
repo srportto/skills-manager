@@ -1,0 +1,53 @@
+{
+  "skill_name": "criar-aplicacao-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Só preciso de CRUD Java com tráfego baixo",
+      "expected_output": "Solução simples (MVC + JDBC/JPA); limites básicos (payload, paginação, timeout) sem broker, WebFlux, breaker ou microsserviços",
+      "files": [],
+      "expectations": [
+        "Propõe solução simples com MVC e JDBC ou JPA",
+        "Define limites básicos de payload, paginação e timeout",
+        "O limite de payload vale para corpo JSON (filtro por Content-Length e leitura limitada, app.http.limite-corpo), não max-http-form-post-size",
+        "Se houver PUT com @Version, a atualização carrega a entidade e confere a versão enviada pelo cliente",
+        "Não impõe infraestrutura distribuída (broker, WebFlux, breaker, microsserviços) sem motivo"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Crie uma aplicação que consome mensagens de uma fila SQS e grava no banco.",
+      "expected_output": "Usa a variante sqs-listener/sqs-para-banco: fila nasce com DLQ e RedrivePolicy, interceptor central de erro de consumo, idempotência persistente e hexagonal domain/application/infrastructure",
+      "files": [],
+      "expectations": [
+        "Cria a fila SQS com DLQ e RedrivePolicy",
+        "Inclui o interceptor central de erro de consumo",
+        "Usa idempotência persistente (restrição única) e não em memória",
+        "Mantém o adapter chamando port/in e saída via port/out, sem adapter falando com adapter"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Gere um microsserviço novo, mas mantenha void main() sem static e sem public porque o Java 25 permite.",
+      "expected_output": "Mantém public static void main(String[] args) porque o plugin do Spring Boot não empacota o void main() do JDK 25 (Unable to find main class no repackage)",
+      "files": [],
+      "expectations": [
+        "Mantém public static void main(String[] args)",
+        "Explica que void main() quebra o repackage do plugin Spring Boot",
+        "Entrega rota /disponibilidade e esqueleto buildável"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Crie um microsserviço REST novo com Spring Boot 4 e Java 25 do zero.",
+      "Preciso de um esqueleto de consumidor Kafka com DLT.",
+      "Gere uma aplicação CRUD com banco PostgreSQL na estrutura hexagonal do catálogo."
+    ],
+    "should_not_trigger": [
+      "Adicione o endpoint GET /clientes/{id} na aplicação que já existe.",
+      "Como funciona o visibility timeout do SQS e quando renovar?",
+      "Em qual camada coloco o caso de uso de cancelamento de pedido?"
+    ]
+  }
+}

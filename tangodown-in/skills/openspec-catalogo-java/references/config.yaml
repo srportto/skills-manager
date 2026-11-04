@@ -1,0 +1,24 @@
+# Modelo de openspec/config.yaml para projetos Java que usam este catálogo.
+# Copie para <projeto>/openspec/config.yaml e ajuste o bloco context ao projeto.
+# O CLI injeta context e rules em `openspec instructions <artefato>`. Chaves de rules fora de
+# proposal/specs/design/tasks são ignoradas; a fase apply é guiada pela skill openspec-catalogo-java.
+schema: spec-driven
+context: |
+  Projeto Java 25 (sem preview) + Spring Boot 4, arquitetura hexagonal.
+  Skills e agents por fase: skill openspec-catalogo-java, seção "Mapa de fases".
+  AWS local: Floci em http://localhost:4566.
+  Prova = teste executado com saída lida; -DskipTests nunca é prova.
+rules:
+  proposal:
+    - "Refine a demanda com `refinamento-de-historias`: DoR, critérios observáveis, limites de carga e recuperação."
+    - "Aplicação nova: declare nome e variante de `criar-aplicacao-java`; diga o que fica fora do escopo."
+  specs:
+    - "Contrato HTTP segue `api-rest-design` (Problem Details, 413/429/503, Idempotency-Key)."
+    - "Autenticação, autorização e abuso de recursos seguem `seguranca-aplicacao-java`."
+  design:
+    - "Decisões de sistema seguem `design-system-architecture`: capacidade, consistência e ADR com alternativas."
+    - "Toda dependência remota ou fila declara limites e proteções de `resiliencia-controle-fluxo-java`."
+    - "Camadas e portas seguem `arquitetura-limpa-java`; mensageria segue `mensageria-sqs-kafka`."
+  tasks:
+    - "Cada tarefa nomeia a prova (teste e comando) segundo `testes-sistemas-java`; TDD com teste falhando primeiro."
+    - "Se a change altera código Java, a última tarefa é a auditoria do `java-revisor` com veredicto APROVADO."

@@ -1,0 +1,11 @@
+# Service que expõe o Deployment minha-app dentro do cluster (par de k8s-deployment.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: minha-app
+spec:
+  selector:
+    app: minha-app
+  ports:
+    - port: 80
+      targetPort: 8080

@@ -1,0 +1,20 @@
+# Configuração dos health groups usada no teste (mesma semântica recomendada em monitoramento-java).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState         # banco compartilhado fica fora: degradação explícita na aplicação
+        dependencias:
+          include: db                     # diagnóstico + alerta; não é probe
+        operacional:
+          include: backlog

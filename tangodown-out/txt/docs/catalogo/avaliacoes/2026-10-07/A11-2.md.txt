@@ -1,0 +1,365 @@
+# A11 — Execução 2
+
+**Prompt:** Só preciso de CRUD Java com tráfego baixo
+
+**Agent:** `java-construtor`
+**Sessão:** independente 2
+**Nota:** 1/2
+
+**Arquivos do catálogo lidos:** agents/java-construtor.md; skills/criar-aplicacao-java/SKILL.md; skills/criar-aplicacao-java/references/parametros.md; skills/criar-aplicacao-java/references/variante-crud-banco.md; skills/criar-aplicacao-java/references/variante-rest.md; skills/arquitetura-limpa-java/SKILL.md; skills/qualidade-codigo-java/SKILL.md; skills/qualidade-codigo-java/references/clean-code-principios.md; skills/persistencia-jpa/SKILL.md; skills/persistencia-jpa/references/entidades-projecoes.md; skills/persistencia-jpa/references/transacoes.md; skills/testes-sistemas-java/references/testes-slice-spring.md
+
+## Saída bruta
+
+### 1. Escopo e hipóteses assumidas
+
+"CRUD Java" sem mais detalhes mapeia para a variante **`rest-crud-banco`** (parametros.md: "só um CRUD" = `rest-crud-banco`). Como não posso perguntar, declaro as hipóteses; corrija o que não servir:
+
+| Parâmetro | Valor assumido | Origem |
+|---|---|---|
+| Nome da aplicação | `produtos` (entidade de exemplo: `Produto`) | hipótese minha, troque pelo seu domínio |
+| Variante | `rest-crud-banco` | "só um CRUD" |
+| Pacote / classe | `br.com.srportto.produtos` / `ProdutosApplication` | derivado do nome |
+| Pasta destino | `produtos-service` | default |
+| Porta / profile | `8080` / `local` | default |
+| Container web | Tomcat | default (nada pede Jetty) |
+| Banco | PostgreSQL | variante `rest-crud-banco` |
+| Carga | baixa (informada por você) | pedido |
+| Stack | Java 25, Spring Boot 4, MVC (bloqueante) | catálogo |
+
+**Proporcionalidade (tráfego baixo):** fica de fora, de propósito, tudo que não se paga neste cenário: broker/fila, cache Redis, WebFlux, Resilience4j/circuit breaker, outbox, réplica de leitura, rate limiting. Entram só as proteções mínimas da variante: pool pequeno com timeout de aquisição, paginação com teto, limite de tamanho de campo/payload, `open-in-view: false`, `ddl-auto: validate`.
+
+### 2. Estrutura (hexagonal clássica, a partir de `assets/esqueleto`)
+
+Copiar `skills/criar-aplicacao-java/assets/esqueleto` para `produtos-service`, renomear pacote, `EsqueletoApplication` para `ProdutosApplication`, `artifactId` e `spring.application.name`. O que já vem: `/disponibilidade`, probes do Actuator, `ApiExceptionHandler`, logs JSON, graceful shutdown, Dockerfile.
+
+```
+br.com.srportto.produtos/
+├── domain/
+│   ├── model/Produto.java
+│   ├── port/in/{CriarProdutoUseCase, BuscarProdutoUseCase, ListarProdutosUseCase, AtualizarProdutoUseCase, ExcluirProdutoUseCase}
+│   ├── port/out/ProdutoRepositoryPort.java
+│   └── exception/{BusinessException, ApplicationException}   (já no esqueleto)
+├── application/usecase/ProdutoService.java
+└── infrastructure/
+    ├── web/{ProdutoController, ProdutoRequest, ProdutoResponse, ApiExceptionHandler}
+    ├── persistence/{ProdutoEntity, ProdutoJpaRepository, ProdutoRepositoryAdapter, ProdutoMapper}
+    └── config/BeansConfig
+```
+
+Regras seguidas: `domain` sem Spring/JPA/Jackson; entidade JPA distinta do modelo de domínio (mapper no adapter); use case injeta só a `port/out`; controller injeta a `port/in`; entidade nunca atravessa a borda web.
+
+### 3. Dependências e configuração
+
+`pom.xml` (acrescentar ao esqueleto; MapStruct exige também o processador em `annotationProcessorPaths` do `maven-compiler-plugin`; incluir `spring-boot-starter-validation`):
+
+```xml
+<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
+<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
+<dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
+<dependency><groupId>org.mapstruct</groupId><artifactId>mapstruct</artifactId><version>1.6.3</version></dependency>
+<!-- Flyway para o schema (ddl-auto fica em validate) -->
+<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
+<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId></dependency>
+```
+
+`application.yml` (acrescentar):
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/app
+    username: app
+    password: ${DB_PASSWORD}          # nunca no repositório
+    hikari:
+      maximum-pool-size: 10           # 1 instância x 10 <= max_connections do banco (folgado p/ tráfego baixo)
+      connection-timeout: 2000        # ms; falha rápido em vez de empilhar requisições
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate              # schema é das migrations
+    properties:
+      jakarta.persistence.query.timeout: 3000   # ms; consulta não fica presa indefinidamente
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+server:
+  tomcat:
+    max-http-form-post-size: 1MB
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db  # só o banco na readiness; liveness continua só o processo
+```
+
+Migration `src/main/resources/db/migration/V1__criar_produtos.sql`:
+
+```sql
+CREATE TABLE produtos (
+    id     BIGSERIAL PRIMARY KEY,
+    nome   VARCHAR(80)    NOT NULL,
+    preco  NUMERIC(12, 2) NOT NULL CHECK (preco > 0),
+    versao BIGINT         NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX uk_produtos_nome ON produtos (nome);
+```
+
+### 4. Código (trechos relevantes)
+
+**domain**
+
+```java
+// domain/model/Produto.java — Java puro, invariantes no próprio modelo
+public record Produto(Long id, String nome, BigDecimal preco) {
+
+    public Produto {
+        if (nome == null || nome.isBlank()) {
+            throw new BusinessException("Nome do produto é obrigatório");
+        }
+        if (preco == null || preco.signum() <= 0) {
+            throw new BusinessException("Preço deve ser maior que zero");
+        }
+    }
+}
+
+// domain/port/out/ProdutoRepositoryPort.java — porta de saída, NÃO é JpaRepository
+public interface ProdutoRepositoryPort {
+    Produto salvar(Produto produto);
+    Optional<Produto> buscarPorId(Long id);
+    List<Produto> listar(int pagina, int tamanho);
+    boolean existePorId(Long id);
+    void excluirPorId(Long id);
+}
+
+// domain/port/in/CriarProdutoUseCase.java (as demais seguem o mesmo molde)
+public interface CriarProdutoUseCase {
+    Produto executar(NovoProduto comando);
+    record NovoProduto(String nome, BigDecimal preco) {}
+}
+```
+
+**application** — `@Transactional` mora no use case (nunca no controller/domain), `readOnly` na classe e escrita sobrescrita por método:
+
+```java
+// application/usecase/ProdutoService.java
+@Transactional(readOnly = true)
+public class ProdutoService implements CriarProdutoUseCase, BuscarProdutoUseCase,
+        ListarProdutosUseCase, AtualizarProdutoUseCase, ExcluirProdutoUseCase {
+
+    private final ProdutoRepositoryPort repositorio;
+
+    public ProdutoService(ProdutoRepositoryPort repositorio) {
+        this.repositorio = repositorio;
+    }
+
+    @Override
+    @Transactional
+    public Produto executar(CriarProdutoUseCase.NovoProduto comando) {
+        return repositorio.salvar(new Produto(null, comando.nome(), comando.preco()));
+    }
+
+    @Override
+    public Produto buscar(Long id) {
+        return repositorio.buscarPorId(id)
+                .orElseThrow(() -> new BusinessException("Produto não encontrado: " + id));
+    }
+
+    @Override
+    public List<Produto> listar(int pagina, int tamanho) {
+        return repositorio.listar(pagina, tamanho);
+    }
+
+    @Override
+    @Transactional
+    public Produto atualizar(Long id, String nome, BigDecimal preco) {
+        buscar(id);   // auto-invocação só de leitura: a transação já é a do método atual
+        return repositorio.salvar(new Produto(id, nome, preco));
+    }
+
+    @Override
+    @Transactional
+    public void excluir(Long id) {
+        if (!repositorio.existePorId(id)) {
+            throw new BusinessException("Produto não encontrado: " + id);
+        }
+        repositorio.excluirPorId(id);
+    }
+}
+
+// infrastructure/config/BeansConfig.java — o bean do caso de uso é declarado aqui (padrão do esqueleto)
+@Configuration
+class BeansConfig {
+    @Bean
+    ProdutoService produtoService(ProdutoRepositoryPort repositorio) {
+        return new ProdutoService(repositorio);
+    }
+}
+```
+
+**infrastructure/persistence** — entidade enxuta (sem `@Data`, igualdade só pelo id, `@Version` contra lost update em PUT concorrente):
+
+```java
+@Entity
+@Table(name = "produtos")
+@Getter @Setter @NoArgsConstructor
+class ProdutoEntity {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, length = 80)
+    private String nome;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal preco;
+    @Version
+    private long versao;
+
+    @Override public boolean equals(Object outro) {
+        return outro instanceof ProdutoEntity p && id != null && id.equals(p.id);
+    }
+    @Override public int hashCode() { return getClass().hashCode(); }
+}
+
+interface ProdutoJpaRepository extends JpaRepository<ProdutoEntity, Long> { }
+
+@Mapper(componentModel = "spring")
+interface ProdutoMapper {
+    Produto paraDominio(ProdutoEntity entidade);
+    @Mapping(target = "versao", ignore = true)
+    ProdutoEntity paraEntidade(Produto produto);
+}
+
+@Repository
+class ProdutoRepositoryAdapter implements ProdutoRepositoryPort {
+
+    private static final int TAMANHO_MAXIMO = 100;   // teto de página: cliente não pede 1 milhão de linhas
+
+    private final ProdutoJpaRepository jpa;
+    private final ProdutoMapper mapper;
+
+    ProdutoRepositoryAdapter(ProdutoJpaRepository jpa, ProdutoMapper mapper) {
+        this.jpa = jpa;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public Produto salvar(Produto produto) {
+        return mapper.paraDominio(jpa.save(mapper.paraEntidade(produto)));
+    }
+
+    @Override
+    public List<Produto> listar(int pagina, int tamanho) {
+        var pageable = PageRequest.of(pagina, Math.min(tamanho, TAMANHO_MAXIMO), Sort.by("id"));
+        return jpa.findAll(pageable).map(mapper::paraDominio).getContent();
+    }
+    // buscarPorId, existePorId, excluirPorId delegam ao jpa
+}
+```
+
+Observação sobre PUT: com `@Version`, para o lock otimista valer o adapter deve, na atualização, carregar a entidade pelo id e copiar nome/preço nela (em vez de dar `save` numa entidade nova montada pelo mapper). Violação da unique de `nome` ou `OptimisticLockingFailureException` são tratadas no `ApiExceptionHandler` como 409 (o flush acontece no commit; `try/catch` em volta do `save` não pega).
+
+**infrastructure/web** — DTOs são `record`, validados na borda; controller fino atrás da `port/in`:
+
+```java
+public record ProdutoRequest(@NotBlank @Size(max = 80) String nome, @NotNull @Positive BigDecimal preco) { }
+public record ProdutoResponse(Long id, String nome, BigDecimal preco) { }
+
+@RestController
+@RequestMapping("/produtos")
+@Validated
+class ProdutoController {
+
+    private final CriarProdutoUseCase criar;
+    private final BuscarProdutoUseCase buscar;
+    private final ListarProdutosUseCase listar;
+    private final AtualizarProdutoUseCase atualizar;
+    private final ExcluirProdutoUseCase excluir;
+    // construtor com as cinco portas de entrada
+
+    @PostMapping
+    ResponseEntity<ProdutoResponse> criar(@Valid @RequestBody ProdutoRequest req) {
+        var produto = criar.executar(new CriarProdutoUseCase.NovoProduto(req.nome(), req.preco()));
+        return ResponseEntity.created(URI.create("/produtos/" + produto.id())).body(paraResposta(produto));
+    }
+
+    @GetMapping("/{id}")
+    ProdutoResponse buscar(@PathVariable Long id) { return paraResposta(buscar.buscar(id)); }
+
+    @GetMapping
+    List<ProdutoResponse> listar(@RequestParam(defaultValue = "0") @Min(0) int pagina,
+                                 @RequestParam(defaultValue = "20") @Min(1) @Max(100) int tamanho) {
+        return listar.listar(pagina, tamanho).stream().map(this::paraResposta).toList();
+    }
+
+    @PutMapping("/{id}")
+    ProdutoResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProdutoRequest req) {
+        return paraResposta(atualizar.atualizar(id, req.nome(), req.preco()));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void excluir(@PathVariable Long id) { excluir.excluir(id); }
+
+    private ProdutoResponse paraResposta(Produto p) { return new ProdutoResponse(p.id(), p.nome(), p.preco()); }
+}
+```
+
+Erros pelo `ApiExceptionHandler` do esqueleto (Problem Details): `@Valid` falho gera 400, `BusinessException` gera 422, `ApplicationException` gera 500; acrescentar 409 para conflito (unique/`@Version`). "Produto não encontrado" como `BusinessException` (422) segue o padrão da skill; se preferir 404, crie `RecursoNaoEncontradoException` em `domain/exception` e mapeie no handler.
+
+### 5. Provas (testes) mínimas, escritas antes da implementação
+
+| Prova | Tipo | O que garante |
+|---|---|---|
+| `ProdutoTest` | unitário puro | invariantes: nome vazio e preço <= 0 lançam `BusinessException` |
+| `ProdutoServiceTest` | unitário (porta mockada com Mockito) | criar/buscar/atualizar/excluir; inexistente lança `BusinessException` |
+| `ProdutoControllerTest` | `@WebMvcTest` + `@MockitoBean` (no Boot 4 `@MockBean` não existe) | 201 com `Location`, 400 em DTO inválido, 422 em regra, `tamanho=101` rejeitado |
+| `ProdutoRepositoryAdapterIT` | `@DataJpaTest`/`@SpringBootTest` + Testcontainers PostgreSQL (`@DynamicPropertySource`) | persiste, lista paginada respeita teto de 100, unique de `nome` e `@Version` geram conflito |
+| Contexto (`@SpringBootTest`) | existente no esqueleto | sobe a aplicação; `/disponibilidade` e probes |
+
+Testes com banco real rodam no perfil `integracao` (Docker obrigatório). Teste de carga e circuit breaker não se aplicam (tráfego baixo, sem dependência remota).
+
+### 6. Evidências (nada executado nesta resposta)
+
+Esta resposta é consultiva: não gravei código no repositório nem rodei build.
+
+| Evidência | Estado | Comando |
+|---|---|---|
+| Compilação | **pendente** (não executada) | `mvn clean verify` |
+| Testes unitários | **pendente** (contagem a registrar) | `mvn clean verify` |
+| Integração (Testcontainers/PostgreSQL) | **pendente**: exige Docker | `mvn clean verify -Pintegracao` |
+| Smoke | **pendente** | `mvn spring-boot:run` + `GET /disponibilidade` e `GET /actuator/health/readiness` devem dar 200 |
+| Auditoria | **pendente**: `java-revisor` modo `auditoria` é obrigatório antes de declarar pronto | passar a lista de arquivos e a saída do build |
+
+Nunca usar `-DskipTests` como prova. No Windows, use `mvn` direto (o `mvnw.cmd` costuma falhar).
+
+### 7. Limites implementados (unidade, escopo, motivo)
+
+| Limite | Valor | Escopo | Motivo |
+|---|---|---|---|
+| Pool Hikari | 10 conexões | por instância | cabe no `max_connections` com folga |
+| `connection-timeout` | 2000 ms | aquisição de conexão | falhar rápido em vez de empilhar |
+| Timeout de consulta | 3000 ms | toda query JPA | não prender conexão |
+| Tamanho de página | máx. 100 itens (default 20) | listagem | evitar heap/banco estourados |
+| Campo `nome` | 80 caracteres | DTO + coluna | limite de entrada |
+| Payload | 1 MB | requisição | limite de borda |
+
+Pendências de infraestrutura: PostgreSQL no ar (local ou Testcontainers), `DB_PASSWORD` via variável de ambiente, migration V1 aplicada.
+
+### 8. Para refinar
+
+1. Qual é a entidade real e seus campos? Troco `Produto` pelo seu domínio.
+2. PostgreSQL serve? (MySQL muda driver e dialeto.)
+3. "Não encontrado" como 404 em vez de 422?
+4. Autenticação não foi incluída (fora do escopo pedido; seria `seguranca-aplicacao-java`).
+5. Pipeline/Dockerfile/K8s: `engenheiro-devops`; tuning de índices: `especialista-banco-dados`; decisão de arquitetura de sistema: `arquiteto-sistemas`.
+
+## Pontuação
+- Itens obrigatórios:
+  - ✅ Solução simples: "fica de fora, de propósito, ... broker/fila, cache Redis, WebFlux, Resilience4j/circuit breaker".
+  - ✅ Paginação: "`max-page-size: 100`", `@Max(100)` no controller e teto no adapter.
+  - ✅ Timeout: "`connection-timeout: 2000`" e "`jakarta.persistence.query.timeout: 3000`".
+  - ❌ Payload: "Payload | 1 MB | requisição | limite de borda" via `server.tomcat.max-http-form-post-size: 1MB`. Essa propriedade só limita formulários `application/x-www-form-urlencoded`, não o corpo JSON da API, então o limite declarado não existe na prática. `@Size(max = 80)` limita o campo depois do parse, não o tamanho da requisição.
+  - ✅ Sem infraestrutura distribuída.
+- Falha bloqueadora: não
+- Observação: o texto reconhece que `@Version` exige "carregar a entidade pelo id e copiar nome/preço", mas o adapter apresentado faz `save` de entidade nova com `versao = 0`. Após o primeiro update, isso gera conflito em todo PUT.
+- Justificativa: proporcionalidade, paginação e timeouts estão corretos, mas o limite de payload, item obrigatório, usa um mecanismo que não se aplica a JSON. Nota 1.

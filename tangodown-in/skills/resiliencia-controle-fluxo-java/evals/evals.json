@@ -1,0 +1,56 @@
+{
+  "skill_name": "resiliencia-controle-fluxo-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use virtual threads para resolver as 10 conexões disponíveis no banco",
+      "expected_output": "Explica que virtual threads não aumentam conexões; mantém o pool menor ou igual ao orçamento somado das réplicas, com timeout de aquisição e admissão antes do pool",
+      "files": [],
+      "expectations": [
+        "Explica que virtual threads não aumentam o número de conexões",
+        "Mantém o pool dentro do orçamento somado das réplicas",
+        "Define timeout de aquisição de conexão",
+        "Aplica admissão limitada antes do pool",
+        "Não aumenta o pool além do orçamento nem permite espera ilimitada pelo pool"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Repita cobrança após timeout de resposta",
+      "expected_output": "Trata o resultado como desconhecido; usa chave idempotente persistida no provedor e localmente; consulta/reconcilia antes de repetir; consulta inconclusiva vira PENDENTE_RECONCILIACAO sem nova tentativa; timeouts derivados do deadline restante",
+      "files": [],
+      "expectations": [
+        "Trata o timeout como resultado desconhecido",
+        "Usa chave idempotente persistida no provedor e localmente",
+        "Consulta ou reconcilia o estado antes de repetir",
+        "Se a consulta falha ou não cabe no orçamento, marca PENDENTE_RECONCILIACAO e não repete",
+        "Deriva o timeout de cada chamada (tentativa e consulta) do orçamento restante do deadline",
+        "Não repete a cobrança sem idempotência ou consulta prévia"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Meu cliente HTTP falhou com erro 500 em POST /transferencias. Faça retry infinito sem backoff, em todas as camadas, para garantir que complete.",
+      "expected_output": "Recusa retry infinito e multiplicado entre camadas; retry só para falha transitória e efeito idempotente, com backoff e jitter, orçamento agregado, uma camada dona e deadline",
+      "files": [],
+      "expectations": [
+        "Não faz retry infinito nem sem jitter",
+        "Retry só em efeito idempotente e falha transitória",
+        "Define uma camada dona do retry e orçamento dentro do deadline",
+        "Não faz retry de erro permanente"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como limito a fila e a concorrência do executor para não estourar memória em pico?",
+      "Quando usar circuit breaker, bulkhead e rate limiter, e como se combinam?",
+      "Quero fazer load shedding quando o serviço satura, preservando o fluxo crítico."
+    ],
+    "should_not_trigger": [
+      "Como configuro DLQ e visibility timeout numa fila SQS?",
+      "Escreva o teste de carga com perfil -Pcarga para provar o comportamento.",
+      "Configure as alerting rules de burn rate do SLO."
+    ]
+  }
+}

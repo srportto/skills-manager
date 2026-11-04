@@ -1,0 +1,86 @@
+{
+  "skill_name": "exj",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use $exj para criar uma API de pedidos em Spring Boot 4, com endpoints de criação e consulta.",
+      "expected_output": "A primeira frase informa Skill: criar-aplicacao-java + agent: java-construtor e a condição de instalação do agent. Em seguida, segue a skill para executar a API Spring ou pede apenas a entrada concreta indispensável; não encerra repetindo o pedido.",
+      "files": [],
+      "expectations": [
+        "A primeira frase mostra explicitamente Skill: criar-aplicacao-java + agent: java-construtor",
+        "Esclarece que o agent só pode ser acionado se estiver instalado no cliente e que no Codex se aplica a skill",
+        "Executa o pedido segundo a skill selecionada ou pede uma entrada concreta indispensável, sem encerrar com mera repetição ou reformulação do pedido"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Use $exj para revisar este diff Java e apontar problemas por severidade; não altere os arquivos.",
+      "expected_output": "Encaminha a revisão para revisao-de-codigo-java e, quando disponível no cliente, java-revisor; respeita o pedido de somente revisar.",
+      "files": [],
+      "expectations": [
+        "Seleciona revisao-de-codigo-java para revisar o diff",
+        "Indica java-revisor condicionalmente à disponibilidade do agent",
+        "Não encaminha a revisão para java-construtor nem propõe editar o diff"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Use $exj para desenhar a arquitetura de um checkout distribuído e registrar a decisão entre monolito modular e microsserviços em um ADR.",
+      "expected_output": "Mostra explicitamente o par skill design-system-architecture + agent arquiteto-sistemas para o desenho e o ADR; informa que no Codex se aplica a skill e que o agent só pode ser acionado se estiver instalado no cliente.",
+      "files": [],
+      "expectations": [
+        "Mostra explicitamente design-system-architecture e arquiteto-sistemas juntos como par do encaminhamento de arquitetura e ADR",
+        "Informa que no Codex se aplica a skill e que o agent só pode ser acionado se estiver instalado no cliente",
+        "Não confunde arquitetura distribuída com arquitetura interna da aplicação"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Use $exj para investigar a latência e a saturação de um serviço Java em produção; preciso de métricas, traces e alertas.",
+      "expected_output": "Encaminha observabilidade para monitoramento-java e, quando disponível no cliente, especialista-monitoramento.",
+      "files": [],
+      "expectations": [
+        "Seleciona monitoramento-java para métricas, tracing e alertas",
+        "Indica especialista-monitoramento condicionalmente à disponibilidade do agent",
+        "Não seleciona chaos-engineer para o pedido de observabilidade"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Use $exj para escrever uma aplicação Python com FastAPI.",
+      "expected_output": "Informa que uma aplicação Python está fora da trilha Java de exj e orienta a usar diretamente o recurso adequado, sem carregar skills Java.",
+      "files": [],
+      "expectations": [
+        "Declara que a tarefa Python está fora do escopo de exj",
+        "Não carrega nem recomenda criar-aplicacao-java para a aplicação Python",
+        "Preserva o pedido original e aponta para um recurso apropriado, se disponível"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Use $exj para adicionar um endpoint de consulta de status do pedido em uma aplicação Spring Boot já existente.",
+      "expected_output": "Seleciona arquitetura-limpa-java e java-construtor para uma feature em aplicação existente; não encaminha para criar-aplicacao-java, que se aplica a aplicações novas. Se o código ou o caminho do projeto não estiver disponível, pede essa entrada concreta.",
+      "files": [],
+      "expectations": [
+        "Seleciona arquitetura-limpa-java para preservar as fronteiras da aplicação existente",
+        "Indica java-construtor condicionalmente à disponibilidade do agent",
+        "Não seleciona criar-aplicacao-java nem propõe gerar um esqueleto novo",
+        "Se não houver acesso ao código, solicita o caminho ou os arquivos relevantes"
+      ]
+    }
+  ],
+  "trigger": {
+      "should_trigger": [
+      "Use $exj para criar um serviço Java com Spring Boot.",
+      "Use $exj para implementar um endpoint numa aplicação Spring Boot existente.",
+      "Qual especialista EXJ revisa um diff Java?",
+      "Preciso arquitetar um checkout em Java e registrar um ADR.",
+      "Quero observar saturação em um serviço Spring Boot."
+    ],
+    "should_not_trigger": [
+      "Crie uma aplicação Python com FastAPI.",
+      "Edite uma planilha de custos no Excel.",
+      "Desenhe uma API REST em Node.js."
+    ]
+  }
+}

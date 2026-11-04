@@ -1,0 +1,139 @@
+# A08 — Execução 2
+
+**Prompt:** Limite cada cliente em várias réplicas
+
+**Agent:** `projetista-api`
+**Sessão:** independente 2
+**Nota:** 2/2
+
+**Arquivos do catálogo lidos:** agents/projetista-api.md; skills/api-rest-design/SKILL.md; skills/api-rest-design/references/idempotencia-quotas-http.md; skills/api-rest-design/references/convencoes-rest.md; skills/resiliencia-controle-fluxo-java/references/capacidade-e-limites.md; skills/spring-data-redis/references/rate-limiting.md
+
+## Saída bruta
+
+### Hipóteses (sem perguntas de volta)
+- Serviço Spring Boot 4 / Java 25 com N réplicas atrás de um balanceador, clientes autenticados por token (JWT) com `clientId`/tenant.
+- Coordenador compartilhado disponível: Redis/Valkey.
+- Convenção de erro do projeto: Problem Details (RFC 9457).
+- Quota inicial ilustrativa: 100 requisições/minuto por cliente e por operação (valor de negócio a confirmar).
+
+### Decisões de contrato
+
+1. **Identidade da quota:** vem do token autenticado (`clientId`/tenant validado) + nome da operação. Nunca de `X-Forwarded-For` ou header livre (burlável, NAT compartilhado).
+2. **Quota global, não por réplica:** um contador por réplica multiplicaria o limite por N. O limite do cliente precisa de um coordenador comum (Redis/Valkey), e a chave é `ratelimit:{clientId}:{operacao}`.
+3. **Status:**
+   - Cliente excedeu a quota: **429 Too Many Requests** + `Retry-After` (segundos inteiros) + corpo `application/problem+json`. Não conta no SLO.
+   - Serviço saturado (afeta todos): **503** + `Retry-After`. Não confundir com 429.
+4. **Headers de transparência (opcionais, rascunho IETF):** `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` em todas as respostas das rotas limitadas.
+5. **Rejeição barata:** o limiter roda antes de qualquer acesso a banco ou chamada remota.
+6. **Falha do coordenador:** não usar fail-open (libera tudo) nem fail-closed (derruba o serviço). Usar limite local conservador por réplica (token bucket local). O teto degradado agregado pode chegar a `réplicas máximas × burst local`. Dimensione o burst local com o pior número de réplicas e documente que a decisão local não garante atomicidade global.
+7. **Janela fixa admite até 2× o limite na virada da janela.** Se isso importar para o contrato, use janela deslizante ou token bucket em Lua. A escolha deve constar no contrato da quota.
+8. **Métrica:** `app.ratelimit.falhas_coordenador` e rejeições por quota, sem tag de tenant, chave ou IP (cardinalidade fixa). Mantenha TTL e conjunto de chaves limitados.
+9. **Limite de aplicação não substitui WAF/CDN** contra DDoS (encaminhar à borda com `arquiteto-cloud`).
+
+### Trecho do contrato (OpenAPI 3.1)
+
+```yaml
+components:
+  headers:
+    RetryAfter:
+      description: Segundos até a quota do cliente ser liberada.
+      schema: { type: integer, minimum: 1 }
+    RateLimitLimit:     { schema: { type: integer }, description: Quota da janela. }
+    RateLimitRemaining: { schema: { type: integer }, description: Requisições restantes. }
+    RateLimitReset:     { schema: { type: integer }, description: Segundos até o reset. }
+  responses:
+    QuotaExcedida:
+      description: Este cliente excedeu a quota. Outros clientes não são afetados.
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Saturado:
+      description: Serviço sem capacidade (afeta todos os clientes).
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+# Em cada operação limitada:
+#   responses:
+#     '429': { $ref: '#/components/responses/QuotaExcedida' }
+#     '503': { $ref: '#/components/responses/Saturado' }
+```
+
+### Tabela de status por cenário
+
+| Cenário | Status | Cliente deve |
+|---|---|---|
+| Dentro da quota | 2xx + `RateLimit-*` | seguir |
+| Quota do cliente excedida (global, entre réplicas) | 429 + `Retry-After` | esperar, dentro do deadline, com jitter |
+| Coordenador fora, limite local excedido | 429 + `Retry-After` | idem |
+| Serviço saturado | 503 + `Retry-After` | backoff exponencial com jitter |
+
+### Implementação (referência; controller é papel do `java-construtor`)
+
+Contador atômico por janela com Lua (INCR + PEXPIRE no mesmo script, corrigindo `PTTL < 0`; nunca INCR e EXPIRE separados, pois a chave pode ficar sem TTL):
+
+```java
+@Component
+@RequiredArgsConstructor
+public class LimiteDeTaxa {
+
+    private static final RedisScript<Long> INCREMENTAR_COM_JANELA = RedisScript.of("""
+            local atual = redis.call('INCR', KEYS[1])
+            if redis.call('PTTL', KEYS[1]) < 0 then
+              redis.call('PEXPIRE', KEYS[1], ARGV[1])
+            end
+            return atual
+            """, Long.class);
+
+    private final StringRedisTemplate redis;
+
+    /** identidade = clientId do token autenticado + operação. */
+    public boolean permitido(String identidade, int max, Duration janela) {
+        Long atual = redis.execute(INCREMENTAR_COM_JANELA,
+                List.of("ratelimit:" + identidade), String.valueOf(janela.toMillis()));
+        return atual != null && atual <= max;
+    }
+}
+```
+
+Handler central (infrastructure/web) para 429, com Problem Details:
+
+```java
+@ExceptionHandler(QuotaExcedida.class)
+ResponseEntity<ProblemDetail> quota(QuotaExcedida e) {
+    var pd = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
+            "Limite de requisições excedido para este cliente.");
+    pd.setType(URI.create("https://api.example.com/errors/quota-excedida"));
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.segundosAteLiberar()))
+            .body(pd);
+}
+```
+
+O fallback local na queda do Redis segue o padrão do exemplo `LimiteDistribuido` do catálogo (balde local limitado, com contador `falhasCoordenador()`).
+
+### Testes de contrato (pendentes, não executados nesta resposta)
+- `openapi.yaml` carrega no `swagger-parser` e todas as operações limitadas declaram 429 e 503 com `Retry-After`.
+- Dois clientes em N réplicas (porta efêmera): a soma das aceitações do cliente A não passa da quota; o cliente B não é afetado.
+- Coordenador derrubado: respostas seguem pelo limite local conservador, sem fail-open nem 5xx generalizado.
+- Chave sem TTL (órfã) é corrigida pelo script; virada de janela medida e documentada.
+
+### Encaminhamentos
+Implementação do filtro/controller: `java-construtor`; quota na borda/WAF: `arquiteto-cloud`; revisão final: `java-revisor` (modo `auditoria`). Valor da quota e janela: decisão de negócio a confirmar.
+
+## Pontuação
+- Itens obrigatórios:
+  - ✅ Quota local × global: "um contador por réplica multiplicaria o limite por N".
+  - ✅ Identidade confiável: "vem do token autenticado (`clientId`/tenant validado) ... Nunca de `X-Forwarded-For`".
+  - ✅ Operação atômica: script Lua "INCR + PEXPIRE no mesmo script, corrigindo `PTTL < 0`; nunca INCR e EXPIRE separados" (`RedisScript.of`, `StringRedisTemplate.execute`; APIs corretas).
+  - ✅ Falha do limitador: "limite local conservador por réplica ... teto degradado agregado ... `réplicas máximas × burst local`".
+  - ✅ 429 + `Retry-After`: `components/responses/QuotaExcedida` e handler.
+  - ✅ Forma de verificar: testes com N réplicas, coordenador derrubado e chave órfã corrigida.
+- Falha bloqueadora: não
+- Justificativa: decisão completa, com código atômico correto, modo de falha definido e provas.

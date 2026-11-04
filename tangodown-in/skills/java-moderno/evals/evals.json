@@ -1,0 +1,40 @@
+{
+  "skill_name": "java-moderno",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tenho um switch com default sobre uma hierarquia sealed de tipos de pagamento. Modernize.",
+      "expected_output": "Usa switch de padrões exaustivo sobre sealed, sem default, para o compilador acusar tipo novo; records para os tipos de dados",
+      "files": [],
+      "expectations": [
+        "Remove o default do switch sobre tipo sealed",
+        "Usa pattern matching no switch de forma exaustiva",
+        "Modela os tipos de pagamento como records dentro da hierarquia sealed",
+        "Não usa padrões primitivos em switch (preview no Java 25)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Use virtual threads para resolver as 10 conexões do banco que temos disponíveis.",
+      "expected_output": "Explica que virtual threads não aumentam capacidade de recurso finito: continuam 10 conexões; limita admissão com Semaphore e não aumenta o pool",
+      "files": [],
+      "expectations": [
+        "Afirma que virtual threads não criam conexões",
+        "Usa Semaphore ou limite de admissão para o recurso finito",
+        "Mantém o pool dentro do orçamento do banco"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Qual o jeito moderno de substituir essa cadeia de instanceof com cast?",
+      "Posso trocar essa classe de dados com getters e equals por um record?",
+      "Estou migrando código de Java 11 para Java 25, por onde começo?"
+    ],
+    "should_not_trigger": [
+      "Qual padrão GoF resolve a criação de objetos com muitos parâmetros opcionais?",
+      "Faça a revisão completa deste PR por severidade.",
+      "Configure o pool Hikari e o índice para esta query lenta."
+    ]
+  }
+}

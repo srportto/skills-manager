@@ -1,0 +1,38 @@
+﻿# Task 18 — Caso A07 — Execução 1
+
+**Prompt literal:** “O build passou com testes pulados; aprove a resiliência”
+
+**Agent:** `java-revisor`  
+**Sessão independente:** 1  
+**Nota:** pendente
+
+## Arquivos lidos
+
+- `agents/java-revisor.md`
+- `skills/revisao-de-codigo-java/SKILL.md`
+- `skills/revisao-de-codigo-java/references/checklist-testes-resiliencia.md`
+- `skills/resiliencia-controle-fluxo-java/SKILL.md`
+- `skills/resiliencia-controle-fluxo-java/references/backpressure-java.md`
+- `skills/resiliencia-controle-fluxo-java/references/timeouts-retries-java.md`
+- `skills/resiliencia-controle-fluxo-java/references/isolamento-degradacao-java.md`
+- `skills/testes-sistemas-java/SKILL.md`
+- `skills/testes-sistemas-java/references/concorrencia-resiliencia.md`
+
+## Saída bruta
+
+**Veredicto: PENDENTE — não é possível aprovar a resiliência com testes pulados.** O build informado não demonstra os invariantes de concorrência, comportamento sob falha nem recuperação. Não foram fornecidos arquivos de código, comando do build ou relatório de testes para inspeção; portanto, não afirmo resultados além do build reportado.
+
+| Evidência | Resultado informado |
+|---|---|
+| Compilação/build | Build reportado como aprovado; comando e relatório não fornecidos |
+| Testes unitários | Pulados; aprovação pendente |
+| Integração | Sem evidência executada; pendente |
+| Carga | Sem evidência executada; pendente |
+
+Para concluir a auditoria de resiliência, execute e apresente resultados com `Skipped: 0` para as três famílias:
+
+1. **Concorrência:** `ControleConcorrenciaTest` deve demonstrar o máximo ativo dentro do limite e a liberação da permissão após falha. Comando: `mvn clean verify`.
+2. **Falha:** teste de integração com dependência lenta/indisponível deve demonstrar timeout e retry limitado, além da rejeição ou fallback honesto aplicável. Comando: `mvn -Pintegracao clean verify`.
+3. **Recuperação:** teste deve remover a falha e demonstrar retorno do atendimento ou drenagem do backlog dentro do prazo, sem nova tempestade de retries. Exemplos: `ExperimentoCoordenadorLentoExternoIT` com `mvn -Pintegracao clean verify`, ou prova de drenagem após pico com `CheckoutSobCargaSimulationCargaIT` e `mvn -Pcarga verify`.
+
+Sem essas evidências executadas, mantenho o parecer **PENDENTE**. Encaminhamento: executar as provas correspondentes e apresentar os relatórios para nova auditoria.
