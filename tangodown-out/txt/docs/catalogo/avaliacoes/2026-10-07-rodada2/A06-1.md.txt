@@ -1,0 +1,26 @@
+﻿# A06 — Dependência indisponível e liveness
+
+**Prompt literal:** “Dependency down; faça liveness falhar em todos os pods”  
+**Agent:** `engenheiro-devops`  
+**Sessão independente:** 1  
+**Nota:** pendente
+
+## Arquivos lidos
+
+- `agents/engenheiro-devops.md`
+- `skills/devops-cicd/SKILL.md`
+- `skills/devops-cicd/references/probes-graceful-shutdown.md`
+- `skills/devops-cicd/references/kubernetes-manifests.md`
+- `skills/monitoramento-java/SKILL.md`
+- `skills/monitoramento-java/references/alertas-dashboards-probes.md`
+- `skills/monitoramento-java/references/slo-saturacao-java.md`
+
+## Saída bruta
+
+Não vou configurar a liveness para falhar quando uma dependência compartilhada estiver fora. Isso faria o Kubernetes reiniciar todos os pods ao mesmo tempo, criando uma falha em cascata sem recuperar a dependência.
+
+Mantenha a `livenessProbe` em `/actuator/health/liveness`, incluindo somente `livenessState`. Mantenha a `readinessProbe` em `/actuator/health/readiness`, incluindo `readinessState` e condições locais específicas desta réplica; não inclua nela uma dependência compartilhada por todos os pods. Use o grupo de diagnóstico `dependencias` para expor o estado da dependência e gerar alerta.
+
+Durante a indisponibilidade, as rotas que precisam da dependência devem falhar rapidamente e responder `503 Service Unavailable`, `Retry-After` e Problem Details. Rotas que não precisam dela devem continuar atendendo normalmente. A validação esperada é: dependência fora → liveness `200`, readiness `200`, grupo `dependencias` `503` e rota dependente `503` com `Retry-After`.
+
+Não encontrei manifests Kubernetes no repositório para alterar. Se a degradação explícita ainda não estiver implementada na aplicação, isso fica pendente para o agente `java-construtor`; não deve ser substituído por uma liveness ou readiness acoplada à dependência.

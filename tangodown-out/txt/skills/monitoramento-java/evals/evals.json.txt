@@ -1,0 +1,42 @@
+{
+  "skill_name": "monitoramento-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Dependency down; faça liveness falhar em todos os pods",
+      "expected_output": "Liveness não depende de serviço externo; readiness apenas se a dependência é necessária para atender esta réplica (dependência compartilhada por todas as réplicas fica fora, senão o Service esvazia); degradação explícita (503 + Retry-After/Problem Details nas rotas que precisam dela, demais rotas seguem)",
+      "files": [],
+      "expectations": [
+        "Mantém a liveness independente de serviço externo",
+        "Usa readiness apenas se a dependência é necessária para atender esta réplica",
+        "Não põe dependência compartilhada por todas as réplicas na readiness (tiraria o Service inteiro do ar)",
+        "Define degradação explícita: 503 + Retry-After/Problem Details nas rotas que precisam da dependência, demais rotas seguem",
+        "Não acopla a liveness à dependência (reinício em massa dos pods)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Adicionar métricas para cada pedido e traceId",
+      "expected_output": "Recusa labels de alta cardinalidade; métricas agregadas por operação/resultado; correlação por logs, traces e exemplars",
+      "files": [],
+      "expectations": [
+        "Recusa labels de alta cardinalidade",
+        "Agrega métricas por operação e resultado",
+        "Correlaciona por logs, traces e exemplars",
+        "Não usa pedidoId nem traceId como label de métrica"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como adiciono métricas Micrometer com Prometheus e alertas de burn rate ao serviço?",
+      "Quero correlacionar logs e traces com traceId via MDC.",
+      "Quais probes de liveness e readiness devo expor no Spring Boot Actuator?"
+    ],
+    "should_not_trigger": [
+      "Escreva o workflow de CI/CD e o Dockerfile da aplicação.",
+      "Desenhe um experimento de chaos derrubando pods do serviço.",
+      "Revise este diff e aponte problemas por severidade."
+    ]
+  }
+}

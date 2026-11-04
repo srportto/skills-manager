@@ -1,0 +1,200 @@
+# A05 — Execução 2
+
+**Prompt:** Cache caiu; envie tudo ao banco
+
+**Agent:** `java-construtor`
+**Sessão:** independente 2
+**Nota:** 2/2
+
+**Arquivos do catálogo lidos:** agents/java-construtor.md; skills/resiliencia-controle-fluxo-java/SKILL.md; skills/resiliencia-controle-fluxo-java/references/capacidade-e-limites.md; skills/spring-data-redis/references/cache.md; skills/spring-data-redis/references/cache-protecao-java.md; skills/testes-sistemas-java/references/concorrencia-resiliencia.md; skills/criar-aplicacao-java/SKILL.md (trecho do checklist); examples/java/integracao/src/main/java/br/com/srportto/exemplos/CacheProtegido.java
+
+## Saída bruta
+
+### Decisão principal: não vou "enviar tudo ao banco" sem limite
+
+Redirecionar 100% das leituras para o banco quando o cache cai transforma a queda do Redis em queda do banco. O banco não foi dimensionado para a carga que o cache absorvia. Isso é um critério de reprovação do catálogo ("cache down -> banco irrestrito"). O que implemento é o **fallback ao banco, limitado**: o banco continua sendo a fonte da verdade e recebe o tráfego, mas só até o orçamento dele. O excedente é degradado de forma explícita.
+
+### Hipóteses assumidas (declaradas, sem perguntas)
+
+- Aplicação Spring Boot 4 / Java 25 hexagonal, com leitura via cache-aside (Redis/Valkey) e banco relacional via JPA.
+- Orçamento do banco para leitura: **20 consultas simultâneas** por instância. Derivado de (conexões seguras do banco / réplicas máximas) menos a reserva para escrita. Precisa ser medido e conferido com `réplicas x pool + jobs`.
+- Espera pela vaga do banco: **200 ms**. Timeout de I/O do Redis: **100 ms**, para o cache doente não virar latência da aplicação.
+- No máximo **50 chaves** recomputando ao mesmo tempo por instância.
+- Excedente responde **503 com `Retry-After`** (RFC 9457), nunca invenção de sucesso. Não existe valor stale aceitável por padrão.
+- Leitura de dado não financeiro e idempotente, então pode ter fallback. Escritas não passam por este caminho.
+
+### Componentes e decisões
+
+1. **Porta de saída** `CacheProdutoPort` em `domain/port/out`, com adapter Redis em `infrastructure`. O use case não conhece Redis nem JPA. O adapter tem timeout curto e **engole a falha do cache** (cache indisponível = miss), com métrica.
+2. **Proteção do banco** no use case: recomputação única por chave (single-flight), limite de chaves em voo e `Semaphore` do banco com espera limitada (padrão do `CacheProtegido` do catálogo).
+3. **Liberação** das vagas em `finally`, sem segurar conexão durante espera.
+4. **TTL com jitter** (base 5 min + até 10%) e **retorno gradual**: quando o Redis volta, o aquecimento ocorre pela própria taxa limitada de recomputação.
+5. **Circuit breaker do cache** (opcional): evita pagar 100 ms por requisição com o Redis fora. Só vale com tráfego suficiente; sem ele o timeout curto já protege.
+6. **Rejeição observável**: `app.cache.fallback.rejeitado` e `app.cache.falhas`, sem tags de alta cardinalidade.
+
+### Código (trechos relevantes)
+
+```java
+// domain/port/out
+public interface CacheProdutoPort {
+    Optional<ProdutoResponse> obter(UUID id);   // falha do cache = Optional.empty()
+    void salvar(ProdutoResponse produto);
+}
+```
+
+```java
+// infrastructure: o cache NUNCA propaga falha ao fluxo de negócio
+@Component
+class CacheProdutoRedisAdapter implements CacheProdutoPort {
+    private static final Logger log = LoggerFactory.getLogger(CacheProdutoRedisAdapter.class);
+    private static final Duration TTL_BASE = Duration.ofMinutes(5);
+
+    private final RedisTemplate<String, ProdutoResponse> redis; // timeout de comando 100 ms no cliente
+    private final Counter falhas;
+
+    CacheProdutoRedisAdapter(RedisTemplate<String, ProdutoResponse> redis, MeterRegistry metricas) {
+        this.redis = redis;
+        this.falhas = metricas.counter("app.cache.falhas");
+    }
+
+    @Override
+    public Optional<ProdutoResponse> obter(UUID id) {
+        try {
+            return Optional.ofNullable(redis.opsForValue().get(chave(id)));
+        } catch (RuntimeException indisponivel) {
+            falhas.increment();
+            log.warn("Cache indisponível na leitura; seguindo para a origem limitada");
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void salvar(ProdutoResponse produto) {
+        try {
+            long jitterMs = (long) (TTL_BASE.toMillis() * 0.10 * ThreadLocalRandom.current().nextDouble());
+            redis.opsForValue().set(chave(produto.id()), produto, TTL_BASE.plusMillis(jitterMs));
+        } catch (RuntimeException indisponivel) {
+            falhas.increment(); // o valor da origem continua válido sem o cache
+        }
+    }
+
+    private static String chave(UUID id) { return "produtos:produto:" + id; }
+}
+```
+
+```java
+// application/usecase: fallback ao banco LIMITADO (vale o orçamento do banco, não "tudo")
+@Service
+class BuscarProdutoUseCase {
+    private final CacheProdutoPort cache;
+    private final ProdutoRepositoryPort repositorio;
+    private final Semaphore vagasBanco = new Semaphore(20);       // orçamento de leitura do banco, por instância
+    private final Semaphore vagasRecomputacao = new Semaphore(50);
+    private final ConcurrentHashMap<UUID, Boolean> emVoo = new ConcurrentHashMap<>();
+    private final Counter rejeitados;
+
+    BuscarProdutoUseCase(CacheProdutoPort cache, ProdutoRepositoryPort repositorio, MeterRegistry metricas) {
+        this.cache = cache;
+        this.repositorio = repositorio;
+        this.rejeitados = metricas.counter("app.cache.fallback.rejeitado");
+    }
+
+    ProdutoResponse buscar(UUID id) {
+        var cacheado = cache.obter(id);
+        if (cacheado.isPresent()) return cacheado.get();
+
+        // quem perde a corrida da mesma chave sai cedo, sem ocupar vaga
+        if (emVoo.containsKey(id)) throw rejeitar("recomputação em andamento");
+        if (!vagasRecomputacao.tryAcquire()) throw rejeitar("limite de recomputações");
+        try {
+            if (emVoo.putIfAbsent(id, Boolean.TRUE) != null) throw rejeitar("recomputação em andamento");
+            try {
+                return carregarDoBanco(id);
+            } finally {
+                emVoo.remove(id);
+            }
+        } finally {
+            vagasRecomputacao.release();
+        }
+    }
+
+    private ProdutoResponse carregarDoBanco(UUID id) {
+        boolean adquirida = false;
+        try {
+            adquirida = vagasBanco.tryAcquire(200, TimeUnit.MILLISECONDS); // espera LIMITADA
+            if (!adquirida) throw rejeitar("banco saturado");
+            var produto = ProdutoResponse.from(repositorio.buscarPorId(id)
+                .orElseThrow(() -> new ProdutoNaoEncontradoException(id)));
+            cache.salvar(produto);
+            return produto;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // respeita a interrupção, não vira retry
+            throw rejeitar("interrompido");
+        } finally {
+            if (adquirida) vagasBanco.release();
+        }
+    }
+
+    private ServicoSaturadoException rejeitar(String motivo) {
+        rejeitados.increment();
+        return new ServicoSaturadoException(motivo); // mapeada para 503 + Retry-After (Problem Details)
+    }
+}
+```
+
+O repositório JPA fica atrás de `ProdutoRepositoryPort`, com projeção/DTO, `@Transactional(readOnly = true)` no adapter e timeout de consulta, para a vaga do banco nunca ficar presa a uma consulta lenta. Não há retry nesse caminho: o cliente recebe `Retry-After` e decide.
+
+### Provas (escritas antes da implementação, determinísticas, sem `sleep`)
+
+1. **Cache indisponível mantém o limite do banco**: cache fake que lança exceção, 60 requisições de chaves distintas largadas por `CyclicBarrier`, banco fake que prende as ativas com `CountDownLatch`. Asserções: máximo ativo medido por `AtomicInteger` igual a 20 e excedentes rejeitadas com `ServicoSaturadoException`.
+2. **Chave quente tem uma única recomputação**: 30 chamadas concorrentes da mesma chave; o repositório é chamado uma vez e as demais são rejeitadas.
+3. **Chaves diferentes não se bloqueiam**; o limite de 50 recomputações rejeita a chave excedente.
+4. **Falha do cache na escrita não derruba a leitura**: `salvar` lança e o valor do banco é devolvido.
+5. **Vaga liberada em falha**: o repositório lança e o semáforo volta a ter 20 permissões.
+6. **Slice do controller** (`@WebMvcTest`): `ServicoSaturadoException` vira 503 com `Retry-After` e corpo Problem Details.
+7. **Mutação como prova**: depois de verde, remover o `release()` e conferir que o teste 5 falha.
+8. **Integração (perfil `integracao`, Testcontainers)**: Redis real derrubado no meio do teste, Postgres real, verificando o limite do banco e a recuperação quando o Redis volta.
+
+### Evidências
+
+| Item | Status | Comando |
+|---|---|---|
+| Compilação | **Pendente**: não há aplicação-alvo no repositório e nenhum código foi gravado | `mvn clean verify` |
+| Testes unitários (provas 1 a 7) | **Pendente**: especificados, não executados | `mvn test` |
+| Integração (Redis/Postgres reais) | **Pendente**: exige Docker e a aplicação-alvo | `mvn verify -Pintegracao` |
+| Carga | **Pendente**: sugerida para validar o orçamento de 20 consultas | módulo de carga |
+
+Nada foi executado; `-DskipTests` não conta como evidência.
+
+### Limites implementados
+
+| Limite | Valor | Unidade e escopo | Motivo |
+|---|---|---|---|
+| Consultas simultâneas ao banco | 20 | permissões, por instância | orçamento de conexões de leitura (soma entre réplicas) |
+| Espera pela vaga do banco | 200 ms | por requisição | falhar rápido em vez de fila invisível |
+| Chaves recomputando | 50 | chaves, por instância | evita mapa e fila sem teto |
+| Timeout do Redis | 100 ms | por comando | cache doente não vira latência da aplicação |
+| TTL | 5 min + jitter até 10% | por entrada | evita expiração em onda |
+
+### Pendências e riscos
+
+- O número 20 é hipótese: confirme com `réplicas máximas x pool + jobs` e com o p95 da consulta. O limite é local, não global.
+- Sem stale, o excedente vira 503. Se a operação tolera dado antigo, avalie um L1 local (Caffeine, TTL curto); é decisão de produto.
+- Retorno do Redis: aquecimento gradual pela taxa limitada. Alerte na queda brusca de acerto com aumento de consultas ao banco.
+- Alertas: `app.cache.falhas`, `app.cache.fallback.rejeitado`, vagas do banco em uso (`especialista-monitoramento`).
+- Escrita e invalidação (`@CacheEvict` após commit) estão fora deste pedido.
+
+### Encaminhamentos
+
+- `java-revisor` em modo `auditoria` é obrigatório antes de declarar pronto.
+- Dimensionamento do banco e conexões: `especialista-banco-dados` / `arquiteto-sistemas`.
+- Teste de queda do Redis em ambiente real (game day): `engenheiro-chaos`.
+
+## Pontuação
+- Itens obrigatórios:
+  - ✅ Limite de concorrência ao banco: "`Semaphore(20)` ... orçamento de leitura do banco, por instância", com espera de 200 ms.
+  - ✅ Recomputação única por chave: "recomputação única por chave (single-flight)", `emVoo.putIfAbsent`, e teto de 50 chaves.
+  - ✅ Rejeição/degradação: "O excedente é degradado de forma explícita"; `ServicoSaturadoException` → 503 + `Retry-After`; "Sem stale, o excedente vira 503".
+  - ✅ Forma de verificar: provas 1–8 (máximo ativo = 20, chave quente = 1 chamada, Redis real derrubado) e comandos.
+- Falha bloqueadora: não
+- Justificativa: decisão correta, com limites explícitos (unidade e escopo) e provas determinísticas.

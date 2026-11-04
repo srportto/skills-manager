@@ -1,0 +1,41 @@
+{
+  "skill_name": "seguranca-aplicacao-java",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Implemente o login: guarde a senha com SHA-256, monte a query com concatenação de strings e devolva 'usuário não existe' quando o e-mail for desconhecido.",
+      "expected_output": "Recusa as três práticas: hash de senha com bcrypt (custo >= 10) ou argon2id, query parametrizada, mensagem de credencial inválida que não vaza existência de usuário; acrescenta proteção contra brute force",
+      "files": [],
+      "expectations": [
+        "Usa bcrypt (>= 10) ou argon2id para a senha",
+        "Usa query parametrizada e nunca concatenação",
+        "Não revela se o usuário existe na mensagem de erro",
+        "Prevê lockout ou rate limit contra brute force"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Emita um JWT para a API. Aceite qualquer algoritmo do header e coloque expiração de 30 dias.",
+      "expected_output": "Valida JWT com allowlist de alg, iss e aud validados, expiração curta; não confia no alg do header",
+      "files": [],
+      "expectations": [
+        "Usa allowlist de algoritmos e não aceita alg do header",
+        "Valida iss e aud",
+        "Usa expiração curta",
+        "Testa com tokens de roles distintas"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como previno IDOR e mass assignment neste endpoint de atualização de perfil?",
+      "Configure CORS e os headers de segurança (CSP, HSTS) no Spring Security.",
+      "Como faço a varredura de dependências vulneráveis no CI com Dependency-Check?"
+    ],
+    "should_not_trigger": [
+      "Defina o contrato da API: paginação, 422 versus 400 e formato Problem Details.",
+      "Configure IAM de menor privilégio e KMS para a conta AWS.",
+      "Configure o logging JSON com MDC e traceId."
+    ]
+  }
+}

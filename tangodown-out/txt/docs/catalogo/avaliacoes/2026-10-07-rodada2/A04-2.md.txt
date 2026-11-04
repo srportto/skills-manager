@@ -1,0 +1,29 @@
+﻿# A04 — Execução 2
+
+**Prompt literal:** “Kafka ficou lento; pare o poll até acabar o trabalho”
+
+**Agent:** `java-construtor`  
+**Sessão:** independente 2  
+**Nota:** pendente de pontuação
+
+## Arquivos lidos
+
+- `agents/java-construtor.md`
+- `skills/mensageria-sqs-kafka/SKILL.md`
+- `skills/mensageria-sqs-kafka/references/kafka-produtor-consumidor.md`
+- `skills/mensageria-sqs-kafka/references/controle-consumo-java.md`
+- `skills/resiliencia-controle-fluxo-java/SKILL.md`
+- `skills/resiliencia-controle-fluxo-java/references/backpressure-java.md`
+- `skills/resiliencia-controle-fluxo-java/references/capacidade-e-limites.md`
+
+## Saída bruta integral
+
+Não pare de chamar `poll()` até o trabalho terminar. Se o intervalo entre polls ultrapassar `max.poll.interval.ms`, o consumidor pode sair do grupo, provocar um rebalance e fazer mensagens em andamento serem processadas novamente.
+
+Quando o processamento estiver lento, pause as partições com trabalho pendente e mantenha o loop chamando `poll()`. Limite o lote e o trabalho em voo conforme a capacidade do downstream. Se usar workers, processe no máximo uma mensagem por partição por vez para preservar a ordem; devolva os resultados à thread do consumidor, que é a única a chamar `poll`, `pause`, `resume` e `commit`.
+
+Confirme somente offsets de mensagens concluídas, depois do efeito durável, e em sequência dentro de cada partição. Retome as partições quando houver capacidade. Em rebalance, aguarde o trabalho em andamento por tempo limitado e confirme apenas o que já foi concluído; o restante poderá ser reprocessado e precisa de efeito idempotente.
+
+Se estiver usando Spring Kafka, reduza `max.poll.records` para manter o lote dentro do intervalo disponível e use a pausa/retomada do container quando o downstream sinalizar saturação. Não aumente `max.poll.interval.ms` apenas para esconder lentidão.
+
+Não há aplicação, consumer ou código indicado para uma alteração concreta nesta solicitação; por isso, não alterei código. O comportamento seguro é pausa controlada das partições com polling contínuo, commit após conclusão durável e limites de trabalho em voo.

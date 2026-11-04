@@ -1,0 +1,41 @@
+{
+  "skill_name": "api-rest-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Desenhe o POST /pagamentos de uma API REST. O cliente pode repetir a chamada quando der timeout. Defina também o formato de erro.",
+      "expected_output": "Exige cabeçalho Idempotency-Key com mesmo status/corpo na repetição e status definido para payload divergente (422 ou 409); erros em application/problem+json (RFC 9457)",
+      "files": [],
+      "expectations": [
+        "Declara Idempotency-Key no POST sujeito a repetição",
+        "Define 422 ou 409 para a mesma chave com payload diferente",
+        "Usa Problem Details (RFC 9457) em vez de envelope próprio",
+        "Não usa 500 para erro de validação"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Meu feed de eventos tem milhões de linhas e o front usa ?page=&size=. Quero limitar o consumo por cliente e devolver o status certo quando passar do limite. O que muda no contrato?",
+      "expected_output": "Troca offset por cursor, com teto de tamanho de página; quota excedida devolve 429 com Retry-After, distinta de 503 de saturação; identidade da quota vem do token autenticado",
+      "files": [],
+      "expectations": [
+        "Recomenda paginação por cursor para dataset grande com inserts concorrentes",
+        "Define teto máximo para o tamanho da página",
+        "Usa 429 com Retry-After para quota do cliente e 503 para saturação do serviço",
+        "Não usa X-Forwarded-For livre como identidade da quota"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Preciso escrever o openapi.yaml 3.1 de uma API de pedidos com paginação e erros padronizados.",
+      "Qual status devolvo quando a regra de negócio falha: 400 ou 422? Quero padronizar entre serviços.",
+      "Vale a pena usar HATEOAS na nossa API pública que terá clientes por anos?"
+    ],
+    "should_not_trigger": [
+      "Como faço o hash de senha e emito JWT no login da API com Spring Security?",
+      "Em qual camada devo colocar o @RestController e os DTOs no projeto hexagonal?",
+      "Revise este PR do controller e aponte problemas de severidade crítica."
+    ]
+  }
+}

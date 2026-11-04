@@ -1,0 +1,41 @@
+{
+  "skill_name": "banco-de-dados-performance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Uma query no PostgreSQL está lenta em produção e quero criar um índice. Qual o passo a passo seguro?",
+      "expected_output": "Captura baseline com EXPLAIN (ANALYZE, BUFFERS), testa fora de produção, cria índice com CREATE INDEX CONCURRENTLY, uma mudança por vez, e compara plano antes/depois",
+      "files": [],
+      "expectations": [
+        "Pede EXPLAIN (ANALYZE, BUFFERS) como baseline antes de mudar",
+        "Usa CREATE INDEX CONCURRENTLY e avisa que não roda dentro de transação",
+        "Aplica uma mudança por vez e valida que o índice foi usado (idx_scan > 0)",
+        "Considera write amplification e lag de replicação do novo índice"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Vamos subir 8 réplicas da aplicação, cada uma com HikariCP de 30 conexões, num Postgres com max_connections=100. Está certo?",
+      "expected_output": "Aponta que o pool somado (240) estoura o orçamento do banco; dimensiona o pool por réplica pela soma de todas as réplicas e define timeout de aquisição",
+      "files": [],
+      "expectations": [
+        "Soma os pools de todas as réplicas contra o orçamento de conexões do banco",
+        "Reduz o pool por réplica em vez de aumentar max_connections às cegas",
+        "Define timeout de aquisição de conexão",
+        "Não sugere virtual threads como forma de aumentar conexões"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Essa query faz Seq Scan numa tabela de 50 milhões de linhas, como interpreto o EXPLAIN ANALYZE?",
+      "O autovacuum não está dando conta e a tabela está inchada (bloat). O que faço?",
+      "Quando vale um índice parcial ou covering com INCLUDE no PostgreSQL?"
+    ],
+    "should_not_trigger": [
+      "Tenho N+1 numa listagem JPA, como corrijo com @EntityGraph?",
+      "Estou recebendo LazyInitializationException ao serializar a entidade no controller.",
+      "Em qual camada devo colocar o Repository na arquitetura hexagonal?"
+    ]
+  }
+}

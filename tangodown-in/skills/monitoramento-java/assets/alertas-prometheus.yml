@@ -1,0 +1,90 @@
+# Regras de alerta Prometheus: RED (taxa, erros, duração) e saturação.
+# Ajuste limiares, janelas e o rótulo "application" ao serviço.
+# Explicação, burn rate e runbook: references/slo-saturacao-java.md.
+# Regra de cardinalidade: nenhum rótulo de traceId, id de pedido/usuário ou mensagem de erro.
+groups:
+  - name: app-red.rules
+    rules:
+      # Erros: razão de respostas 5xx por endpoint (uri é o template, conjunto fechado).
+      - alert: HighErrorRate
+        expr: |
+          sum by (uri) (rate(http_server_requests_seconds_count{application="pedidos", status=~"5.."}[5m]))
+          / sum by (uri) (rate(http_server_requests_seconds_count{application="pedidos"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa de erro acima de 5% em {{ $labels.uri }} por 2 minutos"
+          runbook_url: "https://runbooks.exemplo.com/pedidos/taxa-de-erro"
+      # Duração: p99 por endpoint (exige percentiles-histogram habilitado).
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, uri) (rate(http_server_requests_seconds_bucket{application="pedidos"}[5m]))
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 acima de 1s em {{ $labels.uri }}"
+      # Taxa: queda abrupta de tráfego costuma indicar falha a montante.
+      - alert: QuedaDeTrafego
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="pedidos"}[5m]))
+          < 0.2 * sum(rate(http_server_requests_seconds_count{application="pedidos"}[5m] offset 1h))
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tráfego caiu mais de 80% em relação a 1 hora atrás"
+
+  - name: app-slo.rules
+    rules:
+      # Razões de erro pré-calculadas (SLO 99,9%: orçamento de 0,001).
+      - record: checkout:erro_ratio:rate5m
+        expr: |
+          1 - (sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido",resultado="sucesso"}[5m]))
+               / sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido"}[5m])))
+      - record: checkout:erro_ratio:rate1h
+        expr: |
+          1 - (sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido",resultado="sucesso"}[1h]))
+               / sum(rate(app_requisicoes_seconds_count{operacao="criar-pedido"}[1h])))
+      # Burn rate 14,4: janela longa (1h) e curta (5min) para parar logo após a recuperação.
+      - alert: CheckoutConsumoRapidoDoOrcamento
+        expr: checkout:erro_ratio:rate1h > (14.4 * 0.001) and checkout:erro_ratio:rate5m > (14.4 * 0.001)
+        labels:
+          severity: page
+        annotations:
+          summary: "Checkout consumindo o orçamento de erro 14x mais rápido que o sustentável"
+          runbook_url: "https://runbooks.exemplo.com/checkout/orcamento-de-erro"
+
+  - name: app-saturacao.rules
+    rules:
+      # Rejeição por saturação (429/503) entra como resultado, não como ausência.
+      - alert: RejeicoesCrescentes
+        expr: |
+          sum by (operacao) (rate(app_requisicoes_seconds_count{resultado="rejeitada"}[5m]))
+          / sum by (operacao) (rate(app_requisicoes_seconds_count[5m])) > 0.02
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mais de 2% das requisições de {{ $labels.operacao }} rejeitadas por saturação"
+      # Pool de conexões: requisições esperando conexão.
+      - alert: PoolDeConexoesSaturado
+        expr: sum by (pool) (hikaricp_connections_pending) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Threads esperando conexão no pool {{ $labels.pool }} há 5 minutos"
+      # Heap após GC alto antecede OutOfMemory e pausas longas.
+      - alert: HeapPosGcAlto
+        expr: |
+          sum by (application) (jvm_memory_used_bytes{area="heap"})
+          / sum by (application) (jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Heap acima de 85% do máximo há 10 minutos"

@@ -1,0 +1,12 @@
+# A05 — Execução 1
+
+**Prompt:** Cache caiu; envie tudo ao banco
+**Agent:** `java-construtor` · **Sessão:** independente 1 · **Nota:** 1/2
+
+## Saída bruta
+
+Não recomendo enviar todas as requisições diretamente ao banco quando o cache cair: isso pode sobrecarregá-lo. Use fallback controlado, com limite de concorrência, timeout e circuit breaker; se o banco atingir o limite, responda com erro temporário. Para definir a implementação, preciso saber como o cache e o banco são acessados hoje.
+
+## Justificativa da nota
+
+Recusa corretamente o fallback irrestrito e cita limite de concorrência, timeout e degradação. Não define recomputação única por chave (single-flight), nem fornece evidência/teste para validar o limite. Nota 1.

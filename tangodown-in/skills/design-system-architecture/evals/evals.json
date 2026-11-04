@@ -1,0 +1,42 @@
+{
+  "skill_name": "design-system-architecture",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Desenhe em Java um serviço cujo produtor recebe 1.000 eventos/s e consumidor processa 100/s",
+      "expected_output": "Pergunta ou assume explicitamente a duração do pico; calcula backlog (900 eventos/s de déficit), bytes e drenagem; limita a fila e define pausar/rejeitar/persistir; propõe aumento de capacidade se o déficit for sustentado",
+      "files": [],
+      "expectations": [
+        "Pergunta ou assume explicitamente a duração do pico",
+        "Calcula o déficit de 900 eventos/s, o backlog em itens e bytes e o tempo de drenagem",
+        "Limita a fila e define pausar, rejeitar ou persistir quando encher",
+        "Propõe aumento de capacidade se o déficit for sustentado",
+        "Não propõe fila ilimitada nem 'Kafka resolve' sem retenção, lag e capacidade"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Explique o design de um chat em 45 minutos com exemplos",
+      "expected_output": "Roteiro M10 (requisitos, capacidade, desenho, aprofundamento, trade-offs); ordenação por conversa, reconexão com resync, backpressure por conexão; trechos de código em Java",
+      "files": [],
+      "expectations": [
+        "Segue o roteiro M10: requisitos, capacidade, desenho, aprofundamento e trade-offs",
+        "Trata ordenação por conversa, reconexão com resync e backpressure por conexão",
+        "Traz trechos de código em Java",
+        "Não usa trechos em outra linguagem nem omite capacidade e falhas"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Monolito modular ou microsserviços para esta plataforma de checkout? Escreva o ADR.",
+      "Estime a capacidade (QPS, armazenamento, conexões) de um sistema de notificações.",
+      "Consistência forte ou eventual para o saldo da conta, e como uso outbox?"
+    ],
+    "should_not_trigger": [
+      "Em qual camada hexagonal coloco esta classe de serviço?",
+      "Desenhe a VPC, as subnets e o IAM da conta AWS.",
+      "Defina o contrato REST com Problem Details e cursor."
+    ]
+  }
+}

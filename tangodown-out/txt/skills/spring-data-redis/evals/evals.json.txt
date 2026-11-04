@@ -1,0 +1,55 @@
+{
+  "skill_name": "spring-data-redis",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Cache caiu; envie tudo ao banco",
+      "expected_output": "Fallback com limite de concorrência ao banco, recomputação única por chave, rejeição ou degradação quando excede",
+      "files": [],
+      "expectations": [
+        "Limita a concorrência de acesso ao banco no fallback",
+        "Recomputa uma única vez por chave",
+        "Rejeita ou degrada quando o limite é excedido",
+        "Não encaminha todo o tráfego ao banco sem limite"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Limite cada cliente em várias réplicas",
+      "expected_output": "Distingue quota local de global; identidade confiável (não header forjável); operação atômica no coordenador; comportamento quando o limitador falha; 429 com Retry-After",
+      "files": [],
+      "expectations": [
+        "Distingue quota local de quota global",
+        "Usa identidade confiável e não header forjável",
+        "Usa operação atômica no coordenador",
+        "Define o comportamento quando o limitador falha",
+        "Devolve 429 com Retry-After",
+        "Não usa contador com incremento e expiração não atômicos nem identidade por header não confiável"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Configure o cache dos pedidos com Redis: use @Cacheable, o serializer padrão do Java e sem TTL, que a memória é grande.",
+      "expected_output": "Recusa serialização Java e chave sem TTL: serializer JSON Jackson 3 (GenericJacksonJsonRedisSerializer), TTL com jitter em toda chave, @EnableCaching, DTOs em vez de entidades e sync = true para chave quente",
+      "files": [],
+      "expectations": [
+        "Usa serializer JSON e não serialização Java",
+        "Define TTL com jitter em toda chave",
+        "Cacheia DTOs e não entidades JPA",
+        "Habilita @EnableCaching e usa sync = true para chave quente"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como implemento quota por cliente com INCR e PEXPIRE atômico no Redis?",
+      "Preciso de uma fila de trabalho com ack e recuperação usando Redis Streams.",
+      "Como agendo execuções por horário com sorted set?"
+    ],
+    "should_not_trigger": [
+      "Configure a fila SQS com DLQ e RedrivePolicy.",
+      "Qual cache de segundo nível do Hibernate devo ligar na entidade?",
+      "Defina deadline, retry e circuit breaker para a chamada ao serviço de pagamento."
+    ]
+  }
+}

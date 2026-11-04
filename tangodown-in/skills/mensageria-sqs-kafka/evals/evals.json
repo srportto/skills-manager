@@ -1,0 +1,52 @@
+{
+  "skill_name": "mensageria-sqs-kafka",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Kafka ficou lento; pare o poll até acabar o trabalho",
+      "expected_output": "Mantém poll() dentro de max.poll.interval.ms usando pause/resume; limita o trabalho em voo; commit só do processado",
+      "files": [],
+      "expectations": [
+        "Mantém poll() dentro de max.poll.interval.ms usando pause/resume",
+        "Limita o trabalho em voo",
+        "Faz commit apenas do que foi processado",
+        "Não para de chamar poll() (rebalance) nem faz commit antes do efeito"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Criei uma fila SQS nova no Terraform para pedidos. Pode aprovar?",
+      "expected_output": "Reprova como Crítico fila sem DLQ e RedrivePolicy; exige DLQ com RedrivePolicy (maxReceiveCount) e visibility timeout coerente com o processamento",
+      "files": [],
+      "expectations": [
+        "Exige DLQ com RedrivePolicy na fila",
+        "Classifica fila sem DLQ como Crítico",
+        "Alinha visibility timeout ao tempo de processamento e limita mensagens em voo"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "No listener, faça try/catch que confirma a mensagem quando ela vier inválida e segue em frente.",
+      "expected_output": "Recusa descarte genérico e try/catch inline decidindo ack; usa ponto central de decisão de erro (confirmar, reentregar ou quarentenar) com quarentena durável antes do ack",
+      "files": [],
+      "expectations": [
+        "Não decide ack em try/catch inline",
+        "Centraliza a decisão de erro em um único interceptor",
+        "Faz quarentena durável antes de confirmar a mensagem inválida",
+        "Ack só depois do efeito durável"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Como configuro DLQ numa fila SQS nova?",
+      "Meu consumer Kafka está reprocessando mensagens depois do rebalance, o que ajustar?",
+      "Como garanto idempotência no consumo de SQS com entrega duplicada?"
+    ],
+    "should_not_trigger": [
+      "Crie um índice para essa query PostgreSQL lenta.",
+      "Crie um esqueleto novo de aplicação consumidora de SQS.",
+      "Como implemento retry com backoff e circuit breaker no cliente HTTP de pagamento?"
+    ]
+  }
+}

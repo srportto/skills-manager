@@ -1,0 +1,41 @@
+{
+  "skill_name": "persistencia-jpa",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A listagem de pedidos faz 1 SELECT mais 1 por pedido para buscar os itens, e às vezes recebo LazyInitializationException no controller.",
+      "expected_output": "Corrige N+1 com JOIN FETCH ou @EntityGraph e a LazyInitializationException com projeção DTO ou JOIN FETCH, nunca com enable_lazy_load_no_trans; avisa que JOIN FETCH de coleção com Pageable pagina em memória",
+      "files": [],
+      "expectations": [
+        "Usa JOIN FETCH ou @EntityGraph para o N+1",
+        "Usa projeção DTO ou JOIN FETCH para o LazyInitializationException",
+        "Não habilita enable_lazy_load_no_trans",
+        "Alerta que JOIN FETCH de coleção com Pageable pagina em memória"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Duas pessoas editam o mesmo cadastro e a última sobrescreve a anterior. Coloquei try/catch em volta do save() para tratar o conflito.",
+      "expected_output": "Resolve lost update com locking otimista (@Version); explica que o try/catch em volta de save não pega OptimisticLockingFailureException porque o flush ocorre no commit, e trata no handler central (409) ou com saveAndFlush",
+      "files": [],
+      "expectations": [
+        "Introduz @Version para locking otimista",
+        "Explica que o flush acontece no commit e o try/catch em volta de save() não pega a exceção",
+        "Trata OptimisticLockingFailureException em handler central devolvendo 409",
+        "Na atualização, carrega a entidade gerenciada e confere a versão enviada pelo cliente (corpo ou If-Match), sem save de entidade nova montada a partir do DTO"
+      ]
+    }
+  ],
+  "trigger": {
+    "should_trigger": [
+      "Meu endpoint de listagem está lento e carrega todos os registros, como paginar com projeção?",
+      "@Transactional na chamada interna this.metodo() parece não funcionar, por quê?",
+      "Como configuro insert em lote com hibernate.jdbc.batch_size?"
+    ],
+    "should_not_trigger": [
+      "Analise o EXPLAIN ANALYZE desta query e sugira um índice.",
+      "Como ajusto o autovacuum e o work_mem do PostgreSQL?",
+      "Em qual camada hexagonal fica a interface do Repository?"
+    ]
+  }
+}

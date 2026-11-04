@@ -1,0 +1,121 @@
+# A04 — Execução 2
+
+**Prompt:** Kafka ficou lento; pare o poll até acabar o trabalho
+
+**Agent:** `java-construtor`
+**Sessão:** independente 2
+**Nota:** 2/2
+
+**Arquivos do catálogo lidos:** agents/java-construtor.md; skills/resiliencia-controle-fluxo-java/SKILL.md; skills/resiliencia-controle-fluxo-java/references/backpressure-java.md; skills/mensageria-sqs-kafka/SKILL.md; skills/mensageria-sqs-kafka/references/kafka-produtor-consumidor.md; skills/mensageria-sqs-kafka/references/controle-consumo-java.md; skills/criar-aplicacao-java/references/variante-kafka-consumer.md
+
+## Saída bruta
+
+**Não vou implementar "parar o poll até acabar o trabalho".** É um anti-padrão e uma regra dura do catálogo (`mensageria-sqs-kafka`, regra 4): o poll deve continuar dentro de `max.poll.interval.ms`, usando `pause`/`resume`. Se o `poll()` ficar parado além desse intervalo (default 5 min), o consumidor sai do grupo, ocorre rebalance e as mensagens são reprocessadas em cascata, o que deixa tudo ainda mais lento. O que você quer (consumir só quando houver capacidade) se faz **pausando as partições** e **mantendo o poll vivo**.
+
+### Hipóteses (não houve informação suficiente)
+- Spring Boot 4 + Java 25, spring-kafka com `@KafkaListener`, consumer group único.
+- "Lento" significa que o processamento por registro (banco ou HTTP) demora mais que a chegada. O lote às vezes passa de `max.poll.interval.ms` ou o lag cresce.
+- O efeito do consumo é idempotente, ou será (chave única no banco, na transação do efeito).
+- Precisa de ordem por chave, então a ordem dentro da partição deve ser preservada.
+
+### Decisões
+1. **Primeiro dimensione, depois pause.** Reduza `max.poll.records` (ex.: 50 para 10-20), de modo que `max.poll.records x tempo por registro (p99)` fique muito abaixo de `max.poll.interval.ms`. Não aumente o `max.poll.interval.ms` para esconder a lentidão.
+2. **Pausa por partição.** A thread do laço continua chamando `poll()`. A partição com trabalho pendente é pausada e retomada quando termina. Assim o buffer fica limitado a um lote e o backlog fica no broker.
+3. **Trabalho em voo limitado** à capacidade do downstream (conexões e quotas somadas das instâncias), com uma mensagem por partição por vez para manter a ordem.
+4. **Commit só do concluído** (`ack-mode: manual` ou `record`), nunca com commit automático e handoff para outra thread.
+5. **Erro em um ponto só:** `DefaultErrorHandler` com tentativas limitadas e DLT. Se a DLT falhar, nada é commitado.
+6. **Lembrete:** puxar mais devagar protege a JVM do consumidor, não o sistema. O lag cresce enquanto o produtor continuar no mesmo ritmo. A solução de fundo é mais partições e instâncias (dentro do orçamento do downstream) ou processamento mais barato. Alerte por idade e lag.
+
+### Configuração
+
+```yaml
+spring:
+  kafka:
+    consumer:
+      enable-auto-commit: false
+      max-poll-records: 10            # lote pequeno: 10 x p99 200 ms ~ 2 s, muito abaixo do intervalo
+      properties:
+        max.poll.interval.ms: 300000  # não aumentar para esconder lentidão
+    listener:
+      ack-mode: manual
+```
+
+### Caso simples: processamento síncrono no listener
+O poll só ocorre depois que o listener retorna, então o lote dentro do prazo já basta.
+
+```java
+// Comentário: síncrono, idempotente; o ack só ocorre após o efeito durável
+@KafkaListener(topics = "pedidos")
+void consumir(PedidoEvento evento, Acknowledgment ack) {
+    useCase.processar(evento.paraComando()); // falha propaga ao DefaultErrorHandler central
+    ack.acknowledge();                       // commita o offset seguinte ao processado
+}
+```
+
+### Pausar o consumo quando o downstream sinalizar saturação
+Com o container, `pause()` e `resume()` mantêm o poll vivo (o container segue chamando `poll()` e não devolve registros das partições pausadas).
+
+```java
+@Component
+class ControleConsumoKafka {
+
+    private final KafkaListenerEndpointRegistry registry;
+
+    ControleConsumoKafka(KafkaListenerEndpointRegistry registry) {
+        this.registry = registry;
+    }
+
+    // Comentário: pausa o container, não o poll; o membro continua no grupo
+    void pausar(String listenerId) {
+        var container = registry.getListenerContainer(listenerId);
+        if (container != null && !container.isContainerPaused()) {
+            container.pause();
+        }
+    }
+
+    void retomar(String listenerId) {
+        var container = registry.getListenerContainer(listenerId);
+        if (container != null && container.isContainerPaused()) {
+            container.resume();
+        }
+    }
+}
+```
+
+### Caso de trabalho assíncrono/lento: pausa por partição
+Padrão do catálogo (`ConsumidorKafkaLimitado`):
+- O laço (única thread que chama `poll`, `commit` e `pause`) distribui os registros em filas por partição e **pausa** a partição ocupada.
+- Workers em virtual threads processam uma mensagem por partição por vez, com teto de `limiteEmVoo`.
+- Os resultados voltam por fila à thread do laço, que commita `offset + 1` do concluído e retoma as partições vazias.
+- Falha transitória repete a mesma mensagem com pausa; esgotadas as tentativas vai para a DLT. Se a DLT falhar, não commita.
+- Em `onPartitionsRevoked`: espera limitada pelo trabalho em andamento e commit do concluído. Em `onPartitionsLost` não commita.
+
+### Provas (escrever antes da implementação)
+| Prova | Como |
+|---|---|
+| Poll continua durante o processamento (partição pausada, sem sair do grupo) | `MockConsumer`: partição pausada não devolve registros e `poll` segue sendo chamado |
+| Trabalho em voo nunca acima do limite | Teste de concorrência com contador máximo |
+| Commit só do concluído | `MockConsumer`: offset = último concluído + 1 |
+| Reentrega não duplica efeito | Mesmo registro duas vezes, um único efeito (chave única) |
+| DLT indisponível não commita | Falha forçada na DLT, offset inalterado |
+
+### Evidências
+| Item | Estado |
+|---|---|
+| Compilação / testes unitários (`mvn clean verify`) | Não executado: não há aplicação neste pedido (resposta de projeto, sem gravar código no repositório) |
+| Integração (Kafka e PostgreSQL reais, perfil `integracao`) | Pendente: exige Docker/Testcontainers |
+
+### Limites propostos
+`max.poll.records=10` (por poll, por instância; motivo: lote abaixo de `max.poll.interval.ms`); trabalho em voo = capacidade do downstream dividida pelas instâncias; tentativas = 3 com `FixedBackOff` de 1 s e depois DLT. Os valores finais dependem da medição de latência p99 por registro e do número de partições.
+
+### Próximos passos
+Medir p99 por registro e o lag/idade do backlog. Depois que a implementação for gerada, `java-revisor` em modo `auditoria` é obrigatório antes de declarar pronto.
+
+## Pontuação
+- Itens obrigatórios:
+  - ✅ `pause`/`resume` mantendo o poll: "**pausando as partições** e **mantendo o poll vivo**"; `container.pause()` "pausa o container, não o poll".
+  - ✅ Trabalho em voo limitado: "**Trabalho em voo limitado** à capacidade do downstream ... uma mensagem por partição por vez"; `max-poll-records: 10` com a conta do p99.
+  - ✅ Commit só do processado: "**Commit só do concluído** (`ack-mode: manual` ou `record`)"; "Se a DLT falhar, nada é commitado".
+  - ✅ Forma de verificar: tabela de provas (MockConsumer, máximo em voo, offset = concluído + 1, DLT indisponível).
+- Falha bloqueadora: não
+- Justificativa: a decisão está correta e contextualizada, com limites e provas. Também lembra que puxar mais devagar não reduz o lag de fundo.

@@ -1,0 +1,123 @@
+# Task 18 — Caso A12 — Execução 2
+
+**Prompt literal:** “Adicionar métricas para cada pedido e traceId”
+
+**Agent:** `especialista-monitoramento`  
+**Sessão independente:** 2  
+**Nota:** pendente
+
+## Arquivos lidos
+
+- `agents/especialista-monitoramento.md`
+- `skills/monitoramento-java/SKILL.md`
+- `skills/monitoramento-java/references/metricas-micrometer.md`
+- `skills/monitoramento-java/references/tracing-opentelemetry.md`
+- `skills/monitoramento-java/references/logs-mdc-correlacao.md`
+
+## Saída bruta
+
+Para cada requisição HTTP, use as métricas automáticas do Spring Boot/Micrometer, como `http.server.requests`, que agregam quantidade, resultado e duração. Para cada pedido de negócio, registre contagem e duração da operação de pedido. Não crie uma série temporal por requisição ou por pedido: `traceId` e `pedidoId` são valores de alta cardinalidade e não devem ser labels de métricas.
+
+Inclua Actuator, o registry Prometheus e o bridge de tracing compatível com a versão do Spring Boot, usando o BOM do projeto para as versões:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-tracing-bridge-otel</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-exporter-otlp</artifactId>
+</dependency>
+```
+
+Exponha o endpoint de scrape e configure o envio de traces para o Collector. Confirme os nomes das propriedades na versão efetivamente usada:
+
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  tracing:
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4318/v1/traces
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+```
+
+O Spring Boot instrumenta requisições HTTP com método, status e rota normalizada. Verifique que a tag `uri` usa o template da rota, como `/pedidos/{id}`, e não o caminho concreto contendo IDs. Para a operação de negócio, use labels de conjunto fechado, como `resultado=sucesso|erro|rejeitado`:
+
+```java
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PedidoMetrics {
+    private final MeterRegistry registry;
+
+    public PedidoMetrics(MeterRegistry registry) {
+        this.registry = registry;
+    }
+
+    public void registrarProcessamento(String resultado, Duration duracao) {
+        if (!resultado.equals("sucesso")
+                && !resultado.equals("erro")
+                && !resultado.equals("rejeitado")) {
+            throw new IllegalArgumentException("Resultado de pedido inválido");
+        }
+
+        Counter.builder("pedidos.processados")
+                .description("Total de pedidos processados")
+                .tag("resultado", resultado)
+                .register(registry)
+                .increment();
+
+        Timer.builder("pedido.processamento")
+                .description("Duração do processamento de pedidos")
+                .tag("resultado", resultado)
+                .publishPercentileHistogram()
+                .register(registry)
+                .record(duracao);
+    }
+}
+```
+
+Chame `registrarProcessamento` uma vez por resultado final da operação lógica; contabilize tentativas a dependências em outra métrica se isso for necessário. Uma rejeição por sobrecarga também deve aparecer como resultado, sem desaparecer do denominador do SLI. Se houver risco de duplicar a contagem em retries, mantenha a métrica de pedido no limite da operação lógica e separe dela as métricas de tentativa.
+
+Com Micrometer Tracing e OpenTelemetry, propague `traceparent` (W3C Trace Context) entre serviços. O trace ID deve aparecer nos logs estruturados via MDC e nos traces. Para navegar de uma amostra agregada da métrica até um trace, configure e valide exemplars no registry/Prometheus; não coloque `traceId` em `tag()` nem em label Prometheus. A amostragem de traces deve refletir volume, custo e necessidade de diagnóstico; tail sampling no Collector pode preservar traces lentos e com erro.
+
+Consultas iniciais no Prometheus, ajustando o nome final conforme a conversão do registry:
+
+```promql
+sum(rate(http_server_requests_seconds_count[5m]))
+```
+
+```promql
+histogram_quantile(
+  0.95,
+  sum by (le) (rate(http_server_requests_seconds_bucket[5m]))
+)
+```
+
+```promql
+sum by (resultado) (rate(pedidos_processados_total[5m]))
+```
+
+Valide a entrega consultando `/actuator/prometheus`: confirme a presença das métricas HTTP e de pedido, buckets do histograma e apenas valores permitidos nas labels. Gere uma requisição de teste e confira a correlação entre log e trace pelo mesmo `traceId`; depois confirme que o exemplar, quando habilitado, permite localizar o trace sem criar uma série por ID. Como não foi indicado um repositório nem a versão do Spring Boot, os trechos são um ponto de integração e as propriedades e a disponibilidade de exemplars precisam ser conferidas na versão do serviço.
