@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Remonta o catálogo a partir das partes tangodown-compact-NNN.txt.
+
+Uso (o Python executa o script mesmo com a extensão .txt):
+  python remontar.py.txt --destino <dir>         recria o repositório original
+  python remontar.py.txt --destino <dir> --txt   recria a árvore de arquivos .txt
+
+Opções: --origem <dir-das-partes> e --sobrescrever.
+Só usa a biblioteca padrão (Python 3.8+). Nada é gravado se alguma parte ou
+arquivo falhar na conferência de SHA-256.
+"""
+import argparse
+import base64
+import hashlib
+import json
+import os
+import re
+import sys
+from pathlib import Path, PurePosixPath
+
+CABECALHO = re.compile(
+    rb"^(?:\xef\xbb\xbf)?#TANGODOWN-COMPACT/1 parte=(\d+)/(\d+) arquivos=(\d+) commit=(\w+) token=(\S+)"
+)
+
+
+def falhar(msg):
+    sys.exit(f"ERRO: {msg}")
+
+
+def sha256(dados):
+    return hashlib.sha256(dados).hexdigest()
+
+
+def caminho_seguro(destino, relativo):
+    # Impede path traversal: o caminho precisa ser relativo e ficar dentro do destino
+    p = PurePosixPath(relativo)
+    if p.is_absolute() or ".." in p.parts or not p.parts or "\\" in relativo or ":" in relativo:
+        falhar(f"caminho inválido na parte: {relativo}")
+    return destino.joinpath(*p.parts)
+
+
+def restaurar_conteudo(bruto, esperado, descricao):
+    # Aceita a parte intacta ou com fim de linha convertido para CRLF no transporte
+    candidatos = [bruto]
+    sem_cr_final = bruto[:-1] if bruto.endswith(b"\r") else bruto
+    candidatos.append(sem_cr_final.replace(b"\r\n", b"\n"))
+    for candidato in candidatos:
+        if sha256(candidato) == esperado:
+            return candidato
+    falhar(f"SHA-256 divergente em {descricao}")
+
+
+def ler_partes(origem):
+    arquivos = sorted(origem.rglob("tangodown-compact-*.txt"))
+    if not arquivos:
+        falhar(f"nenhuma tangodown-compact-NNN.txt em {origem}")
+
+    partes, metadados = {}, set()
+    for arquivo in arquivos:
+        dados = arquivo.read_bytes()
+        cabecalho = CABECALHO.match(dados)
+        if cabecalho is None:
+            falhar(f"cabeçalho inválido em {arquivo.name}")
+        numero = int(cabecalho.group(1))
+        if numero in partes:
+            falhar(f"parte {numero} repetida ({arquivo.name})")
+        partes[numero] = dados
+        metadados.add(cabecalho.groups()[1:])
+
+    if len(metadados) != 1:
+        falhar("as partes pertencem a pacotes diferentes")
+    total_partes, total_arquivos, commit, token = metadados.pop()
+    esperadas = set(range(1, int(total_partes) + 1))
+    if set(partes) != esperadas:
+        ausentes = ", ".join(str(n) for n in sorted(esperadas - set(partes))) or "nenhuma"
+        falhar(f"conjunto de partes incompleto ou com sobra (ausentes: {ausentes})")
+    return partes, int(total_arquivos), commit.decode("ascii"), token
+
+
+def extrair_arquivos(partes, token):
+    marcador = re.escape(b"@@@" + token)
+    entrada = re.compile(
+        rb"^" + marcador + rb" ARQUIVO ([^\r\n]+)\r?\n(.*?)\n" + marcador + rb" FIM\r?$",
+        re.MULTILINE | re.DOTALL,
+    )
+    for numero in sorted(partes):
+        for achado in entrada.finditer(partes[numero]):
+            yield json.loads(achado.group(1).decode("utf-8")), achado.group(2)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Remonta o catálogo a partir das partes compactas em texto.")
+    ap.add_argument("--origem", default=str(Path(__file__).resolve().parent),
+                    help="diretório das partes (padrão: pasta deste script)")
+    ap.add_argument("--destino", required=True, help="diretório onde o resultado será criado")
+    ap.add_argument("--txt", action="store_true", help="recria a árvore de .txt em vez do repositório original")
+    ap.add_argument("--sobrescrever", action="store_true", help="permite sobrescrever arquivos existentes")
+    args = ap.parse_args()
+
+    origem, destino = Path(args.origem).resolve(), Path(args.destino).resolve()
+    partes, total_arquivos, commit, token = ler_partes(origem)
+
+    # Confere tudo em memória antes de gravar, para nunca deixar remontagem pela metade
+    saidas = {}
+    for info, bruto in extrair_arquivos(partes, token):
+        conteudo = restaurar_conteudo(bruto, info["sha256"], info["txt"])
+        if len(conteudo) != info["bytes"]:
+            falhar(f"tamanho divergente em {info['txt']}")
+        if args.txt:
+            relativo, dados = info["txt"], conteudo
+        else:
+            relativo = info["caminho"]
+            dados = base64.decodebytes(conteudo) if info["codificacao"] == "base64" else conteudo
+            if len(dados) != info["tamanho"] or sha256(dados) != info["sha256_original"]:
+                falhar(f"conteúdo original divergente em {relativo}")
+        alvo = caminho_seguro(destino, relativo)
+        if alvo in saidas:
+            falhar(f"arquivo repetido nas partes: {relativo}")
+        if alvo.exists() and not args.sobrescrever:
+            falhar(f"{alvo} já existe (use --sobrescrever)")
+        saidas[alvo] = (dados, info["executavel"] and not args.txt)
+
+    if len(saidas) != total_arquivos:
+        falhar(f"encontrados {len(saidas)} de {total_arquivos} arquivos nas partes")
+
+    for alvo, (dados, executavel) in saidas.items():
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        alvo.write_bytes(dados)
+        if executavel and os.name != "nt":
+            alvo.chmod(0o755)
+
+    print(f"ok: {len(saidas)} arquivos remontados em {destino} (commit de origem {commit[:7]})")
+
+
+if __name__ == "__main__":
+    main()
